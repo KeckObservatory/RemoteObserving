@@ -73,8 +73,11 @@ def launch_vncviewer(vncserver, port, pw=None):
     config = get_config()
     vncviewercmd = config.get('vncviewer', 'vncviewer')
     vncprefix = config.get('vncprefix', '')
-    vncargs = config.get('vncargs', '')
-    cmd = [vncviewercmd, vncargs, f'{vncprefix}{vncserver}:{port:4d}']
+    vncargs = config.get('vncargs', None)
+    cmd = [vncviewercmd]
+    if vncargs is not None:
+        cmd.append(vncargs)
+    cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
     log.info(f"  Launching VNC viewer for {cmd[-1]}")
     vncviewer = subprocess.call(cmd)
 
