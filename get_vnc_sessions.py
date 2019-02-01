@@ -206,6 +206,11 @@ def determine_VNCserver(accountname, password):
             if vncserver is not None and vncserver != '':
                 log.info(f"Got VNC server: '{vncserver}'")
                 break
+
+    # Temporary hack for KCWI
+    if vncserver == 'vm-kcwivnc':
+        vncserver = 'kcwi'
+
     return f"{vncserver}.keck.hawaii.edu"
 
 
