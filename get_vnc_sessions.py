@@ -1,18 +1,15 @@
 #!/usr/env/python
 
 ## Import General Tools
-import sys
 import os
-import re
 import socket
 import argparse
 import logging
 import yaml
 from getpass import getpass
 import paramiko
-import subprocess
 from time import sleep
-from threading import Thread
+from threading import call, Thread
 from telnetlib import Telnet
 from subprocess import Popen
 from astropy.table import Table, Column
@@ -53,7 +50,7 @@ def get_config(filenames=['local_config.yaml', 'keck_vnc_config.yaml']):
 ##-------------------------------------------------------------------------
 def launch_xterm(command, pw, title):
     cmd = ['xterm', '-hold', '-title', title, '-e', f'"{command}"']
-    xterm = subprocess.call(cmd)
+    xterm = call(cmd)
 
 
 def open_ssh_tunnel(server, username, password, remote_port, local_port):
@@ -79,7 +76,7 @@ def launch_vncviewer(vncserver, port, pw=None):
         cmd.append(vncargs)
     cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
     log.info(f"  Launching VNC viewer for {cmd[-1]}")
-    vncviewer = subprocess.call(cmd)
+    vncviewer = call(cmd)
 
 
 ##-------------------------------------------------------------------------
@@ -277,7 +274,7 @@ def main(args, config):
         if config['authenticate'] is True:
             log.info('Signing off of firewall authentication')
             close_authentication(authpass)
-        sys.exit(0)
+        return
 
     ##-------------------------------------------------------------------------
     ## Determine instrument
