@@ -9,9 +9,9 @@ import yaml
 from getpass import getpass
 import paramiko
 from time import sleep
-from threading import call, Thread
+from threading import Thread
 from telnetlib import Telnet
-from subprocess import Popen
+from subprocess import Popen, call
 from astropy.table import Table, Column
 
 
