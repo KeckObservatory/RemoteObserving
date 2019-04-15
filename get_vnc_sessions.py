@@ -32,12 +32,15 @@ log.addHandler(LogConsoleHandler)
 ##-------------------------------------------------------------------------
 ## Get Configuration
 ##-------------------------------------------------------------------------
-def get_config(filenames=['local_config.yaml', 'keck_vnc_config.yaml']):
-    for filename in filenames:
-        if os.path.exists(filename):
+def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.yaml']):
+    if filename is not None:
+        filenames.append(filename)
+
+    for f in filenames:
+        if os.path.exists(f):
             break
 
-    with open(filename) as FO:
+    with open(f) as FO:
         config = yaml.load(FO)
 
     assert 'servers_to_try' in config.keys()
@@ -457,6 +460,9 @@ if __name__ == '__main__':
     ## add arguments
     parser.add_argument("account", type=str,
         help="The user account.")
+    ## add options
+    parser.add_argument("-c", "--config", dest="config", type=str,
+        help="Path to local configuration file.")
     args = parser.parse_args()
 
     sessions_to_open = []
@@ -485,7 +491,7 @@ if __name__ == '__main__':
         sessions_to_open.append('control2')
         sessions_to_open.append('telstatus')
 
-    config = get_config()
+    config = get_config(filename=args.config)
     if 'firewall_address' in config.keys() and\
        'firewall_user' in config.keys() and\
        'firewall_port' in config.keys():
