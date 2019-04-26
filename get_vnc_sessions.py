@@ -41,7 +41,7 @@ def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.y
             break
 
     with open(f) as FO:
-        config = yaml.load(FO)
+        config = yaml.safe_load(FO)
 
     assert 'servers_to_try' in config.keys()
     assert 'vncviewer' in config.keys()
