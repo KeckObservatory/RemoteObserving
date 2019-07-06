@@ -14,6 +14,7 @@
  ##
  ## This is the command to invoke on the local machine to launch a VNC client
  ## Command will be formatted as [vncviewer] [vncargs] [address]:[port]
+ vncviewer: 'vncviewer',
  ##
  ## Example: use VNCviewer for RealVNC vncviewer on macOS
  # vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer',
@@ -21,9 +22,15 @@
  # vncargs: '',
  #
  ## Example: use built in Screen Sharing app in macOS:
-vncviewer: 'open',
-vncprefix: 'vnc://',
-vncargs: '',
+# vncviewer: 'open',
+# vncprefix: 'vnc://',
+# vncargs: '',
  ## Always use these local ports:
  # local_ports: [5911, 5912, 5913, 5914, 5915, 5916, 5917, 5918, 5919]
+
+ ## Soundplay configs
+ ## Path to "aplay" on local computer for command-line sound player.  Default assumed in path as 'aplay'
+ # aplay: '/usr/bin/aplay',
+ ## Name of soundplayer executable to use (see ./soundplayer/ folder)
+ # soundplayer: 'soundplay-8.5.1-linux-x86_64'
 }

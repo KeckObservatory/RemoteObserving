@@ -14,6 +14,8 @@ from threading import Thread
 from telnetlib import Telnet
 from subprocess import Popen, call
 from astropy.table import Table, Column
+from soundplay import soundplay
+import atexit
 
 
 ##-------------------------------------------------------------------------
@@ -176,6 +178,9 @@ def determine_instrument(accountname):
         if accountname.lower() in accounts[instrument]:
             return instrument, telescope[instrument]
 
+    print (f"ERROR: Unable to find information for account '{accountname}'")
+    return None, None
+
 
 ##-------------------------------------------------------------------------
 ## Determine VNC Server
@@ -284,6 +289,7 @@ def main(args, config):
     ## Determine instrument
     ##-------------------------------------------------------------------------
     instrument, tel = determine_instrument(args.account)
+    if not instrument: return
 
 
     ##-------------------------------------------------------------------------
@@ -397,6 +403,19 @@ def main(args, config):
 
 
     ##-------------------------------------------------------------------------
+    ## Open Soundplay
+    ##-------------------------------------------------------------------------
+    sound = None
+    if args.nosound is False:
+        aplay       = config['aplay']       if 'aplay'       in config.keys() else None
+        soundplayer = config['soundplayer'] if 'soundplayer' in config.keys() else None
+        sound = soundplay()
+        sound.connect(instrument, vncserver, 9798, aplay=aplay, player=soundplayer)
+        # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
+        # soundThread.start()
+
+
+    ##-------------------------------------------------------------------------
     ## Wait for quit signal
     ##-------------------------------------------------------------------------
     if config['authenticate'] is True:
@@ -417,6 +436,24 @@ def main(args, config):
             thread.stop()
         log.info('Signing off of firewall authentication')
         close_authentication(authpass)
+
+
+    ##-------------------------------------------------------------------------
+    ## Wait for kill signal to terminate and exit cleanly
+    ##-------------------------------------------------------------------------
+    try:
+        atexit.register(exit_handler, sound)
+        print ('Hit control-C to terminate VNC session.')
+        while True:
+            sleep(1)
+    except KeyboardInterrupt:
+        pass
+
+
+#define exit handler in case program is killed by user
+def exit_handler(soundplay=None):
+    print ('Exiting Application...')
+    if soundplay: soundplay.terminate()
 
 
 ##-------------------------------------------------------------------------
@@ -457,6 +494,9 @@ if __name__ == '__main__':
     parser.add_argument("--status", dest="status",
         default=False, action="store_true",
         help="Open status for telescope?")
+    parser.add_argument("--nosound", dest="nosound",
+        default=False, action="store_true",
+        help="Skip start of soundplay application?")
     ## add arguments
     parser.add_argument("account", type=str,
         help="The user account.")
@@ -512,3 +552,4 @@ if __name__ == '__main__':
     log.info(f'System IP Address: {socket.gethostbyname(hostname)}')
 
     main(args, config)
+
