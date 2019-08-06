@@ -155,11 +155,11 @@ def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.y
 ##-------------------------------------------------------------------------
 ## Log basic system info
 ##-------------------------------------------------------------------------
-def log_system_info(args):
-    log.info(f'System Info: {os.uname()}')
+def log_system_info():
+    log.debug(f'System Info: {os.uname()}')
     hostname = socket.gethostname()
-    log.info(f'System hostname: {hostname}')
-    log.info(f'System IP Address: {socket.gethostbyname(hostname)}')
+    log.debug(f'System hostname: {hostname}')
+    log.debug(f'System IP Address: {socket.gethostbyname(hostname)}')
 
 
 ##-------------------------------------------------------------------------
@@ -281,16 +281,16 @@ def close_authentication(authpass, config):
 ## Determine Instrument
 ##-------------------------------------------------------------------------
 def determine_instrument(accountname):
-    accounts = {'mosfire': [f'mosfire{i}' for i in range(1,10)],
-                'hires': [f'hires{i}' for i in range(1,10)],
-                'osiris': [f'osiris{i}' for i in range(1,10)],
-                'lris': [f'lris{i}' for i in range(1,10)],
-                'nires': [f'nires{i}' for i in range(1,10)],
-                'deimos': [f'deimos{i}' for i in range(1,10)],
-                'esi': [f'esi{i}' for i in range(1,10)],
-                'nirc2': [f'nirc{i}' for i in range(1,10)],
-                'nirspec': [f'nirspec{i}' for i in range(1,10)],
-                'kcwi': [f'kcwi{i}' for i in range(1,10)],
+    accounts = {'mosfire':  [f'mosfire{i}' for i in range(1,10)],
+                'hires':    [f'hires{i}'   for i in range(1,10)],
+                'osiris':   [f'osiris{i}'  for i in range(1,10)],
+                'lris':     [f'lris{i}'    for i in range(1,10)],
+                'nires':    [f'nires{i}'   for i in range(1,10)],
+                'deimos':   [f'deimos{i}'  for i in range(1,10)],
+                'esi':      [f'esi{i}'     for i in range(1,10)],
+                'nirc2':    [f'nirc{i}'    for i in range(1,10)],
+                'nirspec':  [f'nirspec{i}' for i in range(1,10)],
+                'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
                }
     accounts['mosfire'].append('moseng')
     accounts['hires'].append('hireseng')
@@ -304,20 +304,23 @@ def determine_instrument(accountname):
     accounts['kcwi'].append('kcwieng')
 
     telescope = {'mosfire': 1,
-                 'hires': 1,
-                 'osiris': 1,
-                 'lris': 1,
-                 'nires': 2,
-                 'deimos': 2,
-                 'esi': 2,
-                 'nirc2': 2,
+                 'hires':   1,
+                 'osiris':  1,
+                 'lris':    1,
+                 'nires':   2,
+                 'deimos':  2,
+                 'esi':     2,
+                 'nirc2':   2,
                  'nirspec': 2,
-                 'kcwi': 2,
+                 'kcwi':    2,
                 }
 
     for instrument in accounts.keys():
         if accountname.lower() in accounts[instrument]:
             return instrument, telescope[instrument]
+
+    log.error(f'Account name "{accountname}" not a valid instrument account name!')
+    return None, None
 
 
 ##-------------------------------------------------------------------------
@@ -442,6 +445,7 @@ def main(args, config):
     ## Determine instrument
     ##-------------------------------------------------------------------------
     instrument, tel = determine_instrument(args.account)
+    if not instrument: return
 
 
     ##-------------------------------------------------------------------------
@@ -584,13 +588,13 @@ if __name__ == '__main__':
 
     print ("\n***** Starting get_vnc_sessions ******\n")
 
-    #create logger
+    #create logger (file and stdout)
     log = create_logger()
 
-    #parse args
+    #parse command line args
     args = get_args()
 
-    #get config
+    #get yaml config
     config = get_config(filename=args.config)
 
     #log basic system info
