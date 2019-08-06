@@ -15,18 +15,42 @@ from telnetlib import Telnet
 from subprocess import Popen, call
 from astropy.table import Table, Column
 
+from datetime import datetime
+import platform
+import traceback
+
+
 
 ##-------------------------------------------------------------------------
-## Create logger object
+## Create Logger
 ##-------------------------------------------------------------------------
-log = logging.getLogger('GetVNCs')
-log.setLevel(logging.DEBUG)
-## Set up console output
-LogConsoleHandler = logging.StreamHandler()
-LogConsoleHandler.setLevel(logging.DEBUG)
-LogFormat = logging.Formatter('%(asctime)23s %(levelname)8s: %(message)s')
-LogConsoleHandler.setFormatter(LogFormat)
-log.addHandler(LogConsoleHandler)
+def create_logger():
+
+    ## Create logger object
+    log = logging.getLogger('GetVNCs')
+    log.setLevel(logging.DEBUG)
+
+    #create log file and log dir if not exist
+    ymd = datetime.today().strftime('%Y%m%d')
+    logFile = f'logs/keck-remote-log-{ymd}.txt'
+    if not os.path.exists(os.path.dirname(logFile)):
+        os.makedirs(os.path.dirname(logFile))
+
+    #file handler (full debug logging)
+    logFileHandler = logging.FileHandler(logFile)
+    logFileHandler.setLevel(logging.DEBUG)
+    logFormat = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+    logFileHandler.setFormatter(logFormat)
+    log.addHandler(logFileHandler)
+
+    #stream/console handler (info+ only)
+    logConsoleHandler = logging.StreamHandler()
+    logConsoleHandler.setLevel(logging.INFO)
+    logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+    logConsoleHandler.setFormatter(logFormat)
+    log.addHandler(logConsoleHandler)
+
+    return log
 
 
 ##-------------------------------------------------------------------------
@@ -423,6 +447,11 @@ def main(args, config):
 ## __main__
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
+
+    #create logger
+    log = create_logger()
+    log.info('test')
+
     ## create a parser object for understanding command-line arguments
     parser = argparse.ArgumentParser(
              description="Get VNC sessions.")
