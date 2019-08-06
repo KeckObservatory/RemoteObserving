@@ -137,6 +137,9 @@ def launch_xterm(command, pw, title):
     xterm = call(cmd)
 
 
+##-------------------------------------------------------------------------
+## Open ssh tunnel
+##-------------------------------------------------------------------------
 def open_ssh_tunnel(server, username, password, remote_port, local_port):
     server = sshtunnel.SSHTunnelForwarder(server,
                                 ssh_username=username,
@@ -150,8 +153,7 @@ def open_ssh_tunnel(server, username, password, remote_port, local_port):
 ##-------------------------------------------------------------------------
 ## Launch vncviewer
 ##-------------------------------------------------------------------------
-def launch_vncviewer(vncserver, port, pw=None):
-    config = get_config()
+def launch_vncviewer(vncserver, port, config=None, pw=None):
     vncviewercmd = config.get('vncviewer', 'vncviewer')
     vncprefix = config.get('vncprefix', '')
     vncargs = config.get('vncargs', None)
@@ -166,8 +168,7 @@ def launch_vncviewer(vncserver, port, pw=None):
 ##-------------------------------------------------------------------------
 ## Authenticate
 ##-------------------------------------------------------------------------
-def authenticate(authpass):
-    config = get_config()
+def authenticate(authpass,  config=None):
     assert 'firewall_user' in config.keys()
     assert 'firewall_address' in config.keys()
     assert 'firewall_port' in config.keys()
@@ -190,8 +191,10 @@ def authenticate(authpass):
             return None
 
 
-def close_authentication(authpass):
-    config = get_config()
+##-------------------------------------------------------------------------
+## Close Authentication
+##-------------------------------------------------------------------------
+def close_authentication(authpass, config):
     assert 'firewall_user' in config.keys()
     assert 'firewall_address' in config.keys()
     assert 'firewall_port' in config.keys()
@@ -260,8 +263,7 @@ def determine_instrument(accountname):
 ##-------------------------------------------------------------------------
 ## Determine VNC Server
 ##-------------------------------------------------------------------------
-def determine_VNCserver(accountname, password):
-    config = get_config()
+def determine_VNCserver(accountname, password, config):
     servers_to_try = config.get('servers_to_try')
     vncserver = None
     for s in servers_to_try:
@@ -336,13 +338,14 @@ def determine_VNC_sessions(accountname, password, vncserver):
 ## Main Program
 ##-------------------------------------------------------------------------
 def main(args, config):
+
     ##-------------------------------------------------------------------------
     ## Authenticate Through Firewall (or Disconnect)
     ##-------------------------------------------------------------------------
     if config['authenticate'] is True:
         authpass = getpass(f"Password for firewall authentication: ")
         log.info('Authenticating through firewall')
-        authenticate(authpass)
+        authenticate(authpass, config)
 
     if args.authonly is True:
         ## Wait for quit signal
@@ -357,8 +360,9 @@ def main(args, config):
         ## Close down ssh tunnels and firewall authentication
         if config['authenticate'] is True:
             log.info('Signing off of firewall authentication')
-            close_authentication(authpass)
+            close_authentication(authpass, config)
         return
+
 
     ##-------------------------------------------------------------------------
     ## Determine instrument
@@ -370,7 +374,7 @@ def main(args, config):
     ## Determine VNC server
     ##-------------------------------------------------------------------------
     password = getpass(f"Password for user {args.account}: ")
-    vncserver = determine_VNCserver(args.account, password)
+    vncserver = determine_VNCserver(args.account, password, config)
 
 
     ##-------------------------------------------------------------------------
@@ -381,7 +385,7 @@ def main(args, config):
         log.info('No VNC sessions found')
         if config['authenticate'] is True:
             log.info('Signing off of firewall authentication')
-            close_authentication(authpass)
+            close_authentication(authpass, config)
         return
 
     print(sessions)
@@ -466,13 +470,13 @@ def main(args, config):
                     port = int(f"59{display:02d}")
 
                 vnc_threads.append(Thread(target=launch_vncviewer,
-                                          args=(vncserver, port,)))
+                                          args=(vncserver, port, config)))
                 vnc_threads[-1].start()
                 sleep(0.05)
         if args.status is True:
             log.info(f"Opening VNCviewer for k{tel}status on {statusport}")
             vnc_threads.append(Thread(target=launch_vncviewer,
-                        args=(statusvncserver, statusport,)))
+                                      args=(statusvncserver, statusport, config)))
             vnc_threads[-1].start()
 
 
@@ -496,7 +500,7 @@ def main(args, config):
             log.info(f'Closing SSH forwarding for {thread.local_bind_port}')
             thread.stop()
         log.info('Signing off of firewall authentication')
-        close_authentication(authpass)
+        close_authentication(authpass, config)
 
 
 ##-------------------------------------------------------------------------
