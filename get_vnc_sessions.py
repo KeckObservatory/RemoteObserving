@@ -140,6 +140,33 @@ def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.y
 
 
 ##-------------------------------------------------------------------------
+## Get sessions to open
+##-------------------------------------------------------------------------
+def get_sessions_to_open(args):
+
+    #get sessions to open
+    sessions_to_open = []
+    if args.control0  is True: sessions_to_open.append('control0')
+    if args.control1  is True: sessions_to_open.append('control1')
+    if args.control2  is True: sessions_to_open.append('control2')
+    if args.telstatus is True: sessions_to_open.append('telstatus')
+    if args.analysis0 is True: sessions_to_open.append('analysis0')
+    if args.analysis1 is True: sessions_to_open.append('analysis1')
+    if args.analysis2 is True: sessions_to_open.append('analysis2')
+    if args.telanalys is True: sessions_to_open.append('telanalys')
+    if args.status    is True: sessions_to_open.append('status')
+
+    # create default sessions list if none provided
+    if len(sessions_to_open) == 0:
+        sessions_to_open.append('control0')
+        sessions_to_open.append('control1')
+        sessions_to_open.append('control2')
+        sessions_to_open.append('telstatus')
+
+    return sessions_to_open
+
+
+##-------------------------------------------------------------------------
 ## Launch xterm
 ##-------------------------------------------------------------------------
 def launch_xterm(command, pw, title):
@@ -375,6 +402,12 @@ def main(args, config):
 
 
     ##-------------------------------------------------------------------------
+    ## Determine sessions to open
+    ##-------------------------------------------------------------------------
+    sessions_to_open = get_sessions_to_open(args)
+
+
+    ##-------------------------------------------------------------------------
     ## Determine instrument
     ##-------------------------------------------------------------------------
     instrument, tel = determine_instrument(args.account)
@@ -397,8 +430,8 @@ def main(args, config):
             log.info('Signing off of firewall authentication')
             close_authentication(authpass, config)
         return
+    log.info("\n" + str(sessions))
 
-    print(sessions)
 
     ##-------------------------------------------------------------------------
     ## Open SSH Tunnel for Appropriate Ports
@@ -526,28 +559,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #get config
-    #todo: other get_config calls are not using args.config
     config = get_config(filename=args.config)
-
-    #get sessions to open
-    #todo: move this to function?  is this a global var?
-    sessions_to_open = []
-    if args.control0  is True: sessions_to_open.append('control0')
-    if args.control1  is True: sessions_to_open.append('control1')
-    if args.control2  is True: sessions_to_open.append('control2')
-    if args.telstatus is True: sessions_to_open.append('telstatus')
-    if args.analysis0 is True: sessions_to_open.append('analysis0')
-    if args.analysis1 is True: sessions_to_open.append('analysis1')
-    if args.analysis2 is True: sessions_to_open.append('analysis2')
-    if args.telanalys is True: sessions_to_open.append('telanalys')
-    if args.status    is True: sessions_to_open.append('status')
-
-    # create default sessions list if none provided
-    if len(sessions_to_open) == 0:
-        sessions_to_open.append('control0')
-        sessions_to_open.append('control1')
-        sessions_to_open.append('control2')
-        sessions_to_open.append('telstatus')
 
 
     # get firewall config
