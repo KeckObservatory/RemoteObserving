@@ -137,10 +137,29 @@ def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.y
     with open(file) as FO:
         config = yaml.safe_load(FO)
 
+    #checks that fail
     assert 'servers_to_try' in config.keys()
     assert 'vncviewer' in config.keys()
 
+    #checks that warn
+    if 'local_ports' in config.keys():
+        assert type(config['local_ports']) is list
+        nlp = len(config['local_ports'])
+        if nlp < 9:
+            log.warning(f"Only {nlp} local ports specified.")
+            log.warning(f"Program may crash if trying to open >{nlp} sessions")
+
     return config
+
+
+##-------------------------------------------------------------------------
+## Log basic system info
+##-------------------------------------------------------------------------
+def log_system_info(args):
+    log.info(f'System Info: {os.uname()}')
+    hostname = socket.gethostname()
+    log.info(f'System hostname: {hostname}')
+    log.info(f'System IP Address: {socket.gethostbyname(hostname)}')
 
 
 ##-------------------------------------------------------------------------
@@ -574,22 +593,8 @@ if __name__ == '__main__':
     #get config
     config = get_config(filename=args.config)
 
-
-    #get local ports config
-    if 'local_ports' in config.keys():
-        assert type(config['local_ports']) is list
-        nlp = len(config['local_ports'])
-        if nlp < 9:
-            log.warning(f"Only {nlp} local ports specified.")
-            log.warning(f"Program may crash if trying to open >{nlp} sessions")
-
-
     #log basic system info
-    log.info(f'System Info: {os.uname()}')
-    hostname = socket.gethostname()
-    log.info(f'System hostname: {hostname}')
-    log.info(f'System IP Address: {socket.gethostbyname(hostname)}')
-
+    log_system_info()
 
     # run main connection code
     main(args, config)
