@@ -55,9 +55,9 @@ def create_logger():
 
 
 ##-------------------------------------------------------------------------
-## Create arg parser
+## Get args
 ##-------------------------------------------------------------------------
-def create_arg_parser():
+def get_args():
 
     ## create a parser object for understanding command-line arguments
     parser = argparse.ArgumentParser(description="Get VNC sessions.")
@@ -102,7 +102,11 @@ def create_arg_parser():
     parser.add_argument("-c", "--config", dest="config", type=str,
         help="Path to local configuration file.")
 
-    return parser
+    #parse
+    args = parser.parse_args()
+    log.debug("\n\n\t***** PROGRAM STARTED *****\n\tArguments: " + ' '.join(sys.argv[1:]) + "\n")
+
+    return args
 
 
 ##-------------------------------------------------------------------------
@@ -379,6 +383,14 @@ def main(args, config):
     ##-------------------------------------------------------------------------
     ## Authenticate Through Firewall (or Disconnect)
     ##-------------------------------------------------------------------------
+    if 'firewall_address' in config.keys() and\
+       'firewall_user' in config.keys() and\
+       'firewall_port' in config.keys():
+        config['authenticate'] = True
+        import sshtunnel
+    else:
+        config['authenticate'] = False
+
     if config['authenticate'] is True:
         authpass = getpass(f"Password for firewall authentication: ")
         log.info('Authenticating through firewall')
@@ -551,25 +563,16 @@ def main(args, config):
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
 
+    print ("\n***** Starting get_vnc_sessions ******\n")
+
     #create logger
     log = create_logger()
 
     #parse args
-    parser = create_arg_parser()
-    args = parser.parse_args()
+    args = get_args()
 
     #get config
     config = get_config(filename=args.config)
-
-
-    # get firewall config
-    if 'firewall_address' in config.keys() and\
-       'firewall_user' in config.keys() and\
-       'firewall_port' in config.keys():
-        config['authenticate'] = True
-        import sshtunnel
-    else:
-        config['authenticate'] = False
 
 
     #get local ports config
