@@ -2,6 +2,7 @@
 
 ## Import General Tools
 import os
+import sys
 import re
 import socket
 import argparse
@@ -109,7 +110,11 @@ def create_arg_parser():
 ##-------------------------------------------------------------------------
 def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.yaml']):
     if filename is not None:
-        filenames.append(filename)
+        if not os.path.exists(filename):
+            log.error(f'Specified config file "{filename}"" does not exist!')
+            sys.exit(1)
+        else:
+            filenames.insert(0, filename)
 
     for f in filenames:
         if os.path.exists(f):
