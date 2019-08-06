@@ -109,6 +109,8 @@ def create_arg_parser():
 ## Get Configuration
 ##-------------------------------------------------------------------------
 def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.yaml']):
+
+    #if config file specified, put that at beginning of list
     if filename is not None:
         if not os.path.exists(filename):
             log.error(f'Specified config file "{filename}"" does not exist!')
@@ -116,11 +118,19 @@ def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.y
         else:
             filenames.insert(0, filename)
 
+    #find first file that exists
+    file = None
     for f in filenames:
         if os.path.exists(f):
+            file = f
             break
+    if not file:
+        log.error(f'No config files found.')
+        sys.exit(1)
 
-    with open(f) as FO:
+    #load config file and make sure it has the info we need
+    log.info(f'Using config file {file}')
+    with open(file) as FO:
         config = yaml.safe_load(FO)
 
     assert 'servers_to_try' in config.keys()
