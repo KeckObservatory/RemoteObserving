@@ -22,7 +22,7 @@ import traceback
 
 
 ##-------------------------------------------------------------------------
-## Create Logger
+## Create logger
 ##-------------------------------------------------------------------------
 def create_logger():
 
@@ -51,6 +51,57 @@ def create_logger():
     log.addHandler(logConsoleHandler)
 
     return log
+
+
+##-------------------------------------------------------------------------
+## Create arg parser
+##-------------------------------------------------------------------------
+def create_arg_parser():
+
+    ## create a parser object for understanding command-line arguments
+    parser = argparse.ArgumentParser(description="Get VNC sessions.")
+
+    ## add flags
+    parser.add_argument("--authonly", dest="authonly",
+        default=False, action="store_true",
+        help="Authenticate through firewall only?")
+    parser.add_argument("--control0", dest="control0",
+        default=False, action="store_true",
+        help="Open control0?")
+    parser.add_argument("--control1", dest="control1",
+        default=False, action="store_true",
+        help="Open control1?")
+    parser.add_argument("--control2", dest="control2",
+        default=False, action="store_true",
+        help="Open control2?")
+    parser.add_argument("--telstatus", dest="telstatus",
+        default=False, action="store_true",
+        help="Open telstatus?")
+    parser.add_argument("--analysis0", dest="analysis0",
+        default=False, action="store_true",
+        help="Open analysis0?")
+    parser.add_argument("--analysis1", dest="analysis1",
+        default=False, action="store_true",
+        help="Open analysis1?")
+    parser.add_argument("--analysis2", dest="analysis2",
+        default=False, action="store_true",
+        help="Open analysis2?")
+    parser.add_argument("--telanalysis", "--telanalys", dest="telanalys",
+        default=False, action="store_true",
+        help="Open telanalys?")
+    parser.add_argument("--status", dest="status",
+        default=False, action="store_true",
+        help="Open status for telescope?")
+
+    ## add arguments
+    parser.add_argument("account", type=str,
+        help="The user account.")
+
+    ## add options
+    parser.add_argument("-c", "--config", dest="config", type=str,
+        help="Path to local configuration file.")
+
+    return parser
 
 
 ##-------------------------------------------------------------------------
@@ -450,77 +501,37 @@ if __name__ == '__main__':
 
     #create logger
     log = create_logger()
-    log.info('test')
 
-    ## create a parser object for understanding command-line arguments
-    parser = argparse.ArgumentParser(
-             description="Get VNC sessions.")
-    ## add flags
-    parser.add_argument("--authonly", dest="authonly",
-        default=False, action="store_true",
-        help="Authenticate through firewall only?")
-    parser.add_argument("--control0", dest="control0",
-        default=False, action="store_true",
-        help="Open control0?")
-    parser.add_argument("--control1", dest="control1",
-        default=False, action="store_true",
-        help="Open control1?")
-    parser.add_argument("--control2", dest="control2",
-        default=False, action="store_true",
-        help="Open control2?")
-    parser.add_argument("--telstatus", dest="telstatus",
-        default=False, action="store_true",
-        help="Open telstatus?")
-    parser.add_argument("--analysis0", dest="analysis0",
-        default=False, action="store_true",
-        help="Open analysis0?")
-    parser.add_argument("--analysis1", dest="analysis1",
-        default=False, action="store_true",
-        help="Open analysis1?")
-    parser.add_argument("--analysis2", dest="analysis2",
-        default=False, action="store_true",
-        help="Open analysis2?")
-    parser.add_argument("--telanalysis", "--telanalys", dest="telanalys",
-        default=False, action="store_true",
-        help="Open telanalys?")
-    parser.add_argument("--status", dest="status",
-        default=False, action="store_true",
-        help="Open status for telescope?")
-    ## add arguments
-    parser.add_argument("account", type=str,
-        help="The user account.")
-    ## add options
-    parser.add_argument("-c", "--config", dest="config", type=str,
-        help="Path to local configuration file.")
+    #parse args
+    parser = create_arg_parser()
     args = parser.parse_args()
 
-    sessions_to_open = []
-    if args.control0 is True:
-        sessions_to_open.append('control0')
-    if args.control1 is True:
-        sessions_to_open.append('control1')
-    if args.control2 is True:
-        sessions_to_open.append('control2')
-    if args.telstatus is True:
-        sessions_to_open.append('telstatus')
-    if args.analysis0 is True:
-        sessions_to_open.append('analysis0')
-    if args.analysis1 is True:
-        sessions_to_open.append('analysis1')
-    if args.analysis2 is True:
-        sessions_to_open.append('analysis2')
-    if args.telanalys is True:
-        sessions_to_open.append('telanalys')
-    if args.status is True:
-        sessions_to_open.append('status')
+    #get config
+    #todo: other get_config calls are not using args.config
+    config = get_config(filename=args.config)
 
+    #get sessions to open
+    #todo: move this to function?  is this a global var?
+    sessions_to_open = []
+    if args.control0  is True: sessions_to_open.append('control0')
+    if args.control1  is True: sessions_to_open.append('control1')
+    if args.control2  is True: sessions_to_open.append('control2')
+    if args.telstatus is True: sessions_to_open.append('telstatus')
+    if args.analysis0 is True: sessions_to_open.append('analysis0')
+    if args.analysis1 is True: sessions_to_open.append('analysis1')
+    if args.analysis2 is True: sessions_to_open.append('analysis2')
+    if args.telanalys is True: sessions_to_open.append('telanalys')
+    if args.status    is True: sessions_to_open.append('status')
+
+    # create default sessions list if none provided
     if len(sessions_to_open) == 0:
         sessions_to_open.append('control0')
         sessions_to_open.append('control1')
         sessions_to_open.append('control2')
         sessions_to_open.append('telstatus')
 
-    config = get_config(filename=args.config)
+
+    # get firewall config
     if 'firewall_address' in config.keys() and\
        'firewall_user' in config.keys() and\
        'firewall_port' in config.keys():
@@ -528,6 +539,9 @@ if __name__ == '__main__':
         import sshtunnel
     else:
         config['authenticate'] = False
+
+
+    #get local ports config
     if 'local_ports' in config.keys():
         assert type(config['local_ports']) is list
         nlp = len(config['local_ports'])
@@ -535,9 +549,13 @@ if __name__ == '__main__':
             log.warning(f"Only {nlp} local ports specified.")
             log.warning(f"Program may crash if trying to open >{nlp} sessions")
 
+
+    #log basic system info
     log.info(f'System Info: {os.uname()}')
     hostname = socket.gethostname()
     log.info(f'System hostname: {hostname}')
     log.info(f'System IP Address: {socket.gethostbyname(hostname)}')
 
+
+    # run main connection code
     main(args, config)
