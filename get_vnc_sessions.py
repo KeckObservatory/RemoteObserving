@@ -232,7 +232,6 @@ def launch_vncviewer(vncserver, port, config=None, pw=None):
 ## Authenticate
 ##-------------------------------------------------------------------------
 def authenticate(authpass,  config=None):
-    log.info(f'Authenticating through firewall as {firewall_user}@{firewall_address}:{firewall_port}')
 
     assert 'firewall_user' in config.keys()
     assert 'firewall_address' in config.keys()
@@ -240,7 +239,7 @@ def authenticate(authpass,  config=None):
     firewall_user = config.get('firewall_user')
     firewall_address = config.get('firewall_address')
     firewall_port = config.get('firewall_port')
-    log.debug(f'Firewall auth: user={firewall_user}, address={firewall_address}, port={firewall_port}')
+    log.info(f'Authenticating through firewall as {firewall_user}@{firewall_address}:{firewall_port}')
 
     with Telnet(firewall_address, int(firewall_port)) as tn:
         tn.read_until(b"User: ", timeout=5)
@@ -412,6 +411,21 @@ def determine_VNC_sessions(accountname, password, vncserver):
 
 
 ##-------------------------------------------------------------------------
+## Prompt and wait for quit signal
+##-------------------------------------------------------------------------
+def prompt_quit_signal():
+
+    sleep(1)
+    quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
+    foundq = re.match('^[qQ].*', quit)
+    while foundq is None:
+        sleep(1)
+        quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
+        foundq = re.match('^[qQ].*', quit)
+
+
+
+##-------------------------------------------------------------------------
 ## Main Program
 ##-------------------------------------------------------------------------
 def main(args, config):
@@ -432,17 +446,8 @@ def main(args, config):
         authenticate(authpass, config)
 
     if args.authonly is True:
-        ## Wait for quit signal
         if config['authenticate'] is True:
-            sleep(1)
-            quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-            foundq = re.match('^[qQ].*', quit)
-            while foundq is None:
-                sleep(1)
-                quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-                foundq = re.match('^[qQ].*', quit)
-        ## Close down ssh tunnels and firewall authentication
-        if config['authenticate'] is True:
+            prompt_quit_signal()
             close_authentication(authpass, config)
         exit_app()
 
@@ -489,19 +494,17 @@ def main(args, config):
             if session['name'] in sessions_to_open:
                 display = int(session['Display'][1:])
                 port = int(f"59{display:02d}")
-                if 'local_ports' in config.keys():
-                    localport = config['local_ports'].pop(0)
-                else:
-                    localport = port
+                if 'local_ports' in config.keys(): localport = config['local_ports'].pop(0)
+                else                             : localport = port
                 ports_in_use.append(localport)
                 log.info(f"Opening SSH tunnel for {session['name']}")
                 log.info(f"  remote port = {port}, local port = {localport}")
                 server = sshtunnel.SSHTunnelForwarder(vncserver,
-                                  ssh_username=args.account,
-                                  ssh_password=password,
-                                  remote_bind_address=('127.0.0.1', port),
-                                  local_bind_address=('0.0.0.0', localport),
-                                  )
+                    ssh_username=args.account,
+                    ssh_password=password,
+                    remote_bind_address=('127.0.0.1', port),
+                    local_bind_address=('0.0.0.0', localport),
+                )
                 ssh_threads.append(server)
                 try:
                     ssh_threads[-1].start()
@@ -512,16 +515,15 @@ def main(args, config):
             if 'local_ports' in config.keys():
                 statusport = config['local_ports'].pop(0)
             else:
-                statusport = [p for p in range(5901,5910,1)
-                              if p not in ports_in_use][0]
+                statusport = [p for p in range(5901,5910,1) if p not in ports_in_use][0]
             log.info(f"Opening SSH tunnel for k{tel}status")
             log.info(f"  remote port = {port}, local port = {statusport}")
             server = sshtunnel.SSHTunnelForwarder(f"svncserver{tel}.keck.hawaii.edu",
-                              ssh_username=args.account,
-                              ssh_password=password,
-                              remote_bind_address=('127.0.0.1', 5901),
-                              local_bind_address=('0.0.0.0', statusport),
-                              )
+                ssh_username=args.account,
+                ssh_password=password,
+                remote_bind_address=('127.0.0.1', 5901),
+                local_bind_address=('0.0.0.0', statusport),
+            )
             ssh_threads.append(server)
             try:
                 ssh_threads[-1].start()
@@ -532,8 +534,7 @@ def main(args, config):
         if 'local_ports' in config.keys():
             statusport = config['local_ports'].pop(0)
         else:
-            statusport = [p for p in range(5901,5910,1)
-                          if p not in ports_in_use][0]
+            statusport = [p for p in range(5901,5910,1) if p not in ports_in_use][0]
 
 
     ##-------------------------------------------------------------------------
@@ -553,19 +554,14 @@ def main(args, config):
             if session['name'] in sessions_to_open:
                 log.info(f"Opening VNCviewer for {session['name']}")
                 display = int(session['Display'][1:])
-                if ports_in_use != []:
-                    port = ports_in_use.pop(0)
-                else:
-                    port = int(f"59{display:02d}")
-
-                vnc_threads.append(Thread(target=launch_vncviewer,
-                                          args=(vncserver, port, config)))
+                if ports_in_use != []: port = ports_in_use.pop(0)
+                else                 : port = int(f"59{display:02d}")
+                vnc_threads.append(Thread(target=launch_vncviewer, args=(vncserver, port, config)))
                 vnc_threads[-1].start()
                 sleep(0.05)
         if args.status is True:
             log.info(f"Opening VNCviewer for k{tel}status on {statusport}")
-            vnc_threads.append(Thread(target=launch_vncviewer,
-                                      args=(statusvncserver, statusport, config)))
+            vnc_threads.append(Thread(target=launch_vncviewer, args=(statusvncserver, statusport, config)))
             vnc_threads[-1].start()
 
 
@@ -573,13 +569,8 @@ def main(args, config):
     ## Wait for quit signal
     ##-------------------------------------------------------------------------
     if config['authenticate'] is True:
-        sleep(1)
-        quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-        foundq = re.match('^[qQ].*', quit)
-        while foundq is None:
-            sleep(1)
-            quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-            foundq = re.match('^[qQ].*', quit)
+        prompt_quit_signal()
+
     
     ##-------------------------------------------------------------------------
     ## Close down ssh tunnels and firewall authentication
