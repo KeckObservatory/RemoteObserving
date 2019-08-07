@@ -32,8 +32,7 @@ def create_logger():
     log.setLevel(logging.DEBUG)
 
     #create log file and log dir if not exist
-    ymd = datetime.today().strftime('%Y%m%d')
-    logFile = f'logs/keck-remote-log-{ymd}.txt'
+    logFile = get_logfile_path()
     if not os.path.exists(os.path.dirname(logFile)):
         os.makedirs(os.path.dirname(logFile))
 
@@ -52,6 +51,10 @@ def create_logger():
     log.addHandler(logConsoleHandler)
 
     return log
+
+def get_logfile_path():
+    ymd = datetime.today().strftime('%Y%m%d')
+    return f'logs/keck-remote-log-{ymd}.txt'
 
 
 ##-------------------------------------------------------------------------
@@ -229,12 +232,16 @@ def launch_vncviewer(vncserver, port, config=None, pw=None):
 ## Authenticate
 ##-------------------------------------------------------------------------
 def authenticate(authpass,  config=None):
+    log.info('Authenticating through firewall')
+
     assert 'firewall_user' in config.keys()
     assert 'firewall_address' in config.keys()
     assert 'firewall_port' in config.keys()
     firewall_user = config.get('firewall_user')
     firewall_address = config.get('firewall_address')
     firewall_port = config.get('firewall_port')
+    log.debug(f'Firewall auth: user={firewall_user}, address={firewall_address}, port={firewall_port}')
+
     with Telnet(firewall_address, int(firewall_port)) as tn:
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{firewall_user}\n'.encode('ascii'))
@@ -255,12 +262,15 @@ def authenticate(authpass,  config=None):
 ## Close Authentication
 ##-------------------------------------------------------------------------
 def close_authentication(authpass, config):
+    log.info('Signing off of firewall authentication')
+
     assert 'firewall_user' in config.keys()
     assert 'firewall_address' in config.keys()
     assert 'firewall_port' in config.keys()
     firewall_user = config.get('firewall_user')
     firewall_address = config.get('firewall_address')
     firewall_port = config.get('firewall_port')
+
     with Telnet(firewall_address, int(firewall_port)) as tn:
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{firewall_user}\n'.encode('ascii'))
@@ -319,7 +329,6 @@ def determine_instrument(accountname):
         if accountname.lower() in accounts[instrument]:
             return instrument, telescope[instrument]
 
-    log.error(f'Account name "{accountname}" not a valid instrument account name!')
     return None, None
 
 
@@ -353,7 +362,7 @@ def determine_VNCserver(accountname, password, config):
                 log.info(f"Got VNC server: '{vncserver}'")
                 break
 
-    # Temporary hack for KCWI
+    # todo: Temporary hack for KCWI
     if vncserver == 'vm-kcwivnc':
         vncserver = 'kcwi'
 
@@ -415,7 +424,6 @@ def main(args, config):
 
     if config['authenticate'] is True:
         authpass = getpass(f"Password for firewall authentication: ")
-        log.info('Authenticating through firewall')
         authenticate(authpass, config)
 
     if args.authonly is True:
@@ -430,7 +438,6 @@ def main(args, config):
                 foundq = re.match('^[qQ].*', quit)
         ## Close down ssh tunnels and firewall authentication
         if config['authenticate'] is True:
-            log.info('Signing off of firewall authentication')
             close_authentication(authpass, config)
         return
 
@@ -445,7 +452,9 @@ def main(args, config):
     ## Determine instrument
     ##-------------------------------------------------------------------------
     instrument, tel = determine_instrument(args.account)
-    if not instrument: return
+    if not instrument: 
+        log.error(f'Account name "{args.account}" not a valid instrument account name!')
+        return
 
 
     ##-------------------------------------------------------------------------
@@ -462,7 +471,6 @@ def main(args, config):
     if len(sessions) == 0:
         log.info('No VNC sessions found')
         if config['authenticate'] is True:
-            log.info('Signing off of firewall authentication')
             close_authentication(authpass, config)
         return
     log.info("\n" + str(sessions))
@@ -577,8 +585,27 @@ def main(args, config):
         for thread in ssh_threads:
             log.info(f'Closing SSH forwarding for {thread.local_bind_port}')
             thread.stop()
-        log.info('Signing off of firewall authentication')
         close_authentication(authpass, config)
+
+
+##-------------------------------------------------------------------------
+## Handle fatal error
+##-------------------------------------------------------------------------
+def handle_fatal_error(error):
+        supportEmail = 'mainland_observing@keck.hawaii.edu'
+        logFile = os.path.dirname(os.path.realpath(__file__)) + '/' + get_logfile_path()
+
+        print ("\n****** PROGRAM ERROR ******\n")
+        print ("Error message: " + str(error) + "\n")
+        print ("If you need troubleshooting assistance:")
+        print (f"* Email {supportEmail} and attach log file.")
+        print (f"* Log file location: {logFile}\n")
+        #todo: call number, website?
+
+        msg = traceback.format_exc()
+        if log: log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
+
+        sys.exit(1)
 
 
 ##-------------------------------------------------------------------------
@@ -586,19 +613,29 @@ def main(args, config):
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
 
-    print ("\n***** Starting get_vnc_sessions ******\n")
+    print ("\nStarting get_vnc_sessions:\n")
 
-    #create logger (file and stdout)
-    log = create_logger()
+    #catch all exceptions so we can exit gracefully
+    try:        
+        #create logger (file and stdout)
+        log = create_logger()
 
-    #parse command line args
-    args = get_args()
+        #parse command line args
+        args = get_args()
 
-    #get yaml config
-    config = get_config(filename=args.config)
+        #get yaml config
+        config = get_config(filename=args.config)
 
-    #log basic system info
-    log_system_info()
+        #log basic system info
+        log_system_info()
 
-    # run main connection code
-    main(args, config)
+        # run main connection code
+        main(args, config)
+
+    except Exception as error:
+        handle_fatal_error(error)
+
+
+
+
+
