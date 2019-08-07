@@ -120,8 +120,8 @@ def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.y
     #if config file specified, put that at beginning of list
     if filename is not None:
         if not os.path.exists(filename):
-            log.error(f'Specified config file "{filename}"" does not exist!')
-            sys.exit(1)
+            log.error(f'Specified config file "{filename}"" does not exist.')
+            app_exit()
         else:
             filenames.insert(0, filename)
 
@@ -133,7 +133,7 @@ def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.y
             break
     if not file:
         log.error(f'No config files found.')
-        sys.exit(1)
+        app_exit()
 
     #load config file and make sure it has the info we need
     log.info(f'Using config file {file}')
@@ -232,7 +232,7 @@ def launch_vncviewer(vncserver, port, config=None, pw=None):
 ## Authenticate
 ##-------------------------------------------------------------------------
 def authenticate(authpass,  config=None):
-    log.info('Authenticating through firewall')
+    log.info(f'Authenticating through firewall as {firewall_user}@{firewall_address}:{firewall_port}')
 
     assert 'firewall_user' in config.keys()
     assert 'firewall_address' in config.keys()
@@ -336,6 +336,7 @@ def determine_instrument(accountname):
 ## Determine VNC Server
 ##-------------------------------------------------------------------------
 def determine_VNCserver(accountname, password, config):
+    log.info(f"Determining VNC server for {accountname}")
     servers_to_try = config.get('servers_to_try')
     vncserver = None
     for s in servers_to_try:
@@ -361,6 +362,10 @@ def determine_VNCserver(accountname, password, config):
             if vncserver is not None and vncserver != '':
                 log.info(f"Got VNC server: '{vncserver}'")
                 break
+
+    #exit if none
+    if vncserver == None:
+        exit_app("Could not determine VNC server.")
 
     # todo: Temporary hack for KCWI
     if vncserver == 'vm-kcwivnc':
@@ -439,7 +444,7 @@ def main(args, config):
         ## Close down ssh tunnels and firewall authentication
         if config['authenticate'] is True:
             close_authentication(authpass, config)
-        return
+        exit_app()
 
 
     ##-------------------------------------------------------------------------
@@ -453,8 +458,7 @@ def main(args, config):
     ##-------------------------------------------------------------------------
     instrument, tel = determine_instrument(args.account)
     if not instrument: 
-        log.error(f'Account name "{args.account}" not a valid instrument account name!')
-        return
+        exit_app(f'Account name "{args.account}" not a valid instrument account name.')
 
 
     ##-------------------------------------------------------------------------
@@ -469,11 +473,10 @@ def main(args, config):
     ##-------------------------------------------------------------------------
     sessions = determine_VNC_sessions(args.account, password, vncserver)
     if len(sessions) == 0:
-        log.info('No VNC sessions found')
         if config['authenticate'] is True:
             close_authentication(authpass, config)
-        return
-    log.info("\n" + str(sessions))
+        exit_app('No VNC sessions found')
+    log.debug("\n" + str(sessions))
 
 
     ##-------------------------------------------------------------------------
@@ -587,6 +590,9 @@ def main(args, config):
             thread.stop()
         close_authentication(authpass, config)
 
+    #all done
+    exit_app()
+
 
 ##-------------------------------------------------------------------------
 ## Handle fatal error
@@ -605,7 +611,17 @@ def handle_fatal_error(error):
         msg = traceback.format_exc()
         if log: log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
 
-        sys.exit(1)
+        exit_app()
+
+
+##-------------------------------------------------------------------------
+## Common app exit point
+##-------------------------------------------------------------------------
+def exit_app(msg=None):
+    if msg != None: log.info(msg)
+    if log: log.info("EXITING APP\n")
+    sys.exit(1)
+
 
 
 ##-------------------------------------------------------------------------
