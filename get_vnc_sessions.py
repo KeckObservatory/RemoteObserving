@@ -2,6 +2,7 @@
 
 ## Import General Tools
 import os
+import sys
 import re
 import socket
 import argparse
@@ -15,38 +16,180 @@ from telnetlib import Telnet
 from subprocess import Popen, call
 from astropy.table import Table, Column
 
+from datetime import datetime
+import platform
+import traceback
+
+
 
 ##-------------------------------------------------------------------------
-## Create logger object
+## Create logger
 ##-------------------------------------------------------------------------
-log = logging.getLogger('GetVNCs')
-log.setLevel(logging.DEBUG)
-## Set up console output
-LogConsoleHandler = logging.StreamHandler()
-LogConsoleHandler.setLevel(logging.DEBUG)
-LogFormat = logging.Formatter('%(asctime)23s %(levelname)8s: %(message)s')
-LogConsoleHandler.setFormatter(LogFormat)
-log.addHandler(LogConsoleHandler)
+def create_logger():
+
+    ## Create logger object
+    log = logging.getLogger('GetVNCs')
+    log.setLevel(logging.DEBUG)
+
+    #create log file and log dir if not exist
+    logFile = get_logfile_path()
+    if not os.path.exists(os.path.dirname(logFile)):
+        os.makedirs(os.path.dirname(logFile))
+
+    #file handler (full debug logging)
+    logFileHandler = logging.FileHandler(logFile)
+    logFileHandler.setLevel(logging.DEBUG)
+    logFormat = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+    logFileHandler.setFormatter(logFormat)
+    log.addHandler(logFileHandler)
+
+    #stream/console handler (info+ only)
+    logConsoleHandler = logging.StreamHandler()
+    logConsoleHandler.setLevel(logging.INFO)
+    logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+    logConsoleHandler.setFormatter(logFormat)
+    log.addHandler(logConsoleHandler)
+
+    return log
+
+def get_logfile_path():
+    ymd = datetime.today().strftime('%Y%m%d')
+    return f'logs/keck-remote-log-{ymd}.txt'
+
+
+##-------------------------------------------------------------------------
+## Get args
+##-------------------------------------------------------------------------
+def get_args():
+
+    ## create a parser object for understanding command-line arguments
+    parser = argparse.ArgumentParser(description="Get VNC sessions.")
+
+    ## add flags
+    parser.add_argument("--authonly", dest="authonly",
+        default=False, action="store_true",
+        help="Authenticate through firewall only?")
+    parser.add_argument("--control0", dest="control0",
+        default=False, action="store_true",
+        help="Open control0?")
+    parser.add_argument("--control1", dest="control1",
+        default=False, action="store_true",
+        help="Open control1?")
+    parser.add_argument("--control2", dest="control2",
+        default=False, action="store_true",
+        help="Open control2?")
+    parser.add_argument("--telstatus", dest="telstatus",
+        default=False, action="store_true",
+        help="Open telstatus?")
+    parser.add_argument("--analysis0", dest="analysis0",
+        default=False, action="store_true",
+        help="Open analysis0?")
+    parser.add_argument("--analysis1", dest="analysis1",
+        default=False, action="store_true",
+        help="Open analysis1?")
+    parser.add_argument("--analysis2", dest="analysis2",
+        default=False, action="store_true",
+        help="Open analysis2?")
+    parser.add_argument("--telanalysis", "--telanalys", dest="telanalys",
+        default=False, action="store_true",
+        help="Open telanalys?")
+    parser.add_argument("--status", dest="status",
+        default=False, action="store_true",
+        help="Open status for telescope?")
+
+    ## add arguments
+    parser.add_argument("account", type=str,
+        help="The user account.")
+
+    ## add options
+    parser.add_argument("-c", "--config", dest="config", type=str,
+        help="Path to local configuration file.")
+
+    #parse
+    args = parser.parse_args()
+    log.debug("\n\n\t***** PROGRAM STARTED *****\n\tArguments: " + ' '.join(sys.argv[1:]) + "\n")
+
+    return args
 
 
 ##-------------------------------------------------------------------------
 ## Get Configuration
 ##-------------------------------------------------------------------------
 def get_config(filename=None, filenames=['local_config.yaml', 'keck_vnc_config.yaml']):
-    if filename is not None:
-        filenames.append(filename)
 
+    #if config file specified, put that at beginning of list
+    if filename is not None:
+        if not os.path.exists(filename):
+            log.error(f'Specified config file "{filename}"" does not exist.')
+            app_exit()
+        else:
+            filenames.insert(0, filename)
+
+    #find first file that exists
+    file = None
     for f in filenames:
         if os.path.exists(f):
+            file = f
             break
+    if not file:
+        log.error(f'No config files found.')
+        app_exit()
 
-    with open(f) as FO:
+    #load config file and make sure it has the info we need
+    log.info(f'Using config file {file}')
+    with open(file) as FO:
         config = yaml.safe_load(FO)
 
+    #checks that fail
     assert 'servers_to_try' in config.keys()
     assert 'vncviewer' in config.keys()
 
+    #checks that warn
+    if 'local_ports' in config.keys():
+        assert type(config['local_ports']) is list
+        nlp = len(config['local_ports'])
+        if nlp < 9:
+            log.warning(f"Only {nlp} local ports specified.")
+            log.warning(f"Program may crash if trying to open >{nlp} sessions")
+
     return config
+
+
+##-------------------------------------------------------------------------
+## Log basic system info
+##-------------------------------------------------------------------------
+def log_system_info():
+    log.debug(f'System Info: {os.uname()}')
+    hostname = socket.gethostname()
+    log.debug(f'System hostname: {hostname}')
+    log.debug(f'System IP Address: {socket.gethostbyname(hostname)}')
+
+
+##-------------------------------------------------------------------------
+## Get sessions to open
+##-------------------------------------------------------------------------
+def get_sessions_to_open(args):
+
+    #get sessions to open
+    sessions_to_open = []
+    if args.control0  is True: sessions_to_open.append('control0')
+    if args.control1  is True: sessions_to_open.append('control1')
+    if args.control2  is True: sessions_to_open.append('control2')
+    if args.telstatus is True: sessions_to_open.append('telstatus')
+    if args.analysis0 is True: sessions_to_open.append('analysis0')
+    if args.analysis1 is True: sessions_to_open.append('analysis1')
+    if args.analysis2 is True: sessions_to_open.append('analysis2')
+    if args.telanalys is True: sessions_to_open.append('telanalys')
+    if args.status    is True: sessions_to_open.append('status')
+
+    # create default sessions list if none provided
+    if len(sessions_to_open) == 0:
+        sessions_to_open.append('control0')
+        sessions_to_open.append('control1')
+        sessions_to_open.append('control2')
+        sessions_to_open.append('telstatus')
+
+    return sessions_to_open
 
 
 ##-------------------------------------------------------------------------
@@ -57,6 +200,9 @@ def launch_xterm(command, pw, title):
     xterm = call(cmd)
 
 
+##-------------------------------------------------------------------------
+## Open ssh tunnel
+##-------------------------------------------------------------------------
 def open_ssh_tunnel(server, username, password, remote_port, local_port):
     server = sshtunnel.SSHTunnelForwarder(server,
                                 ssh_username=username,
@@ -70,8 +216,7 @@ def open_ssh_tunnel(server, username, password, remote_port, local_port):
 ##-------------------------------------------------------------------------
 ## Launch vncviewer
 ##-------------------------------------------------------------------------
-def launch_vncviewer(vncserver, port, pw=None):
-    config = get_config()
+def launch_vncviewer(vncserver, port, config=None, pw=None):
     vncviewercmd = config.get('vncviewer', 'vncviewer')
     vncprefix = config.get('vncprefix', '')
     vncargs = config.get('vncargs', None)
@@ -86,14 +231,16 @@ def launch_vncviewer(vncserver, port, pw=None):
 ##-------------------------------------------------------------------------
 ## Authenticate
 ##-------------------------------------------------------------------------
-def authenticate(authpass):
-    config = get_config()
+def authenticate(authpass,  config=None):
+
     assert 'firewall_user' in config.keys()
     assert 'firewall_address' in config.keys()
     assert 'firewall_port' in config.keys()
     firewall_user = config.get('firewall_user')
     firewall_address = config.get('firewall_address')
     firewall_port = config.get('firewall_port')
+    log.info(f'Authenticating through firewall as {firewall_user}@{firewall_address}:{firewall_port}')
+
     with Telnet(firewall_address, int(firewall_port)) as tn:
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{firewall_user}\n'.encode('ascii'))
@@ -110,14 +257,19 @@ def authenticate(authpass):
             return None
 
 
-def close_authentication(authpass):
-    config = get_config()
+##-------------------------------------------------------------------------
+## Close Authentication
+##-------------------------------------------------------------------------
+def close_authentication(authpass, config):
+    log.info('Signing off of firewall authentication')
+
     assert 'firewall_user' in config.keys()
     assert 'firewall_address' in config.keys()
     assert 'firewall_port' in config.keys()
     firewall_user = config.get('firewall_user')
     firewall_address = config.get('firewall_address')
     firewall_port = config.get('firewall_port')
+
     with Telnet(firewall_address, int(firewall_port)) as tn:
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{firewall_user}\n'.encode('ascii'))
@@ -138,16 +290,16 @@ def close_authentication(authpass):
 ## Determine Instrument
 ##-------------------------------------------------------------------------
 def determine_instrument(accountname):
-    accounts = {'mosfire': [f'mosfire{i}' for i in range(1,10)],
-                'hires': [f'hires{i}' for i in range(1,10)],
-                'osiris': [f'osiris{i}' for i in range(1,10)],
-                'lris': [f'lris{i}' for i in range(1,10)],
-                'nires': [f'nires{i}' for i in range(1,10)],
-                'deimos': [f'deimos{i}' for i in range(1,10)],
-                'esi': [f'esi{i}' for i in range(1,10)],
-                'nirc2': [f'nirc{i}' for i in range(1,10)],
-                'nirspec': [f'nirspec{i}' for i in range(1,10)],
-                'kcwi': [f'kcwi{i}' for i in range(1,10)],
+    accounts = {'mosfire':  [f'mosfire{i}' for i in range(1,10)],
+                'hires':    [f'hires{i}'   for i in range(1,10)],
+                'osiris':   [f'osiris{i}'  for i in range(1,10)],
+                'lris':     [f'lris{i}'    for i in range(1,10)],
+                'nires':    [f'nires{i}'   for i in range(1,10)],
+                'deimos':   [f'deimos{i}'  for i in range(1,10)],
+                'esi':      [f'esi{i}'     for i in range(1,10)],
+                'nirc2':    [f'nirc{i}'    for i in range(1,10)],
+                'nirspec':  [f'nirspec{i}' for i in range(1,10)],
+                'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
                }
     accounts['mosfire'].append('moseng')
     accounts['hires'].append('hireseng')
@@ -161,27 +313,29 @@ def determine_instrument(accountname):
     accounts['kcwi'].append('kcwieng')
 
     telescope = {'mosfire': 1,
-                 'hires': 1,
-                 'osiris': 1,
-                 'lris': 1,
-                 'nires': 2,
-                 'deimos': 2,
-                 'esi': 2,
-                 'nirc2': 2,
+                 'hires':   1,
+                 'osiris':  1,
+                 'lris':    1,
+                 'nires':   2,
+                 'deimos':  2,
+                 'esi':     2,
+                 'nirc2':   2,
                  'nirspec': 2,
-                 'kcwi': 2,
+                 'kcwi':    2,
                 }
 
     for instrument in accounts.keys():
         if accountname.lower() in accounts[instrument]:
             return instrument, telescope[instrument]
 
+    return None, None
+
 
 ##-------------------------------------------------------------------------
 ## Determine VNC Server
 ##-------------------------------------------------------------------------
-def determine_VNCserver(accountname, password):
-    config = get_config()
+def determine_VNCserver(accountname, password, config):
+    log.info(f"Determining VNC server for {accountname}")
     servers_to_try = config.get('servers_to_try')
     vncserver = None
     for s in servers_to_try:
@@ -208,7 +362,11 @@ def determine_VNCserver(accountname, password):
                 log.info(f"Got VNC server: '{vncserver}'")
                 break
 
-    # Temporary hack for KCWI
+    #exit if none
+    if vncserver == None:
+        exit_app("Could not determine VNC server.")
+
+    # todo: Temporary hack for KCWI
     if vncserver == 'vm-kcwivnc':
         vncserver = 'kcwi'
 
@@ -253,44 +411,66 @@ def determine_VNC_sessions(accountname, password, vncserver):
 
 
 ##-------------------------------------------------------------------------
+## Prompt and wait for quit signal
+##-------------------------------------------------------------------------
+def prompt_quit_signal():
+
+    sleep(1)
+    quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
+    foundq = re.match('^[qQ].*', quit)
+    while foundq is None:
+        sleep(1)
+        quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
+        foundq = re.match('^[qQ].*', quit)
+
+
+
+##-------------------------------------------------------------------------
 ## Main Program
 ##-------------------------------------------------------------------------
 def main(args, config):
+
     ##-------------------------------------------------------------------------
     ## Authenticate Through Firewall (or Disconnect)
     ##-------------------------------------------------------------------------
+    if 'firewall_address' in config.keys() and\
+       'firewall_user' in config.keys() and\
+       'firewall_port' in config.keys():
+        config['authenticate'] = True
+        import sshtunnel
+    else:
+        config['authenticate'] = False
+
     if config['authenticate'] is True:
         authpass = getpass(f"Password for firewall authentication: ")
-        log.info('Authenticating through firewall')
-        authenticate(authpass)
+        authenticate(authpass, config)
 
     if args.authonly is True:
-        ## Wait for quit signal
         if config['authenticate'] is True:
-            sleep(1)
-            quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-            foundq = re.match('^[qQ].*', quit)
-            while foundq is None:
-                sleep(1)
-                quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-                foundq = re.match('^[qQ].*', quit)
-        ## Close down ssh tunnels and firewall authentication
-        if config['authenticate'] is True:
-            log.info('Signing off of firewall authentication')
-            close_authentication(authpass)
-        return
+            prompt_quit_signal()
+            close_authentication(authpass, config)
+        exit_app()
+
+
+    ##-------------------------------------------------------------------------
+    ## Determine sessions to open
+    ##-------------------------------------------------------------------------
+    sessions_to_open = get_sessions_to_open(args)
+
 
     ##-------------------------------------------------------------------------
     ## Determine instrument
     ##-------------------------------------------------------------------------
     instrument, tel = determine_instrument(args.account)
+    if not instrument: 
+        exit_app(f'Account name "{args.account}" not a valid instrument account name.')
 
 
     ##-------------------------------------------------------------------------
     ## Determine VNC server
     ##-------------------------------------------------------------------------
     password = getpass(f"Password for user {args.account}: ")
-    vncserver = determine_VNCserver(args.account, password)
+    vncserver = determine_VNCserver(args.account, password, config)
 
 
     ##-------------------------------------------------------------------------
@@ -298,13 +478,11 @@ def main(args, config):
     ##-------------------------------------------------------------------------
     sessions = determine_VNC_sessions(args.account, password, vncserver)
     if len(sessions) == 0:
-        log.info('No VNC sessions found')
         if config['authenticate'] is True:
-            log.info('Signing off of firewall authentication')
-            close_authentication(authpass)
-        return
+            close_authentication(authpass, config)
+        exit_app('No VNC sessions found')
+    log.debug("\n" + str(sessions))
 
-    print(sessions)
 
     ##-------------------------------------------------------------------------
     ## Open SSH Tunnel for Appropriate Ports
@@ -316,19 +494,17 @@ def main(args, config):
             if session['name'] in sessions_to_open:
                 display = int(session['Display'][1:])
                 port = int(f"59{display:02d}")
-                if 'local_ports' in config.keys():
-                    localport = config['local_ports'].pop(0)
-                else:
-                    localport = port
+                if 'local_ports' in config.keys(): localport = config['local_ports'].pop(0)
+                else                             : localport = port
                 ports_in_use.append(localport)
                 log.info(f"Opening SSH tunnel for {session['name']}")
                 log.info(f"  remote port = {port}, local port = {localport}")
                 server = sshtunnel.SSHTunnelForwarder(vncserver,
-                                  ssh_username=args.account,
-                                  ssh_password=password,
-                                  remote_bind_address=('127.0.0.1', port),
-                                  local_bind_address=('0.0.0.0', localport),
-                                  )
+                    ssh_username=args.account,
+                    ssh_password=password,
+                    remote_bind_address=('127.0.0.1', port),
+                    local_bind_address=('0.0.0.0', localport),
+                )
                 ssh_threads.append(server)
                 try:
                     ssh_threads[-1].start()
@@ -339,16 +515,15 @@ def main(args, config):
             if 'local_ports' in config.keys():
                 statusport = config['local_ports'].pop(0)
             else:
-                statusport = [p for p in range(5901,5910,1)
-                              if p not in ports_in_use][0]
+                statusport = [p for p in range(5901,5910,1) if p not in ports_in_use][0]
             log.info(f"Opening SSH tunnel for k{tel}status")
             log.info(f"  remote port = {port}, local port = {statusport}")
             server = sshtunnel.SSHTunnelForwarder(f"svncserver{tel}.keck.hawaii.edu",
-                              ssh_username=args.account,
-                              ssh_password=password,
-                              remote_bind_address=('127.0.0.1', 5901),
-                              local_bind_address=('0.0.0.0', statusport),
-                              )
+                ssh_username=args.account,
+                ssh_password=password,
+                remote_bind_address=('127.0.0.1', 5901),
+                local_bind_address=('0.0.0.0', statusport),
+            )
             ssh_threads.append(server)
             try:
                 ssh_threads[-1].start()
@@ -359,8 +534,7 @@ def main(args, config):
         if 'local_ports' in config.keys():
             statusport = config['local_ports'].pop(0)
         else:
-            statusport = [p for p in range(5901,5910,1)
-                          if p not in ports_in_use][0]
+            statusport = [p for p in range(5901,5910,1) if p not in ports_in_use][0]
 
 
     ##-------------------------------------------------------------------------
@@ -380,19 +554,14 @@ def main(args, config):
             if session['name'] in sessions_to_open:
                 log.info(f"Opening VNCviewer for {session['name']}")
                 display = int(session['Display'][1:])
-                if ports_in_use != []:
-                    port = ports_in_use.pop(0)
-                else:
-                    port = int(f"59{display:02d}")
-
-                vnc_threads.append(Thread(target=launch_vncviewer,
-                                          args=(vncserver, port,)))
+                if ports_in_use != []: port = ports_in_use.pop(0)
+                else                 : port = int(f"59{display:02d}")
+                vnc_threads.append(Thread(target=launch_vncviewer, args=(vncserver, port, config)))
                 vnc_threads[-1].start()
                 sleep(0.05)
         if args.status is True:
             log.info(f"Opening VNCviewer for k{tel}status on {statusport}")
-            vnc_threads.append(Thread(target=launch_vncviewer,
-                        args=(statusvncserver, statusport,)))
+            vnc_threads.append(Thread(target=launch_vncviewer, args=(statusvncserver, statusport, config)))
             vnc_threads[-1].start()
 
 
@@ -400,13 +569,8 @@ def main(args, config):
     ## Wait for quit signal
     ##-------------------------------------------------------------------------
     if config['authenticate'] is True:
-        sleep(1)
-        quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-        foundq = re.match('^[qQ].*', quit)
-        while foundq is None:
-            sleep(1)
-            quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-            foundq = re.match('^[qQ].*', quit)
+        prompt_quit_signal()
+
     
     ##-------------------------------------------------------------------------
     ## Close down ssh tunnels and firewall authentication
@@ -415,100 +579,70 @@ def main(args, config):
         for thread in ssh_threads:
             log.info(f'Closing SSH forwarding for {thread.local_bind_port}')
             thread.stop()
-        log.info('Signing off of firewall authentication')
-        close_authentication(authpass)
+        close_authentication(authpass, config)
+
+    #all done
+    exit_app()
+
+
+##-------------------------------------------------------------------------
+## Handle fatal error
+##-------------------------------------------------------------------------
+def handle_fatal_error(error):
+        supportEmail = 'mainland_observing@keck.hawaii.edu'
+        logFile = os.path.dirname(os.path.realpath(__file__)) + '/' + get_logfile_path()
+
+        print ("\n****** PROGRAM ERROR ******\n")
+        print ("Error message: " + str(error) + "\n")
+        print ("If you need troubleshooting assistance:")
+        print (f"* Email {supportEmail} and attach log file.")
+        print (f"* Log file location: {logFile}\n")
+        #todo: call number, website?
+
+        msg = traceback.format_exc()
+        if log: log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
+
+        exit_app()
+
+
+##-------------------------------------------------------------------------
+## Common app exit point
+##-------------------------------------------------------------------------
+def exit_app(msg=None):
+    if msg != None: log.info(msg)
+    if log: log.info("EXITING APP\n")
+    sys.exit(1)
+
 
 
 ##-------------------------------------------------------------------------
 ## __main__
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
-    ## create a parser object for understanding command-line arguments
-    parser = argparse.ArgumentParser(
-             description="Get VNC sessions.")
-    ## add flags
-    parser.add_argument("--authonly", dest="authonly",
-        default=False, action="store_true",
-        help="Authenticate through firewall only?")
-    parser.add_argument("--control0", dest="control0",
-        default=False, action="store_true",
-        help="Open control0?")
-    parser.add_argument("--control1", dest="control1",
-        default=False, action="store_true",
-        help="Open control1?")
-    parser.add_argument("--control2", dest="control2",
-        default=False, action="store_true",
-        help="Open control2?")
-    parser.add_argument("--telstatus", dest="telstatus",
-        default=False, action="store_true",
-        help="Open telstatus?")
-    parser.add_argument("--analysis0", dest="analysis0",
-        default=False, action="store_true",
-        help="Open analysis0?")
-    parser.add_argument("--analysis1", dest="analysis1",
-        default=False, action="store_true",
-        help="Open analysis1?")
-    parser.add_argument("--analysis2", dest="analysis2",
-        default=False, action="store_true",
-        help="Open analysis2?")
-    parser.add_argument("--telanalysis", "--telanalys", dest="telanalys",
-        default=False, action="store_true",
-        help="Open telanalys?")
-    parser.add_argument("--status", dest="status",
-        default=False, action="store_true",
-        help="Open status for telescope?")
-    ## add arguments
-    parser.add_argument("account", type=str,
-        help="The user account.")
-    ## add options
-    parser.add_argument("-c", "--config", dest="config", type=str,
-        help="Path to local configuration file.")
-    args = parser.parse_args()
 
-    sessions_to_open = []
-    if args.control0 is True:
-        sessions_to_open.append('control0')
-    if args.control1 is True:
-        sessions_to_open.append('control1')
-    if args.control2 is True:
-        sessions_to_open.append('control2')
-    if args.telstatus is True:
-        sessions_to_open.append('telstatus')
-    if args.analysis0 is True:
-        sessions_to_open.append('analysis0')
-    if args.analysis1 is True:
-        sessions_to_open.append('analysis1')
-    if args.analysis2 is True:
-        sessions_to_open.append('analysis2')
-    if args.telanalys is True:
-        sessions_to_open.append('telanalys')
-    if args.status is True:
-        sessions_to_open.append('status')
+    print ("\nStarting get_vnc_sessions:\n")
 
-    if len(sessions_to_open) == 0:
-        sessions_to_open.append('control0')
-        sessions_to_open.append('control1')
-        sessions_to_open.append('control2')
-        sessions_to_open.append('telstatus')
+    #catch all exceptions so we can exit gracefully
+    try:        
+        #create logger (file and stdout)
+        log = create_logger()
 
-    config = get_config(filename=args.config)
-    if 'firewall_address' in config.keys() and\
-       'firewall_user' in config.keys() and\
-       'firewall_port' in config.keys():
-        config['authenticate'] = True
-        import sshtunnel
-    else:
-        config['authenticate'] = False
-    if 'local_ports' in config.keys():
-        assert type(config['local_ports']) is list
-        nlp = len(config['local_ports'])
-        if nlp < 9:
-            log.warning(f"Only {nlp} local ports specified.")
-            log.warning(f"Program may crash if trying to open >{nlp} sessions")
+        #parse command line args
+        args = get_args()
 
-    log.info(f'System Info: {os.uname()}')
-    hostname = socket.gethostname()
-    log.info(f'System hostname: {hostname}')
-    log.info(f'System IP Address: {socket.gethostbyname(hostname)}')
+        #get yaml config
+        config = get_config(filename=args.config)
 
-    main(args, config)
+        #log basic system info
+        log_system_info()
+
+        # run main connection code
+        main(args, config)
+
+    except Exception as error:
+        handle_fatal_error(error)
+
+
+
+
+

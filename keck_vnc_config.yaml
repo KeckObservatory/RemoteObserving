@@ -1,29 +1,33 @@
 {
- ## If you are outside of the Keck network and need to authenticate through the
- ## Keck firewall, uncomment and fill out the appropriate IP address, port, and
- ## username which will be used to authenticate.
- ## If this is being run inside of the Keck network, leave these lines
- ## commented out.
-# firewall_address: 111.222.333.444,
-# firewall_port: 123,
-# firewall_user: username,
- ##
- ## When first connecting to Keck to determine which VNC server to connect to
- ## (i.e. where to run `kvncinfo -server`) this is the list of computers to try
- servers_to_try: ['svncserver1', 'kcwi', 'svncserver2', 'mosfire'],
- ##
- ## This is the command to invoke on the local machine to launch a VNC client
- ## Command will be formatted as [vncviewer] [vncargs] [address]:[port]
- ##
- ## Example: use VNCviewer for RealVNC vncviewer on macOS
- # vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer',
- # vncprefix: '',
- # vncargs: '',
- #
- ## Example: use built in Screen Sharing app in macOS:
-vncviewer: 'open',
-vncprefix: 'vnc://',
-vncargs: '',
- ## Always use these local ports:
- # local_ports: [5911, 5912, 5913, 5914, 5915, 5916, 5917, 5918, 5919]
+  ## If you are outside of the Keck network and need to authenticate through the
+  ## Keck firewall, uncomment and fill out the appropriate IP address, port, and
+  ## username which will be used to authenticate.
+  ## If this is being run inside of the Keck network, leave these lines
+  ## commented out.
+  firewall_address: 111.222.333.444,
+  firewall_port: 123,
+  firewall_user: username,
+
+  ##
+  ## When first connecting to Keck to determine which VNC server to connect to
+  ## (i.e. where to run `kvncinfo -server`) this is the list of computers to try
+  servers_to_try: ['svncserver1', 'kcwi', 'svncserver2', 'mosfire'],
+
+  ##
+  ## This is the command to invoke on the local machine to launch a VNC client
+  ## Command will be formatted as [vncviewer] [vncargs] [address]:[port]
+  ##
+  ## Example: use VNCviewer for RealVNC vncviewer on macOS
+  # vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer',
+  # vncprefix: '',
+  # vncargs: '',
+  #
+
+  ## Example: use built in Screen Sharing app in macOS:
+  vncviewer: 'open',
+  vncprefix: 'vnc://',
+  vncargs: '',
+
+  ## Always use these local ports:
+  # local_ports: [5911, 5912, 5913, 5914, 5915, 5916, 5917, 5918, 5919]
 }
