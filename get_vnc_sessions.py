@@ -15,6 +15,8 @@ from threading import Thread
 from telnetlib import Telnet
 from subprocess import Popen, call
 from astropy.table import Table, Column
+from soundplay import soundplay
+import atexit
 
 from datetime import datetime
 import platform
@@ -96,6 +98,9 @@ def get_args():
     parser.add_argument("--status", dest="status",
         default=False, action="store_true",
         help="Open status for telescope?")
+    parser.add_argument("--nosound", dest="nosound",
+        default=False, action="store_true",
+        help="Skip start of soundplay application?")
 
     ## add arguments
     parser.add_argument("account", type=str,
@@ -221,7 +226,7 @@ def launch_vncviewer(vncserver, port, config=None, pw=None):
     vncprefix = config.get('vncprefix', '')
     vncargs = config.get('vncargs', None)
     cmd = [vncviewercmd]
-    if vncargs is not None:
+    if vncargs:
         cmd.append(vncargs)
     cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
     log.info(f"  Launching VNC viewer for {cmd[-1]}")
@@ -441,6 +446,7 @@ def main(args, config):
     else:
         config['authenticate'] = False
 
+    authpass = None
     if config['authenticate'] is True:
         authpass = getpass(f"Password for firewall authentication: ")
         authenticate(authpass, config)
@@ -448,8 +454,7 @@ def main(args, config):
     if args.authonly is True:
         if config['authenticate'] is True:
             prompt_quit_signal()
-            close_authentication(authpass, config)
-        exit_app()
+        exit_app(config=config, authpass=authpass)
 
 
     ##-------------------------------------------------------------------------
@@ -487,9 +492,9 @@ def main(args, config):
     ##-------------------------------------------------------------------------
     ## Open SSH Tunnel for Appropriate Ports
     ##-------------------------------------------------------------------------
+    ssh_threads = []
     ports_in_use = []
     if config['authenticate'] is True:
-        ssh_threads = []
         for session in sessions:
             if session['name'] in sessions_to_open:
                 display = int(session['Display'][1:])
@@ -566,23 +571,29 @@ def main(args, config):
 
 
     ##-------------------------------------------------------------------------
+    ## Open Soundplay
+    ##-------------------------------------------------------------------------
+    sound = None
+    if args.nosound is False:
+        aplay       = config['aplay']       if 'aplay'       in config.keys() else None
+        soundplayer = config['soundplayer'] if 'soundplayer' in config.keys() else None
+        sound = soundplay()
+        sound.connect(instrument, vncserver, 9798, aplay=aplay, player=soundplayer)
+        #todo: should we start this as a thread?
+        # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
+        # soundThread.start()
+
+
+    ##-------------------------------------------------------------------------
     ## Wait for quit signal
     ##-------------------------------------------------------------------------
-    if config['authenticate'] is True:
-        prompt_quit_signal()
+    atexit.register(exit_app, msg="Forced app exit", sound=sound, config=config, authpass=authpass, ssh_threads=ssh_threads)
+    prompt_quit_signal()
 
-    
-    ##-------------------------------------------------------------------------
-    ## Close down ssh tunnels and firewall authentication
-    ##-------------------------------------------------------------------------
-    if config['authenticate'] is True:
-        for thread in ssh_threads:
-            log.info(f'Closing SSH forwarding for {thread.local_bind_port}')
-            thread.stop()
-        close_authentication(authpass, config)
-
+   
     #all done
-    exit_app()
+    exit_app(msg="Normal app exit", sound=sound, config=config, authpass=authpass, ssh_threads=ssh_threads)
+
 
 
 ##-------------------------------------------------------------------------
@@ -605,12 +616,27 @@ def handle_fatal_error(error):
         exit_app()
 
 
+
 ##-------------------------------------------------------------------------
 ## Common app exit point
 ##-------------------------------------------------------------------------
-def exit_app(msg=None):
+def exit_app(msg=None, sound=None, config=None, authpass=None, ssh_threads=[]):
+
+    #todo: change this so we don't need to pass in these things (ie make this a class)
+    
     if msg != None: log.info(msg)
+
+    if sound: sound.terminate()
+
+    # Close down ssh tunnels and firewall authentication
+    if config['authenticate'] is True:
+        for thread in ssh_threads:
+            log.info(f'Closing SSH forwarding for {thread.local_bind_port}')
+            thread.stop()
+        close_authentication(authpass, config)
+
     if log: log.info("EXITING APP\n")
+    
     sys.exit(1)
 
 
@@ -619,7 +645,6 @@ def exit_app(msg=None):
 ## __main__
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
-
     print ("\nStarting get_vnc_sessions:\n")
 
     #catch all exceptions so we can exit gracefully
@@ -641,8 +666,3 @@ if __name__ == '__main__':
 
     except Exception as error:
         handle_fatal_error(error)
-
-
-
-
-
