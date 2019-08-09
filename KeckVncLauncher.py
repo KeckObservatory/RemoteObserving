@@ -113,8 +113,10 @@ class KeckVncLauncher(object):
                 if session['name'] in sessions_to_open:
                     display = int(session['Display'][1:])
                     port = int(f"59{display:02d}")
-                    if 'local_ports' in self.config.keys(): localport = self.config['local_ports'].pop(0)
-                    else                                  : localport = port
+                    if 'local_ports' in self.config.keys(): 
+                        localport = self.config['local_ports'].pop(0)
+                    else: 
+                        localport = port
                     ports_used.append(localport)
                     self.log.info(f"Opening SSH tunnel for {session['name']}")
                     self.log.info(f"  remote port = {port}, local port = {localport}")
@@ -178,12 +180,14 @@ class KeckVncLauncher(object):
                     display = int(session['Display'][1:])
                     if ports_used != []: port = ports_used.pop(0)
                     else               : port = int(f"59{display:02d}")
-                    vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port)))
+                    vnc_threads.append(Thread(target=self.launch_vncviewer, 
+                                              args=(vncserver, port)))
                     vnc_threads[-1].start()
                     sleep(0.05)
             if self.args.status is True:
                 self.log.info(f"Opening VNCviewer for k{tel}status on {statusport}")
-                vnc_threads.append(Thread(target=self.launch_vncviewer, args=(statusvncserver, statusport)))
+                vnc_threads.append(Thread(target=self.launch_vncviewer, 
+                                          args=(statusvncserver, statusport)))
                 vnc_threads[-1].start()
 
 
@@ -193,8 +197,8 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         sound = None
         if self.args.nosound is False:
-            aplay       = self.config['aplay']       if 'aplay'       in self.config.keys() else None
-            soundplayer = self.config['soundplayer'] if 'soundplayer' in self.config.keys() else None
+            aplay       = self.config.get('aplay', None)
+            soundplayer = self.config.get('soundplayer', None)
             sound = soundplay()
             sound.connect(instrument, vncserver, 9798, aplay=aplay, player=soundplayer)
             #todo: should we start this as a thread?
@@ -203,13 +207,10 @@ class KeckVncLauncher(object):
 
 
         ##-------------------------------------------------------------------------
-        ## Wait for quit signal
+        ## Wait for quit signal, then all done
         ##-------------------------------------------------------------------------
         atexit.register(self.exit_app, msg="Forced app exit")
         self.prompt_quit_signal()
-
-       
-        #all done
         self.exit_app(msg="Normal app exit")
 
 
@@ -655,7 +656,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Prompt and wait for quit signal
     ##-------------------------------------------------------------------------
-    def prompt_quit_signal(self, ):
+    def prompt_quit_signal(self):
 
         sleep(1)
         quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
@@ -700,7 +701,8 @@ class KeckVncLauncher(object):
         print (f"* Email {supportEmail}")
         #todo: call number, website?
 
-        #Log error if we have a log object (otherwise dump error to stdout) and call exit_app function
+        #Log error if we have a log object (otherwise dump error to stdout) 
+        #and call exit_app function
         msg = traceback.format_exc()
         if self.log:
             logfile = self.log.handlers[0].baseFilename
