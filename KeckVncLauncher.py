@@ -36,7 +36,7 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Start point
+    ## Start point (main)
     ##-------------------------------------------------------------------------
     def start(self):
 
@@ -91,7 +91,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         instrument, tel = self.determine_instrument(self.args.account)
         if not instrument: 
-            self.exit_app(f'Account name "{self.args.account}" not a valid instrument account name.')
+            self.exit_app(f'Invalid instrumet account name: "{self.args.account}"')
 
 
         ##-------------------------------------------------------------------------
@@ -653,6 +653,7 @@ class KeckVncLauncher(object):
 
         if msg != None: self.log.info(msg)
 
+        #terminate soundplayer
         if self.sound: 
             self.sound.terminate()
 
@@ -669,8 +670,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Handle fatal error
     ##-------------------------------------------------------------------------
-    @staticmethod
-    def handle_fatal_error(error, kvl=None):
+    def handle_fatal_error(error):
 
         #helpful user error message
         supportEmail = 'mainland_observing@keck.hawaii.edu'
@@ -680,17 +680,16 @@ class KeckVncLauncher(object):
         print (f"* Email {supportEmail}")
         #todo: call number, website?
 
-        #if we got as far as to have an instance of object, then log and call exit_app function
-        if kvl:            
-            msg = traceback.format_exc()
-            if kvl.log:
-                logfile = log.handlers[0].baseFilename
-                print (f"* Attach log file at: {logfile}\n")
-                kvl.log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
-            else:
-                print (msg)
+        #Log error if we have a log object (otherwise dump error to stdout) and call exit_app function
+        msg = traceback.format_exc()
+        if self.log:
+            logfile = log.handlers[0].baseFilename
+            print (f"* Attach log file at: {logfile}\n")
+            self.log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
+        else:
+            print (msg)
 
-            kvl.exit_app()
+        self.exit_app()
 
 
 ##-------------------------------------------------------------------------
@@ -701,11 +700,10 @@ if __name__ == '__main__':
     print ("\nStarting Keck VNC Launcher:\n")
 
     #catch all exceptions so we can exit gracefully
-    kvl = None
     try:        
         kvl = KeckVncLauncher()
         kvl.start()
     except Exception as error:
-        KeckVncLauncher.handle_fatal_error(error, kvl)
+        kvl.handle_fatal_error(error)
 
 
