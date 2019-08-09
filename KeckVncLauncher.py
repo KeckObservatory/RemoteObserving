@@ -24,11 +24,7 @@ import traceback
 
 class KeckVncLauncher(object):
 
-    def __init__(self, args, log):
-
-        #inputs
-        self.args = args
-        self.log = log
+    def __init__(self):
 
         #init things we need to shutdown app properly
         self.config = None
@@ -44,10 +40,19 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def start(self):
 
+
         ##-------------------------------------------------------------------------
-        ## log basic system info and get config
+        ## Create logger and log basic system info
         ##-------------------------------------------------------------------------
+        self.create_logger()
+        self.log.debug("\n***** PROGRAM STARTED *****\nCommand: ", ' '.join(sys.argv))
         self.log_system_info()
+
+
+        ##-------------------------------------------------------------------------
+        ## Parse command line args and get config
+        ##-------------------------------------------------------------------------
+        self.args = self.get_args()
         self.config = self.get_config()
 
 
@@ -215,16 +220,14 @@ class KeckVncLauncher(object):
         self.exit_app(msg="Normal app exit")
 
 
-
     ##-------------------------------------------------------------------------
     ## Create logger
     ##-------------------------------------------------------------------------
-    @staticmethod
-    def create_logger():
+    def create_logger(self):
 
         ## Create logger object
-        log = logging.getLogger('GetVNCs')
-        log.setLevel(logging.DEBUG)
+        self.log = logging.getLogger('GetVNCs')
+        self.log.setLevel(logging.DEBUG)
 
         #create log file and log dir if not exist
         ymd = datetime.today().strftime('%Y%m%d')
@@ -237,25 +240,20 @@ class KeckVncLauncher(object):
         logFileHandler.setLevel(logging.DEBUG)
         logFormat = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
         logFileHandler.setFormatter(logFormat)
-        log.addHandler(logFileHandler)
+        self.log.addHandler(logFileHandler)
 
         #stream/console handler (info+ only)
         logConsoleHandler = logging.StreamHandler()
         logConsoleHandler.setLevel(logging.INFO)
         logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
         logConsoleHandler.setFormatter(logFormat)
-        log.addHandler(logConsoleHandler)
-
-        return log
+        self.log.addHandler(logConsoleHandler)
 
 
     ##-------------------------------------------------------------------------
     ## Get command line args
     ##-------------------------------------------------------------------------
-    @staticmethod
-    def get_args(log=None):
-
-        if log: log.debug("\n\n***** PROGRAM STARTED *****\nArgs: " + ' '.join(sys.argv[1:]) + "\n")
+    def get_args(self):
 
         ## create a parser object for understanding command-line arguments
         parser = argparse.ArgumentParser(description="Keck VNC Launcher")
@@ -685,10 +683,10 @@ class KeckVncLauncher(object):
         #if we got as far as to have an instance of object, then log and call exit_app function
         if kvl:            
             msg = traceback.format_exc()
-            if log:
+            if kvl.log:
                 logfile = log.handlers[0].baseFilename
                 print (f"* Attach log file at: {logfile}\n")
-                log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
+                kvl.log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
             else:
                 print (msg)
 
@@ -705,17 +703,8 @@ if __name__ == '__main__':
     #catch all exceptions so we can exit gracefully
     kvl = None
     try:        
-
-        #create logger right away
-        log = KeckVncLauncher.create_logger()
-
-        #parse command line args
-        args = KeckVncLauncher.get_args(log)
-
-        #start
-        kvl = KeckVncLauncher(args, log)
+        kvl = KeckVncLauncher()
         kvl.start()
-
     except Exception as error:
         KeckVncLauncher.handle_fatal_error(error, kvl)
 
