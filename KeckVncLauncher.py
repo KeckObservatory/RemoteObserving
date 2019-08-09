@@ -20,6 +20,7 @@ import atexit
 from datetime import datetime
 import platform
 import traceback
+import pathlib
 
 
 class KeckVncLauncher(object):
@@ -219,29 +220,36 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def create_logger(self):
 
-        ## Create logger object
-        self.log = logging.getLogger('GetVNCs')
-        self.log.setLevel(logging.DEBUG)
+        try:
+            ## Create logger object
+            self.log = logging.getLogger('GetVNCs')
+            self.log.setLevel(logging.DEBUG)
 
-        #create log file and log dir if not exist
-        ymd = datetime.today().strftime('%Y%m%d')
-        logFile = f'logs/keck-remote-log-{ymd}.txt'
-        if not os.path.exists(os.path.dirname(logFile)):
-            os.makedirs(os.path.dirname(logFile))
+            #create log file and log dir if not exist
+            ymd = datetime.today().strftime('%Y%m%d')
+            pathlib.Path('logs/').mkdir(parents=True, exist_ok=True)
 
-        #file handler (full debug logging)
-        logFileHandler = logging.FileHandler(logFile)
-        logFileHandler.setLevel(logging.DEBUG)
-        logFormat = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
-        logFileHandler.setFormatter(logFormat)
-        self.log.addHandler(logFileHandler)
+            #file handler (full debug logging)
+            logFile = f'logs/keck-remote-log-{ymd}.txt'
+            logFileHandler = logging.FileHandler(logFile)
+            logFileHandler.setLevel(logging.DEBUG)
+            logFormat = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+            logFileHandler.setFormatter(logFormat)
+            self.log.addHandler(logFileHandler)
 
-        #stream/console handler (info+ only)
-        logConsoleHandler = logging.StreamHandler()
-        logConsoleHandler.setLevel(logging.INFO)
-        logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
-        logConsoleHandler.setFormatter(logFormat)
-        self.log.addHandler(logConsoleHandler)
+            #stream/console handler (info+ only)
+            logConsoleHandler = logging.StreamHandler()
+            logConsoleHandler.setLevel(logging.INFO)
+            logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+            logConsoleHandler.setFormatter(logFormat)
+            
+            self.log.addHandler(logConsoleHandler)
+
+        except Exception as error:
+            print (str(error))
+            print (f"ERROR: Unable to create logger at {logFile}")
+            print ("Make sure you have write access to this directory.\n")
+            self.exit_app()
 
 
     ##-------------------------------------------------------------------------
@@ -311,7 +319,7 @@ class KeckVncLauncher(object):
         #if config file specified, put that at beginning of list
         filename = self.args.config
         if filename is not None:
-            if not os.path.exists(filename):
+            if not pathlib.Path(filename).is_file():
                 self.log.error(f'Specified config file "{filename}"" does not exist.')
                 self.exit_app()
             else:
@@ -320,7 +328,7 @@ class KeckVncLauncher(object):
         #find first file that exists
         file = None
         for f in filenames:
-            if os.path.exists(f):
+            if pathlib.Path(f).is_file():
                 file = f
                 break
         if not file:
@@ -698,7 +706,7 @@ class KeckVncLauncher(object):
         print ("\n****** PROGRAM ERROR ******\n")
         print ("Error message: " + str(error) + "\n")
         print ("If you need troubleshooting assistance:")
-        print (f"* Email {supportEmail}")
+        print (f"* Email {supportEmail}\n")
         #todo: call number, website?
 
         #Log error if we have a log object (otherwise dump error to stdout) 
