@@ -32,7 +32,7 @@ class KeckVncLauncher(object):
         self.firewall_pass = None
         self.ssh_threads = None
         self.ports_used = None
-        self.authenticate = False
+        self.do_authenticate = False
         self.is_authenticated = False
 
 
@@ -61,8 +61,9 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
         ##-------------------------------------------------------------------------
+        #todo: handle blank password error properly
         self.is_authenticated = False
-        if self.authenticate:
+        if self.do_authenticate:
             self.firewall_pass = getpass(f"Password for firewall authentication: ")
             self.is_authenticated = self.authenticate(self.firewall_pass)
             if not self.is_authenticated:
@@ -107,7 +108,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         self.ssh_threads = []
         ports_used = []
-        if self.authenticate:
+        if self.do_authenticate:
             for session in sessions:
                 if session['name'] in sessions_to_open:
                     display = int(session['Display'][1:])
@@ -161,7 +162,7 @@ class KeckVncLauncher(object):
         ## Open vncviewers
         ##-------------------------------------------------------------------------
         vnc_threads = []
-        if self.authenticate is True:
+        if self.do_authenticate is True:
             vncserver = 'localhost'
             statusvncserver = 'localhost'
         else:
@@ -354,20 +355,24 @@ class KeckVncLauncher(object):
 
         #checks local ports config
         if 'local_ports' in self.config.keys():
-            assert type(self.config['local_ports']) is list
-            nlp = len(self.config['local_ports'])
-            if nlp < 9:
-                self.log.warning(f"Only {nlp} local ports specified.")
-                self.log.warning(f"Program may crash if trying to open >{nlp} sessions")
+            if type(self.config['local_ports']) is not list:
+                self.log.error("Config parameter 'local_ports' must be a list of integers.")
+                self.log.error("Or, remove 'local_ports' from config to use default ports.\n")
+                self.exit_app()
+            else:
+                nlp = len(self.config['local_ports'])
+                if nlp < 9:
+                    self.log.warning(f"Only {nlp} local ports specified.")
+                    self.log.warning(f"Program may crash if trying to open >{nlp} sessions.\n")
 
         #check firewall config
-        self.authenticate = False
+        self.do_authenticate = False
         self.firewall_address = self.config.get('firewall_address', None)
         self.firewall_user    = self.config.get('firewall_user',    None)
         self.firewall_port    = self.config.get('firewall_port',    None)
         if self.firewall_address or self.firewall_user or self.firewall_port:
             if self.firewall_address and self.firewall_user and self.firewall_port:
-                self.authenticate = True
+                self.do_authenticate = True
                 import sshtunnel
             else:
                 self.log.warning("Partial firewall configuration detected in config file:")
@@ -461,18 +466,13 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def authenticate(self, authpass):
 
-        assert 'firewall_user'    in self.config.keys()
-        assert 'firewall_address' in self.config.keys()
-        assert 'firewall_port'    in self.config.keys()
-        firewall_user    = self.config.get('firewall_user')
-        firewall_address = self.config.get('firewall_address')
-        firewall_port    = self.config.get('firewall_port')
-        self.log.info(f'Authenticating through firewall as {firewall_user}@{firewall_address}:{firewall_port}')
+        self.log.info(f'Authenticating through firewall as:')
+        self.log.info(f'  {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
 
         try:
-            with Telnet(firewall_address, int(firewall_port)) as tn:
+            with Telnet(self.firewall_address, int(self.firewall_port)) as tn:
                 tn.read_until(b"User: ", timeout=5)
-                tn.write(f'{firewall_user}\n'.encode('ascii'))
+                tn.write(f'{self.firewall_user}\n'.encode('ascii'))
                 tn.read_until(b"password: ", timeout=5)
                 tn.write(f'{authpass}\n'.encode('ascii'))
                 tn.read_until(b"Enter your choice: ", timeout=5)
@@ -499,18 +499,10 @@ class KeckVncLauncher(object):
             return False
 
         self.log.info('Signing off of firewall authentication')
-
-        assert 'firewall_user'    in self.config.keys()
-        assert 'firewall_address' in self.config.keys()
-        assert 'firewall_port'    in self.config.keys()
-        firewall_user    = self.config.get('firewall_user')
-        firewall_address = self.config.get('firewall_address')
-        firewall_port    = self.config.get('firewall_port')
-
         try:
-            with Telnet(firewall_address, int(firewall_port)) as tn:
+            with Telnet(self.firewall_address, int(self.firewall_port)) as tn:
                 tn.read_until(b"User: ", timeout=5)
-                tn.write(f'{firewall_user}\n'.encode('ascii'))
+                tn.write(f'{self.firewall_user}\n'.encode('ascii'))
                 tn.read_until(b"password: ", timeout=5)
                 tn.write(f'{authpass}\n'.encode('ascii'))
                 tn.read_until(b"Enter your choice: ", timeout=5)
@@ -686,7 +678,7 @@ class KeckVncLauncher(object):
             self.sound.terminate()
 
         # Close down ssh tunnels and firewall authentication
-        if self.authenticate is True:
+        if self.do_authenticate is True:
             self.close_ssh_threads()
             self.close_authentication(self.firewall_pass)
 
