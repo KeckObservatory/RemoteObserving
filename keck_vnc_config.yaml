@@ -13,11 +13,13 @@
 
   ## This is the command to invoke on the local machine to launch a VNC client
   ## Command will be formatted as [vncviewer] [vncargs] [address]:[port]
-  ##
-  ## Example: use VNCviewer for RealVNC vncviewer on macOS
-  vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer',
+  vncviewer: 'vncviewer',
   vncprefix: '',
   vncargs: '',
+  ## Example: use VNCviewer for RealVNC vncviewer on macOS
+  # vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer',
+  # vncprefix: '',
+  # vncargs: '',
   ## Example: use built in Screen Sharing app in macOS:
   # vncviewer: 'open',
   # vncprefix: 'vnc://',
