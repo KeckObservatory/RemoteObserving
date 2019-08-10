@@ -19,29 +19,38 @@ class soundplay(object):
         Connect to sound server
         '''
 
-        #massage inputs
-        instrument = instrument.lower()
-        port = str(port)
-        if server == None: server = self.getVncServer(instrument)
-        serverport = f'{server}:{port}'
-        if aplay  == None: aplay  = 'aplay'
-        if player == None: player = 'soundplay'
+        try:
+            #massage inputs
+            instrument = instrument.lower()
+            port = str(port)
+            if server == None: server = self.getVncServer(instrument)
+            serverport = f'{server}:{port}'
+            if aplay  == None: aplay  = 'aplay'
+            if player == None: player = 'soundplay'
 
-        #check existing soundplay process
-        procs = self.check_existing_process(server, port, instrument)
-        if procs and len(procs) > 0:
-            print ("SOUNDPLAY PROCESS ALREADY EXISTS FOR: ", server+':'+port, instrument)
-            print (procs)
+            #check existing soundplay process
+            procs = self.check_existing_process(server, port, instrument)
+            if procs and len(procs) > 0:
+                print ("SOUNDPLAY PROCESS ALREADY EXISTS FOR: ", server+':'+port, instrument)
+                print (procs)
+                return False
+
+            #path to soundplay is relative to this script
+            #todo: auto-detect based on OS, etc?
+            soundplayPath  = os.path.dirname(os.path.abspath(__file__)) + "/soundplayer/" + player
+
+            #create command and open process and hold on to handle so we can terminate later
+            cmd = [soundplayPath, '-s', serverport, '-T', instrument, '-px', aplay]
+            print ('Connecting to sound server: ', ' '.join(cmd))
+            self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        except Exception as error:
+            print ("\nERROR: Could not start soundplayer")
+            print ("Command: " + ' '.join(cmd))
+            print ("Error: " + str(error) + "\n")
             return False
 
-        #path to soundplay is relative to this script
-        #todo: auto-detect based on OS, etc?
-        soundplayPath  = os.path.dirname(os.path.abspath(__file__)) + "/soundplayer/" + player
-
-        #create command and open process and hold on to handle so we can terminate later
-        cmd = [soundplayPath, '-s', serverport, '-T', instrument, '-px', aplay]
-        print ('Connecting to sound server: ', ' '.join(cmd))
-        self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return True
 
 
     def check_existing_process(self, server, port, instrument):
@@ -58,7 +67,9 @@ class soundplay(object):
 
 
     def getVncServer(self, instrument):
+        '''
         #todo: move this common function to shared module.  It can look for ssh key.  If not found, then it can prompt for password.
+        '''
         raise Exception("Not implemented yet. Must provide server name explicitly.")
 
 
@@ -66,7 +77,6 @@ class soundplay(object):
         if self.proc:
             print ('\nTerminating soundplay process...\n')
             self.proc.terminate()
-
 
 
 
@@ -93,10 +103,14 @@ if __name__ == "__main__":
         if soundplay: soundplay.terminate()
 
 
-    #start soundplay and wait for kill signal to terminate
+    #start soundplay
+    sp = soundplay()
+    ok = sp.connect(args.instrument, server=args.server, port=args.port, aplay=args.aplay, player=args.player)
+    if not ok:
+        sys.exit(1)
+
+    #wait for interrupt to exit cleanly
     try:
-        sp = soundplay()
-        sp.connect(args.instrument, server=args.server, port=args.port, aplay=args.aplay, player=args.player)
         atexit.register(exit_handler, sp)
         print ('Hit control-C to terminate program and close soundplay connection.')
         while True:
