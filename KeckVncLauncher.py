@@ -7,6 +7,7 @@ import re
 import socket
 import argparse
 import logging
+import time
 import yaml
 from getpass import getpass
 import paramiko
@@ -226,14 +227,15 @@ class KeckVncLauncher(object):
             self.log.setLevel(logging.DEBUG)
 
             #create log file and log dir if not exist
-            ymd = datetime.today().strftime('%Y%m%d')
+            ymd = datetime.utcnow().date().strftime('%Y%m%d')
             pathlib.Path('logs/').mkdir(parents=True, exist_ok=True)
 
             #file handler (full debug logging)
-            logFile = f'logs/keck-remote-log-{ymd}.txt'
+            logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
             logFileHandler = logging.FileHandler(logFile)
             logFileHandler.setLevel(logging.DEBUG)
-            logFormat = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+            logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
+            logFormat.converter = time.gmtime
             logFileHandler.setFormatter(logFormat)
             self.log.addHandler(logFileHandler)
 
@@ -241,6 +243,7 @@ class KeckVncLauncher(object):
             logConsoleHandler = logging.StreamHandler()
             logConsoleHandler.setLevel(logging.INFO)
             logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+            logFormat.converter = time.gmtime
             logConsoleHandler.setFormatter(logFormat)
             
             self.log.addHandler(logConsoleHandler)
