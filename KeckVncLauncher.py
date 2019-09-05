@@ -59,8 +59,6 @@ class KeckVncLauncher(object):
         self.get_config()
         self.check_config()
 
-        self.position_vnc_windows()
-        return
 
         ##-------------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
@@ -214,7 +212,7 @@ class KeckVncLauncher(object):
         ## Wait for quit signal, then all done
         ##-------------------------------------------------------------------------
         atexit.register(self.exit_app, msg="Forced app exit")
-        self.prompt_quit_signal()
+        self.prompt_menu()
         self.exit_app(msg="Normal app exit")
 
 
@@ -755,22 +753,28 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Prompt and wait for quit signal
+    ## Prompt command line menu and wait for quit signal
     ##-------------------------------------------------------------------------
-    def prompt_quit_signal(self):
+    def prompt_menu(self):
 
-        sleep(1)
-        quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-        foundq = re.match('^[qQ].*', quit)
-        while foundq is None:
-            sleep(1)
-            quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-            foundq = re.match('^[qQ].*', quit)
+        #todo: add options to open/reopen controls
+        menu = "\n"
+        menu += "--------------------------------------------------\n"
+        menu += "|                    MENU                        |\n"
+        menu += "--------------------------------------------------\n"
+        menu += "|  [p]: Position VNC windows                     |\n"
+        menu += "|  [s]: Soundplayer restart                      |\n"
+        menu += "|  [q]: Quit (or Control-C)                      |\n"
+        menu += "--------------------------------------------------\n"
+        menu += "> "
 
-            #todo: test
-            position = re.match('^[pP].*', quit)
-            if position:
-                self.position_vnc_windows()
+        quit = None
+        while quit is None:
+            cmd = input(menu)
+            if re.match('^[qQ].*', cmd):  quit = True
+            if re.match('^[pP].*', cmd):  self.position_vnc_windows()
+            if re.match('^[sS].*', cmd):  self.launch_soundplay()
+
 
 
     ##-------------------------------------------------------------------------
