@@ -36,6 +36,8 @@ class KeckVncLauncher(object):
         self.ports_used = None
         self.do_authenticate = False
         self.is_authenticated = False
+        self.instrument = None
+        self.vncserver = None
 
 
     ##-------------------------------------------------------------------------
@@ -84,22 +86,22 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Determine instrument
         ##-------------------------------------------------------------------------
-        instrument, tel = self.determine_instrument(self.args.account)
-        if not instrument: 
-            self.exit_app(f'Invalid instrumet account name: "{self.args.account}"')
+        self.instrument, tel = self.determine_instrument(self.args.account)
+        if not self.instrument: 
+            self.exit_app(f'Invalid instrument account name: "{self.args.account}"')
 
 
         ##-------------------------------------------------------------------------
         ## Determine VNC server
         ##-------------------------------------------------------------------------
         vnc_password = getpass(f"Password for user {self.args.account}: ")
-        vncserver = self.determine_vnc_server(self.args.account, vnc_password)
+        self.vncserver = self.determine_vnc_server(self.args.account, vnc_password)
 
 
         ##-------------------------------------------------------------------------
         ## Determine VNC Sessions
         ##-------------------------------------------------------------------------
-        sessions = self.determine_vnc_sessions(self.args.account, vnc_password, vncserver)
+        sessions = self.determine_vnc_sessions(self.args.account, vnc_password, self.vncserver)
         if len(sessions) == 0:
             self.exit_app('No VNC sessions found')
         self.log.debug("\n" + str(sessions))
@@ -123,7 +125,7 @@ class KeckVncLauncher(object):
                     self.log.info(f"Opening SSH tunnel for {session['name']}")
                     self.log.info(f"  remote port = {port}, local port = {localport}")
                     server = sshtunnel.SSHTunnelForwarder(
-                        vncserver,
+                        self.vncserver,
                         ssh_username=self.args.account,
                         ssh_password=vnc_password,
                         remote_bind_address=('127.0.0.1', port),
@@ -167,7 +169,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         vnc_threads = []
         if self.do_authenticate is True:
-            vncserver = 'localhost'
+            self.vncserver = 'localhost'
             statusvncserver = 'localhost'
         else:
             statusvncserver = f"svncserver{tel}.keck.hawaii.edu"
@@ -183,7 +185,7 @@ class KeckVncLauncher(object):
                     if ports_used != []: port = ports_used.pop(0)
                     else               : port = int(f"59{display:02d}")
                     vnc_threads.append(Thread(target=self.launch_vncviewer, 
-                                              args=(vncserver, port)))
+                                              args=(self.vncserver, port)))
                     vnc_threads[-1].start()
                     sleep(0.05)
             if self.args.status is True:
@@ -199,13 +201,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         sound = None
         if self.args.nosound is False:
-            aplay       = self.config.get('aplay', None)
-            soundplayer = self.config.get('soundplayer', None)
-            sound = soundplay()
-            sound.connect(instrument, vncserver, 9798, aplay=aplay, player=soundplayer)
-            #todo: should we start this as a thread?
-            # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
-            # soundThread.start()
+            self.start_soundplay()
 
 
         ##-------------------------------------------------------------------------
@@ -562,6 +558,25 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
+    ## Start soundplay
+    ##-------------------------------------------------------------------------
+    def start_soundplay(self):
+
+        #todo: check for existing first and shutdown
+        if self.sound:
+            self.sound.terminate()
+
+        sound_port  = 9798
+        aplay       = self.config.get('aplay', None)
+        soundplayer = self.config.get('soundplayer', None)
+        self.sound = soundplay()
+        self.sound.connect(self.instrument, self.vncserver, sound_port, aplay=aplay, player=soundplayer)
+        #todo: should we start this as a thread?
+        # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
+        # soundThread.start()
+
+
+    ##-------------------------------------------------------------------------
     ## Authenticate
     ##-------------------------------------------------------------------------
     def authenticate(self, authpass):
@@ -773,7 +788,7 @@ class KeckVncLauncher(object):
             cmd = input(menu)
             if re.match('^[qQ].*', cmd):  quit = True
             if re.match('^[pP].*', cmd):  self.position_vnc_windows()
-            if re.match('^[sS].*', cmd):  self.launch_soundplay()
+            if re.match('^[sS].*', cmd):  self.start_soundplay()
 
 
 
