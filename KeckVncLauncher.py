@@ -7,20 +7,21 @@ import re
 import socket
 import argparse
 import logging
+import time
 import yaml
 from getpass import getpass
 import paramiko
 from time import sleep
 from threading import Thread
 from telnetlib import Telnet
-from subprocess import Popen, call
 from astropy.table import Table, Column
 from soundplay import soundplay
 import atexit
 from datetime import datetime
-import platform
 import traceback
 import pathlib
+import math
+import subprocess
 
 
 class KeckVncLauncher(object):
@@ -58,6 +59,8 @@ class KeckVncLauncher(object):
         self.get_config()
         self.check_config()
 
+        self.position_vnc_windows()
+        return
 
         ##-------------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
@@ -216,6 +219,86 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
+    ## Position vncviewers
+    ##-------------------------------------------------------------------------
+    def position_vnc_windows(self):
+
+        self.log.info(f"Positioning VNC windows...")
+
+        #get sessions
+        sessions_to_open = self.get_sessions_to_open(self.args)
+
+        #get screen dimensions
+        #alternate command: xrandr |grep \* | awk '{print $1}'
+        cmd = "xdpyinfo | grep dimensions | awk '{print $2}' | awk -Fx '{print $1, $2}'"
+        p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        out = p1.communicate()[0].decode('utf-8')
+        screen_width, screen_height = [int(x) for x in out.split()]
+        self.log.debug(f"Screen size: {screen_width}x{screen_height}")
+
+        #get num rows and cols 
+        #todo: assumming 2x2 always for now; make smarter
+        num_win = len(sessions_to_open)
+        cols = 2
+        rows = 2
+
+        #get window width height
+        ww = round(screen_width / cols)
+        wh = round(screen_height / rows)
+
+        #get x/y coords (assume two rows)
+        coords = []
+        for row in range(0, rows):
+            for col in range(0, cols):
+                x = round(col * screen_width/cols)
+                y = round(row * screen_height/rows)
+                coords.append([x,y])
+
+        #window coord and size config overrides
+        window_size = self.config.get('window_size', None)
+        if window_size:
+            ww = window_size[0]
+            wh = window_size[1]
+        window_positions = self.config.get('window_positions', None)
+        if window_positions:
+            coords = window_positions
+
+        #get all x-window processes
+        #NOTE: using wmctrl (does not work for Mac)
+        #alternate option: xdotool?
+        xlines = []
+        cmd = ['wmctrl', '-l']
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        while True:
+            line = proc.stdout.readline()
+            if not line: break
+            line = line.rstrip().decode('utf-8')
+            self.log.debug(f'wmctrl line: {line}')
+            xlines.append(line)
+
+        #reposition each vnc session window
+        for i, session in enumerate(sessions_to_open):
+            self.log.debug(f'Search xlines for "{session}"')
+            win_id = None
+            for line in xlines:
+                if session not in line: continue
+                parts = line.split()
+                win_id = parts[0]
+
+            if win_id:
+                index = i % len(coords)
+                wx = coords[index][0]
+                wy = coords[index][1]
+                cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
+                self.log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            else:
+                self.log.info(f"Could not find window process for VNC session '{session}'")
+
+
+
+
+    ##-------------------------------------------------------------------------
     ## Create logger
     ##-------------------------------------------------------------------------
     def create_logger(self):
@@ -226,14 +309,15 @@ class KeckVncLauncher(object):
             self.log.setLevel(logging.DEBUG)
 
             #create log file and log dir if not exist
-            ymd = datetime.today().strftime('%Y%m%d')
+            ymd = datetime.utcnow().date().strftime('%Y%m%d')
             pathlib.Path('logs/').mkdir(parents=True, exist_ok=True)
 
             #file handler (full debug logging)
-            logFile = f'logs/keck-remote-log-{ymd}.txt'
+            logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
             logFileHandler = logging.FileHandler(logFile)
             logFileHandler.setLevel(logging.DEBUG)
-            logFormat = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+            logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
+            logFormat.converter = time.gmtime
             logFileHandler.setFormatter(logFormat)
             self.log.addHandler(logFileHandler)
 
@@ -241,6 +325,7 @@ class KeckVncLauncher(object):
             logConsoleHandler = logging.StreamHandler()
             logConsoleHandler.setLevel(logging.INFO)
             logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+            logFormat.converter = time.gmtime
             logConsoleHandler.setFormatter(logFormat)
             
             self.log.addHandler(logConsoleHandler)
@@ -438,7 +523,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def launch_xterm(self, command, pw, title):
         cmd = ['xterm', '-hold', '-title', title, '-e', f'"{command}"']
-        xterm = call(cmd)
+        xterm = subprocess.call(cmd)
 
 
     ##-------------------------------------------------------------------------
@@ -467,7 +552,15 @@ class KeckVncLauncher(object):
             cmd.append(vncargs)
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
         self.log.info(f"  Launching VNC viewer for {cmd[-1]}")
-        vncviewer = call(cmd)
+        print ('test: launch: ', cmd)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        # while True:
+        #     line = proc.stdout.readline()
+        #     print ('procline: ', line)
+        #     line = line.rstrip().decode('utf-8')
+
+        #todo: read output and do window move when we get message the window has been opened
+        print ('test: launch complete: ', type(proc))
 
 
     ##-------------------------------------------------------------------------
@@ -673,6 +766,11 @@ class KeckVncLauncher(object):
             sleep(1)
             quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
             foundq = re.match('^[qQ].*', quit)
+
+            #todo: test
+            position = re.match('^[pP].*', quit)
+            if position:
+                self.position_vnc_windows()
 
 
     ##-------------------------------------------------------------------------
