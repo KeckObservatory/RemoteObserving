@@ -39,6 +39,19 @@ class KeckVncLauncher(object):
         self.instrument = None
         self.vncserver = None
 
+        #session name consts
+        self.session_names = [
+            'control0',
+            'control1',
+            'control2',
+            'analysis0',
+            'analysis1',
+            'analysis2',
+            'telanalys',
+            'telstatus',
+            'status'
+        ]
+
 
     ##-------------------------------------------------------------------------
     ## Start point (main)
@@ -80,7 +93,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Determine sessions to open
         ##-------------------------------------------------------------------------
-        sessions_to_open = self.get_sessions_to_open(self.args)
+        self.sessions_requested = self.get_sessions_requested(self.args)
 
 
         ##-------------------------------------------------------------------------
@@ -101,10 +114,10 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Determine VNC Sessions
         ##-------------------------------------------------------------------------
-        sessions = self.determine_vnc_sessions(self.args.account, vnc_password, self.vncserver)
-        if len(sessions) == 0:
+        self.sessions_found = self.determine_vnc_sessions(self.args.account, vnc_password, self.vncserver)
+        if len(self.sessions_found) == 0:
             self.exit_app('No VNC sessions found')
-        self.log.debug("\n" + str(sessions))
+        self.log.debug("\n" + str(self.sessions_found))
 
 
         ##-------------------------------------------------------------------------
@@ -113,8 +126,8 @@ class KeckVncLauncher(object):
         self.ssh_threads = []
         ports_used = []
         if self.do_authenticate:
-            for session in sessions:
-                if session['name'] in sessions_to_open:
+            for session in self.sessions_found:
+                if session['name'] in self.sessions_requested:
                     display = int(session['Display'][1:])
                     port = int(f"59{display:02d}")
                     if 'local_ports' in self.config.keys(): 
@@ -167,6 +180,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Open vncviewers
         ##-------------------------------------------------------------------------
+        #todo: should we not loop thru sessions_requested instead?
         vnc_threads = []
         if self.do_authenticate is True:
             self.vncserver = 'localhost'
@@ -178,8 +192,8 @@ class KeckVncLauncher(object):
             self.log.info(f"\nNo VNC viewer application specified")
             self.log.info(f"Open your VNC viewer manually\n")
         else:
-            for session in sessions:
-                if session['name'] in sessions_to_open:
+            for session in self.sessions_found:
+                if session['name'] in self.sessions_requested:
                     self.log.info(f"Opening VNCviewer for {session['name']}")
                     display = int(session['Display'][1:])
                     if ports_used != []: port = ports_used.pop(0)
@@ -210,86 +224,6 @@ class KeckVncLauncher(object):
         atexit.register(self.exit_app, msg="Forced app exit")
         self.prompt_menu()
         self.exit_app(msg="Normal app exit")
-
-
-    ##-------------------------------------------------------------------------
-    ## Position vncviewers
-    ##-------------------------------------------------------------------------
-    def position_vnc_windows(self):
-
-        self.log.info(f"Positioning VNC windows...")
-
-        #get sessions
-        sessions_to_open = self.get_sessions_to_open(self.args)
-
-        #get screen dimensions
-        #alternate command: xrandr |grep \* | awk '{print $1}'
-        cmd = "xdpyinfo | grep dimensions | awk '{print $2}' | awk -Fx '{print $1, $2}'"
-        p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        out = p1.communicate()[0].decode('utf-8')
-        screen_width, screen_height = [int(x) for x in out.split()]
-        self.log.debug(f"Screen size: {screen_width}x{screen_height}")
-
-        #get num rows and cols 
-        #todo: assumming 2x2 always for now; make smarter
-        num_win = len(sessions_to_open)
-        cols = 2
-        rows = 2
-
-        #get window width height
-        ww = round(screen_width / cols)
-        wh = round(screen_height / rows)
-
-        #get x/y coords (assume two rows)
-        coords = []
-        for row in range(0, rows):
-            for col in range(0, cols):
-                x = round(col * screen_width/cols)
-                y = round(row * screen_height/rows)
-                coords.append([x,y])
-
-        #window coord and size config overrides
-        window_size = self.config.get('window_size', None)
-        if window_size:
-            ww = window_size[0]
-            wh = window_size[1]
-        window_positions = self.config.get('window_positions', None)
-        if window_positions:
-            coords = window_positions
-
-        #get all x-window processes
-        #NOTE: using wmctrl (does not work for Mac)
-        #alternate option: xdotool?
-        xlines = []
-        cmd = ['wmctrl', '-l']
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        while True:
-            line = proc.stdout.readline()
-            if not line: break
-            line = line.rstrip().decode('utf-8')
-            self.log.debug(f'wmctrl line: {line}')
-            xlines.append(line)
-
-        #reposition each vnc session window
-        for i, session in enumerate(sessions_to_open):
-            self.log.debug(f'Search xlines for "{session}"')
-            win_id = None
-            for line in xlines:
-                if session not in line: continue
-                parts = line.split()
-                win_id = parts[0]
-
-            if win_id:
-                index = i % len(coords)
-                wx = coords[index][0]
-                wy = coords[index][1]
-                cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
-                self.log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            else:
-                self.log.info(f"Could not find window process for VNC session '{session}'")
-
-
 
 
     ##-------------------------------------------------------------------------
@@ -343,40 +277,18 @@ class KeckVncLauncher(object):
         parser.add_argument("--authonly", dest="authonly",
             default=False, action="store_true",
             help="Authenticate through firewall only?")
-        parser.add_argument("--control0", dest="control0",
-            default=False, action="store_true",
-            help="Open control0?")
-        parser.add_argument("--control1", dest="control1",
-            default=False, action="store_true",
-            help="Open control1?")
-        parser.add_argument("--control2", dest="control2",
-            default=False, action="store_true",
-            help="Open control2?")
-        parser.add_argument("--telstatus", dest="telstatus",
-            default=False, action="store_true",
-            help="Open telstatus?")
-        parser.add_argument("--analysis0", dest="analysis0",
-            default=False, action="store_true",
-            help="Open analysis0?")
-        parser.add_argument("--analysis1", dest="analysis1",
-            default=False, action="store_true",
-            help="Open analysis1?")
-        parser.add_argument("--analysis2", dest="analysis2",
-            default=False, action="store_true",
-            help="Open analysis2?")
-        parser.add_argument("--telanalysis", "--telanalys", dest="telanalys",
-            default=False, action="store_true",
-            help="Open telanalys?")
-        parser.add_argument("--status", dest="status",
-            default=False, action="store_true",
-            help="Open status for telescope?")
         parser.add_argument("--nosound", dest="nosound",
             default=False, action="store_true",
             help="Skip start of soundplay application?")
+        for name in self.session_names:
+            parser.add_argument(f"--{name}", 
+                dest=name, 
+                default=False, 
+                action="store_true", 
+                help=f"Open {name}?")
 
         ## add arguments
-        parser.add_argument("account", type=str,
-            help="The user account.")
+        parser.add_argument("account", type=str, help="The user account.")
 
         ## add options
         parser.add_argument("-c", "--config", dest="config", type=str,
@@ -488,28 +400,38 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Get sessions to open
     ##-------------------------------------------------------------------------
-    def get_sessions_to_open(self, args):
+    def get_sessions_requested(self, args):
 
         #get sessions to open
-        sessions_to_open = []
-        if args.control0  is True: sessions_to_open.append('control0')
-        if args.control1  is True: sessions_to_open.append('control1')
-        if args.control2  is True: sessions_to_open.append('control2')
-        if args.telstatus is True: sessions_to_open.append('telstatus')
-        if args.analysis0 is True: sessions_to_open.append('analysis0')
-        if args.analysis1 is True: sessions_to_open.append('analysis1')
-        if args.analysis2 is True: sessions_to_open.append('analysis2')
-        if args.telanalys is True: sessions_to_open.append('telanalys')
-        if args.status    is True: sessions_to_open.append('status')
+        sessions = []
+        if args.control0  is True: sessions.append('control0')
+        if args.control1  is True: sessions.append('control1')
+        if args.control2  is True: sessions.append('control2')
+        if args.telstatus is True: sessions.append('telstatus')
+        if args.analysis0 is True: sessions.append('analysis0')
+        if args.analysis1 is True: sessions.append('analysis1')
+        if args.analysis2 is True: sessions.append('analysis2')
+        if args.telanalys is True: sessions.append('telanalys')
+        if args.status    is True: sessions.append('status')
 
         # create default sessions list if none provided
-        if len(sessions_to_open) == 0:
-            sessions_to_open.append('control0')
-            sessions_to_open.append('control1')
-            sessions_to_open.append('control2')
-            sessions_to_open.append('telstatus')
+        if len(sessions) == 0:
+            sessions.append('control0')
+            sessions.append('control1')
+            sessions.append('control2')
+            sessions.append('telstatus')
 
-        return sessions_to_open
+        return sessions
+
+
+    ##-------------------------------------------------------------------------
+    ## Print sessions found for instrument
+    ##-------------------------------------------------------------------------
+    def print_sessions_found(self):
+
+        print (f"\nSessions found for account '{self.args.account}':")
+        for session in self.sessions_found:
+            print (f"\t{session['name']}")
 
 
     ##-------------------------------------------------------------------------
@@ -768,6 +690,81 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
+    ## Position vncviewers
+    ##-------------------------------------------------------------------------
+    def position_vnc_windows(self):
+
+        self.log.info(f"Positioning VNC windows...")
+
+        #get screen dimensions
+        #alternate command: xrandr |grep \* | awk '{print $1}'
+        cmd = "xdpyinfo | grep dimensions | awk '{print $2}' | awk -Fx '{print $1, $2}'"
+        p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        out = p1.communicate()[0].decode('utf-8')
+        screen_width, screen_height = [int(x) for x in out.split()]
+        self.log.debug(f"Screen size: {screen_width}x{screen_height}")
+
+        #get num rows and cols 
+        #todo: assumming 2x2 always for now; make smarter
+        num_win = len(self.sessions_requested)
+        cols = 2
+        rows = 2
+
+        #get window width height
+        ww = round(screen_width / cols)
+        wh = round(screen_height / rows)
+
+        #get x/y coords (assume two rows)
+        coords = []
+        for row in range(0, rows):
+            for col in range(0, cols):
+                x = round(col * screen_width/cols)
+                y = round(row * screen_height/rows)
+                coords.append([x,y])
+
+        #window coord and size config overrides
+        window_size = self.config.get('window_size', None)
+        if window_size:
+            ww = window_size[0]
+            wh = window_size[1]
+        window_positions = self.config.get('window_positions', None)
+        if window_positions:
+            coords = window_positions
+
+        #get all x-window processes
+        #NOTE: using wmctrl (does not work for Mac)
+        #alternate option: xdotool?
+        xlines = []
+        cmd = ['wmctrl', '-l']
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        while True:
+            line = proc.stdout.readline()
+            if not line: break
+            line = line.rstrip().decode('utf-8')
+            self.log.debug(f'wmctrl line: {line}')
+            xlines.append(line)
+
+        #reposition each vnc session window
+        for i, session in enumerate(self.sessions_requested):
+            self.log.debug(f'Search xlines for "{session}"')
+            win_id = None
+            for line in xlines:
+                if session not in line: continue
+                parts = line.split()
+                win_id = parts[0]
+
+            if win_id:
+                index = i % len(coords)
+                wx = coords[index][0]
+                wy = coords[index][1]
+                cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
+                self.log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            else:
+                self.log.info(f"Could not find window process for VNC session '{session}'")
+
+
+    ##-------------------------------------------------------------------------
     ## Prompt command line menu and wait for quit signal
     ##-------------------------------------------------------------------------
     def prompt_menu(self):
@@ -777,19 +774,25 @@ class KeckVncLauncher(object):
         menu += "--------------------------------------------------\n"
         menu += "|                    MENU                        |\n"
         menu += "--------------------------------------------------\n"
-        menu += "|  [p]: Position VNC windows                     |\n"
-        menu += "|  [s]: Soundplayer restart                      |\n"
-        menu += "|  [q]: Quit (or Control-C)                      |\n"
+        menu += "|  p               Position VNC windows          |\n"
+        menu += "|  s               Soundplayer restart           |\n"
+        menu += "|  l               List sessions available       |\n"
+        menu += "|  [session name]  Open VNC session by name      |\n"
+        menu += "|  q               Quit (or Control-C)           |\n"
         menu += "--------------------------------------------------\n"
         menu += "> "
 
         quit = None
         while quit is None:
-            cmd = input(menu)
-            if re.match('^[qQ].*', cmd):  quit = True
-            if re.match('^[pP].*', cmd):  self.position_vnc_windows()
-            if re.match('^[sS].*', cmd):  self.start_soundplay()
-
+            cmd = input(menu).lower()
+            if   cmd == 'q':  quit = True
+            elif cmd == 'p':  self.position_vnc_windows()
+            elif cmd == 's':  self.start_soundplay()
+            elif cmd == 'l':  self.print_sessions_found()
+            elif cmd in self.session_names:
+                self.start_vnc_session(cmd)
+            else:
+                self.log.error(f'Unrecognized command: {cmd}')
 
 
     ##-------------------------------------------------------------------------
