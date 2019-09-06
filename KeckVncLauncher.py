@@ -172,6 +172,7 @@ class KeckVncLauncher(object):
                 session = tmp
         if not session:            
             self.log.error(f"No server VNC session found for '{session_name}'.")
+            self.print_sessions_found()
             return
 
         #determine vncserver (only different for "status")
@@ -400,6 +401,7 @@ class KeckVncLauncher(object):
     def get_sessions_requested(self, args):
 
         #get sessions to open
+        #todo: use const SESSION_NAMES here
         sessions = []
         if args.control0  is True: sessions.append('control0')
         if args.control1  is True: sessions.append('control1')
@@ -457,14 +459,18 @@ class KeckVncLauncher(object):
     ## Launch vncviewer
     ##-------------------------------------------------------------------------
     def launch_vncviewer(self, vncserver, port):
-        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
-        vncprefix    = self.config.get('vncprefix', '')
-        vncargs      = self.config.get('vncargs', None)
+
+        vncviewercmd   = self.config.get('vncviewer', 'vncviewer')
+        vncprefix      = self.config.get('vncprefix', '')
+        vncargs        = self.config.get('vncargs', None)
+        vncpasswd_file = self.config.get('vncpasswd_file', None)
+
         cmd = [vncviewercmd]
-        if vncargs: 
-            cmd.append(vncargs)
+        if vncpasswd_file: cmd.append(f'-passwd={vncpasswd_file}')
+        if vncargs       : cmd.append(vncargs)
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
-        self.log.debug(f"VNC viewer command: {cmd[-1]}")
+
+        self.log.debug(f"VNC viewer command: {cmd}")
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
         #todo: read output and do window move when we get message the window has been opened
@@ -480,10 +486,11 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def start_soundplay(self):
 
-        #todo: check for existing first and shutdown
+        #check for existing first and shutdown
         if self.sound:
             self.sound.terminate()
 
+        #todo: Do we need ssh tunnel for this?
         sound_port  = 9798
         aplay       = self.config.get('aplay', None)
         soundplayer = self.config.get('soundplayer', None)
@@ -850,7 +857,7 @@ class KeckVncLauncher(object):
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
 
-    print ("\nStarting Keck VNC Launcher:\n")
+    print ("\nStarting Keck VNC Launcher...\n")
 
     #catch all exceptions so we can exit gracefully
     try:        
