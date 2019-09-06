@@ -463,11 +463,9 @@ class KeckVncLauncher(object):
         vncviewercmd   = self.config.get('vncviewer', 'vncviewer')
         vncprefix      = self.config.get('vncprefix', '')
         vncargs        = self.config.get('vncargs', None)
-        vncpasswd_file = self.config.get('vncpasswd_file', None)
 
         cmd = [vncviewercmd]
-        if vncpasswd_file: cmd.append(f'-passwd={vncpasswd_file}')
-        if vncargs       : cmd.append(vncargs)
+        if vncargs: cmd.append(vncargs)
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         self.log.debug(f"VNC viewer command: {cmd}")
