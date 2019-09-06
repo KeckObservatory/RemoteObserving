@@ -23,6 +23,7 @@ import pathlib
 import math
 import subprocess
 import warnings
+import sshtunnel
 
 
 class KeckVncLauncher(object):
@@ -118,14 +119,14 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Determine VNC server
         ##-------------------------------------------------------------------------
-        vnc_password = getpass(f"Password for user {self.args.account}: ")
-        self.vncserver = self.determine_vnc_server(self.args.account, vnc_password)
+        self.vnc_password = getpass(f"Password for user {self.args.account}: ")
+        self.vncserver = self.determine_vnc_server(self.args.account, self.vnc_password)
 
 
         ##-------------------------------------------------------------------------
         ## Determine VNC Sessions
         ##-------------------------------------------------------------------------
-        self.sessions_found = self.determine_vnc_sessions(self.args.account, vnc_password, self.vncserver)
+        self.sessions_found = self.determine_vnc_sessions(self.args.account, self.vnc_password, self.vncserver)
         if len(self.sessions_found) == 0:
             self.exit_app('No VNC sessions found')
         self.log.debug("\n" + str(self.sessions_found))
@@ -195,7 +196,7 @@ class KeckVncLauncher(object):
             server = sshtunnel.SSHTunnelForwarder(
                 vncserver,
                 ssh_username=self.args.account,
-                ssh_password=vnc_password,
+                ssh_password=self.vnc_password,
                 remote_bind_address=('127.0.0.1', port),
                 local_bind_address=('0.0.0.0', localport)
             )
@@ -216,6 +217,7 @@ class KeckVncLauncher(object):
         ## Open vncviewers
         if self.do_authenticate is True: 
             vncserver = 'localhost'
+            port = localport
         self.log.info(f"Opening VNCviewer for '{session_name}'")
         self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port)))
         self.vnc_threads[-1].start()
@@ -369,7 +371,6 @@ class KeckVncLauncher(object):
         if self.firewall_address or self.firewall_user or self.firewall_port:
             if self.firewall_address and self.firewall_user and self.firewall_port:
                 self.do_authenticate = True
-                import sshtunnel
             else:
                 self.log.warning("Partial firewall configuration detected in config file:")
                 if not self.firewall_address: self.log.warning("firewall_address not set")
@@ -497,6 +498,8 @@ class KeckVncLauncher(object):
     ## Authenticate
     ##-------------------------------------------------------------------------
     def authenticate(self, authpass):
+
+        #todo: shorten timeout for mistyped password
 
         self.log.info(f'Authenticating through firewall as:')
         self.log.info(f'  {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
@@ -799,6 +802,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def exit_app(self, msg=None):
 
+        #todo: Fix app exit so certain clean ups don't cause errors (ie thread not started, etc
         if msg != None: self.log.info(msg)
 
         #terminate soundplayer
