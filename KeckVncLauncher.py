@@ -22,6 +22,7 @@ import traceback
 import pathlib
 import math
 import subprocess
+import warnings
 
 
 class KeckVncLauncher(object):
@@ -41,7 +42,7 @@ class KeckVncLauncher(object):
 
 
         #session name consts
-        self.session_names = [
+        self.SESSION_NAMES = [
             'control0',
             'control1',
             'control2',
@@ -55,14 +56,18 @@ class KeckVncLauncher(object):
 
         #NOTE: 'status' session on different server and always on port 1, 
         # so assign localport to constant to avoid conflict
-        self.statusport      = ':1'
-        self.statuslocalport = 5900
+        self.STATUS_PORT       = ':1'
+        self.STATUS_LOCAL_PORT = 5900
 
 
     ##-------------------------------------------------------------------------
     ## Start point (main)
     ##-------------------------------------------------------------------------
     def start(self):
+    
+        #global suppression of paramiko warnings
+        #todo: log these?
+        warnings.filterwarnings(action='ignore', module='.*paramiko.*')
 
 
         ##-------------------------------------------------------------------------
@@ -176,13 +181,13 @@ class KeckVncLauncher(object):
         display   = int(session['Display'][1:])
         port      = int(f"59{display:02d}")
 
-        ## Open SSH Tunnel for Appropriate Ports
+        ## If authenticating, open SSH tunnel for appropriate ports
         if self.do_authenticate:
             if 'local_ports' in self.config.keys(): 
                 localport = self.config['local_ports'].pop(0)
             else:
                 localport = port
-                if session_name == 'status': localport = self.statuslocalport
+                if session_name == 'status': localport = self.STATUS_LOCAL_PORT
             self.ports_in_use.append(localport)
 
             self.log.info(f"Opening SSH tunnel for '{session_name}' on server '{vncserver}':")
@@ -271,7 +276,7 @@ class KeckVncLauncher(object):
         parser.add_argument("--nosound", dest="nosound",
             default=False, action="store_true",
             help="Skip start of soundplay application?")
-        for name in self.session_names:
+        for name in self.SESSION_NAMES:
             parser.add_argument(f"--{name}", 
                 dest=name, 
                 default=False, 
@@ -460,12 +465,13 @@ class KeckVncLauncher(object):
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
         self.log.debug(f"VNC viewer command: {cmd[-1]}")
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+
+        #todo: read output and do window move when we get message the window has been opened
         # while True:
         #     line = proc.stdout.readline()
         #     print ('procline: ', line)
         #     line = line.rstrip().decode('utf-8')
 
-        #todo: read output and do window move when we get message the window has been opened
 
 
     ##-------------------------------------------------------------------------
@@ -594,21 +600,21 @@ class KeckVncLauncher(object):
     ## Determine VNC Server
     ##-------------------------------------------------------------------------
     def determine_vnc_server(self, accountname, password):
-        self.log.info(f"Determining VNC server for {accountname}")
+        self.log.info(f"Determining VNC server for '{accountname}'...")
         vncserver = None
         for s in self.servers_to_try:
             try:
-                self.log.info(f'Trying {s}:')
+                self.log.debug(f'Trying {s}:')
                 client = paramiko.SSHClient()
                 client.load_system_host_keys()
                 client.set_missing_host_key_policy(paramiko.WarningPolicy())
                 client.connect(f"{s}.keck.hawaii.edu", port=22, timeout=6,
                                username=accountname, password=password)
-                self.log.info('  Connected')
+                self.log.debug('  Connected')
             except TimeoutError:
-                self.log.info('  Timeout')
+                self.log.debug('  Timeout')
             except:
-                self.log.info('  Failed')
+                self.log.debug('  Failed')
             else:
                 stdin, stdout, stderr = client.exec_command('kvncinfo -server')
                 rawoutput = stdout.read()
@@ -635,19 +641,19 @@ class KeckVncLauncher(object):
     ## Determine VNC Sessions
     ##-------------------------------------------------------------------------
     def determine_vnc_sessions(self, accountname, password, vncserver):
-        self.log.info(f"Connecting to {vncserver} to get VNC sessions list")
+        self.log.info(f"Connecting to '{vncserver}'' to get VNC sessions list...")
         try:
             client = paramiko.SSHClient()
             client.load_system_host_keys()
             client.set_missing_host_key_policy(paramiko.WarningPolicy())
             client.connect(vncserver, port=22, timeout=6, 
                            username=accountname, password=password)
-            self.log.info('  Connected')
+            self.log.debug('  Connected')
         except TimeoutError:
-            self.log.info('  Timeout')
+            self.log.debug('  Timeout')
         except:
-            self.log.error('  Failed')
-            raise
+            self.log.debug('  Failed')
+            raise  #todo
         else:
             stdin, stdout, stderr = client.exec_command('kvncstatus')
             rawoutput = stdout.read()
@@ -660,15 +666,14 @@ class KeckVncLauncher(object):
                 sessions = []
             else:
                 sessions = allsessions[allsessions['User'] == accountname]
-                self.log.info(f'  Got {len(sessions)} sessions')
+                self.log.debug(f'  Got {len(sessions)} sessions')
                 names = [x['Desktop'].split('-')[2] for x in sessions]
                 sessions.add_column(Column(data=names, name=('name')))
 
+            #add default row for 'status' session at display port 1
+            sessions.add_row([self.STATUS_PORT, 'status', '', 0, 'status'])
+
         finally:
-            #todo: add default row for 'status' session at display port 1
-            print ('test: ', sessions)
-            sessions.add_row([self.statusport, 'status', '', 0, 'status'])
-            print ('test: ', sessions)
             client.close()
             return sessions
 
@@ -783,7 +788,7 @@ class KeckVncLauncher(object):
             elif cmd == 'p':  self.position_vnc_windows()
             elif cmd == 's':  self.start_soundplay()
             elif cmd == 'l':  self.print_sessions_found()
-            elif cmd in self.session_names:
+            elif cmd in self.SESSION_NAMES:
                 self.start_vnc_session(cmd)
             else:
                 self.log.error(f'Unrecognized command: {cmd}')
