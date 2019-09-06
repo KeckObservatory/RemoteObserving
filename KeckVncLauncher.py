@@ -33,11 +33,12 @@ class KeckVncLauncher(object):
         self.sound = None
         self.firewall_pass = None
         self.ssh_threads = None
-        self.ports_used = None
+        self.ports_in_use = None
         self.do_authenticate = False
         self.is_authenticated = False
         self.instrument = None
         self.vncserver = None
+
 
         #session name consts
         self.session_names = [
@@ -51,6 +52,11 @@ class KeckVncLauncher(object):
             'telstatus',
             'status'
         ]
+
+        #NOTE: 'status' session on different server and always on port 1, 
+        # so assign localport to constant to avoid conflict
+        self.statusport      = ':1'
+        self.statuslocalport = 5900
 
 
     ##-------------------------------------------------------------------------
@@ -99,7 +105,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Determine instrument
         ##-------------------------------------------------------------------------
-        self.instrument, tel = self.determine_instrument(self.args.account)
+        self.instrument, self.tel = self.determine_instrument(self.args.account)
         if not self.instrument: 
             self.exit_app(f'Invalid instrument account name: "{self.args.account}"')
 
@@ -121,92 +127,13 @@ class KeckVncLauncher(object):
 
 
         ##-------------------------------------------------------------------------
-        ## Open SSH Tunnel for Appropriate Ports
+        ## Open requested sessions
         ##-------------------------------------------------------------------------
-        self.ssh_threads = []
-        ports_used = []
-        if self.do_authenticate:
-            for session in self.sessions_found:
-                if session['name'] in self.sessions_requested:
-                    display = int(session['Display'][1:])
-                    port = int(f"59{display:02d}")
-                    if 'local_ports' in self.config.keys(): 
-                        localport = self.config['local_ports'].pop(0)
-                    else: 
-                        localport = port
-                    ports_used.append(localport)
-                    self.log.info(f"Opening SSH tunnel for {session['name']}")
-                    self.log.info(f"  remote port = {port}, local port = {localport}")
-                    server = sshtunnel.SSHTunnelForwarder(
-                        self.vncserver,
-                        ssh_username=self.args.account,
-                        ssh_password=vnc_password,
-                        remote_bind_address=('127.0.0.1', port),
-                        local_bind_address=('0.0.0.0', localport),
-                    )
-                    self.ssh_threads.append(server)
-                    try:
-                        self.ssh_threads[-1].start()
-                    except sshtunnel.HandlerSSHTunnelForwarderError as e:
-                        self.log.error('Failed to open tunnel')
-                        self.log.error(e)
-            if self.args.status is True:
-                if 'local_ports' in self.config.keys():
-                    statusport = self.config['local_ports'].pop(0)
-                else:
-                    statusport = [p for p in range(5901,5910,1) if p not in ports_used][0]
-                self.log.info(f"Opening SSH tunnel for k{tel}status")
-                self.log.info(f"  remote port = {port}, local port = {statusport}")
-                server = sshtunnel.SSHTunnelForwarder(
-                    f"svncserver{tel}.keck.hawaii.edu",
-                    ssh_username=self.args.account,
-                    ssh_password=vnc_password,
-                    remote_bind_address=('127.0.0.1', 5901),
-                    local_bind_address=('0.0.0.0', statusport),
-                )
-                self.ssh_threads.append(server)
-                try:
-                    self.ssh_threads[-1].start()
-                except sshtunnel.HandlerSSHTunnelForwarderError as e:
-                    self.log.error('Failed to open tunnel')
-                    self.log.error(e)
-        elif self.args.status is True:
-            if 'local_ports' in self.config.keys():
-                statusport = self.config['local_ports'].pop(0)
-            else:
-                statusport = [p for p in range(5901,5910,1) if p not in ports_used][0]
-
-
-        ##-------------------------------------------------------------------------
-        ## Open vncviewers
-        ##-------------------------------------------------------------------------
-        #todo: should we not loop thru sessions_requested instead?
-        vnc_threads = []
-        if self.do_authenticate is True:
-            self.vncserver = 'localhost'
-            statusvncserver = 'localhost'
-        else:
-            statusvncserver = f"svncserver{tel}.keck.hawaii.edu"
-
-        if self.config['vncviewer'] in [None, 'None', 'none']:
-            self.log.info(f"\nNo VNC viewer application specified")
-            self.log.info(f"Open your VNC viewer manually\n")
-        else:
-            for session in self.sessions_found:
-                if session['name'] in self.sessions_requested:
-                    self.log.info(f"Opening VNCviewer for {session['name']}")
-                    display = int(session['Display'][1:])
-                    if ports_used != []: port = ports_used.pop(0)
-                    else               : port = int(f"59{display:02d}")
-                    vnc_threads.append(Thread(target=self.launch_vncviewer, 
-                                              args=(self.vncserver, port)))
-                    vnc_threads[-1].start()
-                    sleep(0.05)
-            if self.args.status is True:
-                self.log.info(f"Opening VNCviewer for k{tel}status on {statusport}")
-                vnc_threads.append(Thread(target=self.launch_vncviewer, 
-                                          args=(statusvncserver, statusport)))
-                vnc_threads[-1].start()
+        self.ssh_threads  = []
+        self.ports_in_use = []
+        self.vnc_threads  = []
+        for session_name in self.sessions_requested:
+            self.start_vnc_session(session_name)
 
 
         ##-------------------------------------------------------------------------
@@ -224,6 +151,70 @@ class KeckVncLauncher(object):
         atexit.register(self.exit_app, msg="Forced app exit")
         self.prompt_menu()
         self.exit_app(msg="Normal app exit")
+
+
+    ##-------------------------------------------------------------------------
+    ## Start VNC session
+    ##-------------------------------------------------------------------------
+    def start_vnc_session(self, session_name):
+
+        #get session data by name
+        #todo: special case for 'status'
+        session = None
+        for tmp in self.sessions_found:
+            if tmp['name'] == session_name:
+                session = tmp
+        if not session:            
+            self.log.error(f"No server VNC session found for '{session_name}'.")
+            return
+
+        #determine vncserver (only different for "status")
+        vncserver = self.vncserver
+        if session_name == 'status': vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
+
+        #get remote port
+        display   = int(session['Display'][1:])
+        port      = int(f"59{display:02d}")
+
+        ## Open SSH Tunnel for Appropriate Ports
+        if self.do_authenticate:
+            if 'local_ports' in self.config.keys(): 
+                localport = self.config['local_ports'].pop(0)
+            else:
+                localport = port
+                if session_name == 'status': localport = self.statuslocalport
+            self.ports_in_use.append(localport)
+
+            self.log.info(f"Opening SSH tunnel for '{session_name}' on server '{vncserver}':")
+            self.log.info(f"  remote port = {port}, local port = {localport}")
+            server = sshtunnel.SSHTunnelForwarder(
+                vncserver,
+                ssh_username=self.args.account,
+                ssh_password=vnc_password,
+                remote_bind_address=('127.0.0.1', port),
+                local_bind_address=('0.0.0.0', localport)
+            )
+            self.ssh_threads.append(server)
+            try:
+                self.ssh_threads[-1].start()
+            except sshtunnel.HandlerSSHTunnelForwarderError as e:
+                self.log.error('Failed to open ssh tunnel for ')
+                self.log.debug(e)
+
+
+        #If vncviewer is not defined, then prompt them to open manually and return now
+        if self.config['vncviewer'] in [None, 'None', 'none']:
+            self.log.info(f"\nNo VNC viewer application specified")
+            self.log.info(f"Open your VNC viewer manually\n")
+            return
+
+        ## Open vncviewers
+        if self.do_authenticate is True: 
+            vncserver = 'localhost'
+        self.log.info(f"Opening VNCviewer for '{session_name}'")
+        self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port)))
+        self.vnc_threads[-1].start()
+        sleep(0.05)
 
 
     ##-------------------------------------------------------------------------
@@ -467,8 +458,7 @@ class KeckVncLauncher(object):
         if vncargs: 
             cmd.append(vncargs)
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
-        self.log.info(f"  Launching VNC viewer for {cmd[-1]}")
-        print ('test: launch: ', cmd)
+        self.log.debug(f"VNC viewer command: {cmd[-1]}")
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         # while True:
         #     line = proc.stdout.readline()
@@ -476,7 +466,6 @@ class KeckVncLauncher(object):
         #     line = line.rstrip().decode('utf-8')
 
         #todo: read output and do window move when we get message the window has been opened
-        print ('test: launch complete: ', type(proc))
 
 
     ##-------------------------------------------------------------------------
@@ -674,7 +663,12 @@ class KeckVncLauncher(object):
                 self.log.info(f'  Got {len(sessions)} sessions')
                 names = [x['Desktop'].split('-')[2] for x in sessions]
                 sessions.add_column(Column(data=names, name=('name')))
+
         finally:
+            #todo: add default row for 'status' session at display port 1
+            print ('test: ', sessions)
+            sessions.add_row([self.statusport, 'status', '', 0, 'status'])
+            print ('test: ', sessions)
             client.close()
             return sessions
 
