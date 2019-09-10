@@ -24,13 +24,19 @@
   # vncviewer: 'open',
   # vncprefix: 'vnc://',
   # vncargs: '',
+  ## Example using vncpasswd file
+  # vncargs: '-passwd=/home/observer/.vnc/passwd',
 
   ## Always use these local ports:
-  # local_ports: [5911, 5912, 5913, 5914, 5915, 5916, 5917, 5918, 5919]
+  # local_ports: [5911, 5912, 5913, 5914, 5915, 5916, 5917, 5918, 5919],
 
   ## Soundplay configs
   ## Name of soundplayer executable to use (see ./soundplayer/ folder)
   # soundplayer: 'soundplay-8.5.1-linux-x86_64'
   ## Path to "aplay" on local computer for command-line sound player.  Default assumed in path as 'aplay'
   # aplay: '/usr/bin/aplay',
+
+  ## Window size and positioning configs. Overrides calculated size and/or positioning.
+  # window_size: [1280, 800],
+  # window_positions: [[0, 0], [1280, 0], [0, 1280], [1280, 0]],
 }

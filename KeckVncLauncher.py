@@ -14,14 +14,16 @@ import paramiko
 from time import sleep
 from threading import Thread
 from telnetlib import Telnet
-from subprocess import Popen, call
 from astropy.table import Table, Column
 from soundplay import soundplay
 import atexit
 from datetime import datetime
-import platform
 import traceback
 import pathlib
+import math
+import subprocess
+import warnings
+import sshtunnel
 
 
 class KeckVncLauncher(object):
@@ -33,15 +35,40 @@ class KeckVncLauncher(object):
         self.sound = None
         self.firewall_pass = None
         self.ssh_threads = None
-        self.ports_used = None
+        self.ports_in_use = None
         self.do_authenticate = False
         self.is_authenticated = False
+        self.instrument = None
+        self.vncserver = None
+
+
+        #session name consts
+        self.SESSION_NAMES = [
+            'control0',
+            'control1',
+            'control2',
+            'analysis0',
+            'analysis1',
+            'analysis2',
+            'telanalys',
+            'telstatus',
+            'status'
+        ]
+
+        #NOTE: 'status' session on different server and always on port 1, 
+        # so assign localport to constant to avoid conflict
+        self.STATUS_PORT       = ':1'
+        self.STATUS_LOCAL_PORT = 5900
 
 
     ##-------------------------------------------------------------------------
     ## Start point (main)
     ##-------------------------------------------------------------------------
     def start(self):
+    
+        #global suppression of paramiko warnings
+        #todo: log these?
+        warnings.filterwarnings(action='ignore', module='.*paramiko.*')
 
 
         ##-------------------------------------------------------------------------
@@ -78,119 +105,41 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Determine sessions to open
         ##-------------------------------------------------------------------------
-        sessions_to_open = self.get_sessions_to_open(self.args)
+        self.sessions_requested = self.get_sessions_requested(self.args)
 
 
         ##-------------------------------------------------------------------------
         ## Determine instrument
         ##-------------------------------------------------------------------------
-        instrument, tel = self.determine_instrument(self.args.account)
-        if not instrument: 
-            self.exit_app(f'Invalid instrumet account name: "{self.args.account}"')
+        self.instrument, self.tel = self.determine_instrument(self.args.account)
+        if not self.instrument: 
+            self.exit_app(f'Invalid instrument account name: "{self.args.account}"')
 
 
         ##-------------------------------------------------------------------------
         ## Determine VNC server
         ##-------------------------------------------------------------------------
-        vnc_password = getpass(f"Password for user {self.args.account}: ")
-        vncserver = self.determine_vnc_server(self.args.account, vnc_password)
+        self.vnc_password = getpass(f"Password for user {self.args.account}: ")
+        self.vncserver = self.determine_vnc_server(self.args.account, self.vnc_password)
 
 
         ##-------------------------------------------------------------------------
         ## Determine VNC Sessions
         ##-------------------------------------------------------------------------
-        sessions = self.determine_vnc_sessions(self.args.account, vnc_password, vncserver)
-        if len(sessions) == 0:
+        self.sessions_found = self.determine_vnc_sessions(self.args.account, self.vnc_password, self.vncserver)
+        if len(self.sessions_found) == 0:
             self.exit_app('No VNC sessions found')
-        self.log.debug("\n" + str(sessions))
+        self.log.debug("\n" + str(self.sessions_found))
 
 
         ##-------------------------------------------------------------------------
-        ## Open SSH Tunnel for Appropriate Ports
+        ## Open requested sessions
         ##-------------------------------------------------------------------------
-        self.ssh_threads = []
-        ports_used = []
-        if self.do_authenticate:
-            for session in sessions:
-                if session['name'] in sessions_to_open:
-                    display = int(session['Display'][1:])
-                    port = int(f"59{display:02d}")
-                    if 'local_ports' in self.config.keys(): 
-                        localport = self.config['local_ports'].pop(0)
-                    else: 
-                        localport = port
-                    ports_used.append(localport)
-                    self.log.info(f"Opening SSH tunnel for {session['name']}")
-                    self.log.info(f"  remote port = {port}, local port = {localport}")
-                    server = sshtunnel.SSHTunnelForwarder(
-                        vncserver,
-                        ssh_username=self.args.account,
-                        ssh_password=vnc_password,
-                        remote_bind_address=('127.0.0.1', port),
-                        local_bind_address=('0.0.0.0', localport),
-                    )
-                    self.ssh_threads.append(server)
-                    try:
-                        self.ssh_threads[-1].start()
-                    except sshtunnel.HandlerSSHTunnelForwarderError as e:
-                        self.log.error('Failed to open tunnel')
-                        self.log.error(e)
-            if self.args.status is True:
-                if 'local_ports' in self.config.keys():
-                    statusport = self.config['local_ports'].pop(0)
-                else:
-                    statusport = [p for p in range(5901,5910,1) if p not in ports_used][0]
-                self.log.info(f"Opening SSH tunnel for k{tel}status")
-                self.log.info(f"  remote port = {port}, local port = {statusport}")
-                server = sshtunnel.SSHTunnelForwarder(
-                    f"svncserver{tel}.keck.hawaii.edu",
-                    ssh_username=self.args.account,
-                    ssh_password=vnc_password,
-                    remote_bind_address=('127.0.0.1', 5901),
-                    local_bind_address=('0.0.0.0', statusport),
-                )
-                self.ssh_threads.append(server)
-                try:
-                    self.ssh_threads[-1].start()
-                except sshtunnel.HandlerSSHTunnelForwarderError as e:
-                    self.log.error('Failed to open tunnel')
-                    self.log.error(e)
-        elif self.args.status is True:
-            if 'local_ports' in self.config.keys():
-                statusport = self.config['local_ports'].pop(0)
-            else:
-                statusport = [p for p in range(5901,5910,1) if p not in ports_used][0]
-
-
-        ##-------------------------------------------------------------------------
-        ## Open vncviewers
-        ##-------------------------------------------------------------------------
-        vnc_threads = []
-        if self.do_authenticate is True:
-            vncserver = 'localhost'
-            statusvncserver = 'localhost'
-        else:
-            statusvncserver = f"svncserver{tel}.keck.hawaii.edu"
-
-        if self.config['vncviewer'] in [None, 'None', 'none']:
-            self.log.info(f"\nNo VNC viewer application specified")
-            self.log.info(f"Open your VNC viewer manually\n")
-        else:
-            for session in sessions:
-                if session['name'] in sessions_to_open:
-                    self.log.info(f"Opening VNCviewer for {session['name']}")
-                    display = int(session['Display'][1:])
-                    if ports_used != []: port = ports_used.pop(0)
-                    else               : port = int(f"59{display:02d}")
-                    vnc_threads.append(Thread(target=self.launch_vncviewer, 
-                                              args=(vncserver, port)))
-                    vnc_threads[-1].start()
-                    sleep(0.05)
-            if self.args.status is True:
-                self.log.info(f"Opening VNCviewer for k{tel}status on {statusport}")
-                vnc_threads.append(Thread(target=self.launch_vncviewer, 
-                                          args=(statusvncserver, statusport)))
-                vnc_threads[-1].start()
+        self.ssh_threads  = []
+        self.ports_in_use = []
+        self.vnc_threads  = []
+        for session_name in self.sessions_requested:
+            self.start_vnc_session(session_name)
 
 
         ##-------------------------------------------------------------------------
@@ -199,21 +148,81 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         sound = None
         if self.args.nosound is False:
-            aplay       = self.config.get('aplay', None)
-            soundplayer = self.config.get('soundplayer', None)
-            sound = soundplay()
-            sound.connect(instrument, vncserver, 9798, aplay=aplay, player=soundplayer)
-            #todo: should we start this as a thread?
-            # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
-            # soundThread.start()
+            self.start_soundplay()
 
 
         ##-------------------------------------------------------------------------
         ## Wait for quit signal, then all done
         ##-------------------------------------------------------------------------
         atexit.register(self.exit_app, msg="Forced app exit")
-        self.prompt_quit_signal()
+        self.prompt_menu()
         self.exit_app(msg="Normal app exit")
+
+
+    ##-------------------------------------------------------------------------
+    ## Start VNC session
+    ##-------------------------------------------------------------------------
+    def start_vnc_session(self, session_name):
+
+        #get session data by name
+        #todo: special case for 'status'
+        session = None
+        for tmp in self.sessions_found:
+            if tmp['name'] == session_name:
+                session = tmp
+        if not session:            
+            self.log.error(f"No server VNC session found for '{session_name}'.")
+            self.print_sessions_found()
+            return
+
+        #determine vncserver (only different for "status")
+        vncserver = self.vncserver
+        if session_name == 'status': vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
+
+        #get remote port
+        display   = int(session['Display'][1:])
+        port      = int(f"59{display:02d}")
+
+        ## If authenticating, open SSH tunnel for appropriate ports
+        if self.do_authenticate:
+            if 'local_ports' in self.config.keys(): 
+                localport = self.config['local_ports'].pop(0)
+            else:
+                localport = port
+                if session_name == 'status': localport = self.STATUS_LOCAL_PORT
+            self.ports_in_use.append(localport)
+
+            self.log.info(f"Opening SSH tunnel for '{session_name}' on server '{vncserver}':")
+            self.log.info(f"  remote port = {port}, local port = {localport}")
+            server = sshtunnel.SSHTunnelForwarder(
+                vncserver,
+                ssh_username=self.args.account,
+                ssh_password=self.vnc_password,
+                remote_bind_address=('127.0.0.1', port),
+                local_bind_address=('0.0.0.0', localport)
+            )
+            self.ssh_threads.append(server)
+            try:
+                self.ssh_threads[-1].start()
+            except sshtunnel.HandlerSSHTunnelForwarderError as e:
+                self.log.error('Failed to open ssh tunnel for ')
+                self.log.debug(e)
+
+
+        #If vncviewer is not defined, then prompt them to open manually and return now
+        if self.config['vncviewer'] in [None, 'None', 'none']:
+            self.log.info(f"\nNo VNC viewer application specified")
+            self.log.info(f"Open your VNC viewer manually\n")
+            return
+
+        ## Open vncviewers
+        if self.do_authenticate is True: 
+            vncserver = 'localhost'
+            port = localport
+        self.log.info(f"Opening VNCviewer for '{session_name}'")
+        self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port)))
+        self.vnc_threads[-1].start()
+        sleep(0.05)
 
 
     ##-------------------------------------------------------------------------
@@ -267,40 +276,18 @@ class KeckVncLauncher(object):
         parser.add_argument("--authonly", dest="authonly",
             default=False, action="store_true",
             help="Authenticate through firewall only?")
-        parser.add_argument("--control0", dest="control0",
-            default=False, action="store_true",
-            help="Open control0?")
-        parser.add_argument("--control1", dest="control1",
-            default=False, action="store_true",
-            help="Open control1?")
-        parser.add_argument("--control2", dest="control2",
-            default=False, action="store_true",
-            help="Open control2?")
-        parser.add_argument("--telstatus", dest="telstatus",
-            default=False, action="store_true",
-            help="Open telstatus?")
-        parser.add_argument("--analysis0", dest="analysis0",
-            default=False, action="store_true",
-            help="Open analysis0?")
-        parser.add_argument("--analysis1", dest="analysis1",
-            default=False, action="store_true",
-            help="Open analysis1?")
-        parser.add_argument("--analysis2", dest="analysis2",
-            default=False, action="store_true",
-            help="Open analysis2?")
-        parser.add_argument("--telanalysis", "--telanalys", dest="telanalys",
-            default=False, action="store_true",
-            help="Open telanalys?")
-        parser.add_argument("--status", dest="status",
-            default=False, action="store_true",
-            help="Open status for telescope?")
         parser.add_argument("--nosound", dest="nosound",
             default=False, action="store_true",
             help="Skip start of soundplay application?")
+        for name in self.SESSION_NAMES:
+            parser.add_argument(f"--{name}", 
+                dest=name, 
+                default=False, 
+                action="store_true", 
+                help=f"Open {name}?")
 
         ## add arguments
-        parser.add_argument("account", type=str,
-            help="The user account.")
+        parser.add_argument("account", type=str, help="The user account.")
 
         ## add options
         parser.add_argument("-c", "--config", dest="config", type=str,
@@ -385,7 +372,6 @@ class KeckVncLauncher(object):
         if self.firewall_address or self.firewall_user or self.firewall_port:
             if self.firewall_address and self.firewall_user and self.firewall_port:
                 self.do_authenticate = True
-                import sshtunnel
             else:
                 self.log.warning("Partial firewall configuration detected in config file:")
                 if not self.firewall_address: self.log.warning("firewall_address not set")
@@ -412,28 +398,39 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Get sessions to open
     ##-------------------------------------------------------------------------
-    def get_sessions_to_open(self, args):
+    def get_sessions_requested(self, args):
 
         #get sessions to open
-        sessions_to_open = []
-        if args.control0  is True: sessions_to_open.append('control0')
-        if args.control1  is True: sessions_to_open.append('control1')
-        if args.control2  is True: sessions_to_open.append('control2')
-        if args.telstatus is True: sessions_to_open.append('telstatus')
-        if args.analysis0 is True: sessions_to_open.append('analysis0')
-        if args.analysis1 is True: sessions_to_open.append('analysis1')
-        if args.analysis2 is True: sessions_to_open.append('analysis2')
-        if args.telanalys is True: sessions_to_open.append('telanalys')
-        if args.status    is True: sessions_to_open.append('status')
+        #todo: use const SESSION_NAMES here
+        sessions = []
+        if args.control0  is True: sessions.append('control0')
+        if args.control1  is True: sessions.append('control1')
+        if args.control2  is True: sessions.append('control2')
+        if args.telstatus is True: sessions.append('telstatus')
+        if args.analysis0 is True: sessions.append('analysis0')
+        if args.analysis1 is True: sessions.append('analysis1')
+        if args.analysis2 is True: sessions.append('analysis2')
+        if args.telanalys is True: sessions.append('telanalys')
+        if args.status    is True: sessions.append('status')
 
         # create default sessions list if none provided
-        if len(sessions_to_open) == 0:
-            sessions_to_open.append('control0')
-            sessions_to_open.append('control1')
-            sessions_to_open.append('control2')
-            sessions_to_open.append('telstatus')
+        if len(sessions) == 0:
+            sessions.append('control0')
+            sessions.append('control1')
+            sessions.append('control2')
+            sessions.append('telstatus')
 
-        return sessions_to_open
+        return sessions
+
+
+    ##-------------------------------------------------------------------------
+    ## Print sessions found for instrument
+    ##-------------------------------------------------------------------------
+    def print_sessions_found(self):
+
+        print (f"\nSessions found for account '{self.args.account}':")
+        for session in self.sessions_found:
+            print (f"\t{session['name']}")
 
 
     ##-------------------------------------------------------------------------
@@ -441,7 +438,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def launch_xterm(self, command, pw, title):
         cmd = ['xterm', '-hold', '-title', title, '-e', f'"{command}"']
-        xterm = call(cmd)
+        xterm = subprocess.call(cmd)
 
 
     ##-------------------------------------------------------------------------
@@ -462,21 +459,52 @@ class KeckVncLauncher(object):
     ## Launch vncviewer
     ##-------------------------------------------------------------------------
     def launch_vncviewer(self, vncserver, port):
-        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
-        vncprefix    = self.config.get('vncprefix', '')
-        vncargs      = self.config.get('vncargs', None)
+
+        vncviewercmd   = self.config.get('vncviewer', 'vncviewer')
+        vncprefix      = self.config.get('vncprefix', '')
+        vncargs        = self.config.get('vncargs', None)
+
         cmd = [vncviewercmd]
-        if vncargs: 
-            cmd.append(vncargs)
+        if vncargs: cmd.append(vncargs)
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
-        self.log.info(f"  Launching VNC viewer for {cmd[-1]}")
-        vncviewer = call(cmd)
+
+        self.log.debug(f"VNC viewer command: {cmd}")
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+
+        #todo: read output and do window move when we get message the window has been opened
+        # while True:
+        #     line = proc.stdout.readline()
+        #     print ('procline: ', line)
+        #     line = line.rstrip().decode('utf-8')
+
+
+
+    ##-------------------------------------------------------------------------
+    ## Start soundplay
+    ##-------------------------------------------------------------------------
+    def start_soundplay(self):
+
+        #check for existing first and shutdown
+        if self.sound:
+            self.sound.terminate()
+
+        #todo: Do we need ssh tunnel for this?
+        sound_port  = 9798
+        aplay       = self.config.get('aplay', None)
+        soundplayer = self.config.get('soundplayer', None)
+        self.sound = soundplay()
+        self.sound.connect(self.instrument, self.vncserver, sound_port, aplay=aplay, player=soundplayer)
+        #todo: should we start this as a thread?
+        # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
+        # soundThread.start()
 
 
     ##-------------------------------------------------------------------------
     ## Authenticate
     ##-------------------------------------------------------------------------
     def authenticate(self, authpass):
+
+        #todo: shorten timeout for mistyped password
 
         self.log.info(f'Authenticating through firewall as:')
         self.log.info(f'  {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
@@ -580,21 +608,21 @@ class KeckVncLauncher(object):
     ## Determine VNC Server
     ##-------------------------------------------------------------------------
     def determine_vnc_server(self, accountname, password):
-        self.log.info(f"Determining VNC server for {accountname}")
+        self.log.info(f"Determining VNC server for '{accountname}'...")
         vncserver = None
         for s in self.servers_to_try:
             try:
-                self.log.info(f'Trying {s}:')
+                self.log.debug(f'Trying {s}:')
                 client = paramiko.SSHClient()
                 client.load_system_host_keys()
                 client.set_missing_host_key_policy(paramiko.WarningPolicy())
                 client.connect(f"{s}.keck.hawaii.edu", port=22, timeout=6,
                                username=accountname, password=password)
-                self.log.info('  Connected')
+                self.log.debug('  Connected')
             except TimeoutError:
-                self.log.info('  Timeout')
+                self.log.debug('  Timeout')
             except:
-                self.log.info('  Failed')
+                self.log.debug('  Failed')
             else:
                 stdin, stdout, stderr = client.exec_command('kvncinfo -server')
                 rawoutput = stdout.read()
@@ -621,19 +649,19 @@ class KeckVncLauncher(object):
     ## Determine VNC Sessions
     ##-------------------------------------------------------------------------
     def determine_vnc_sessions(self, accountname, password, vncserver):
-        self.log.info(f"Connecting to {vncserver} to get VNC sessions list")
+        self.log.info(f"Connecting to '{vncserver}'' to get VNC sessions list...")
         try:
             client = paramiko.SSHClient()
             client.load_system_host_keys()
             client.set_missing_host_key_policy(paramiko.WarningPolicy())
             client.connect(vncserver, port=22, timeout=6, 
                            username=accountname, password=password)
-            self.log.info('  Connected')
+            self.log.debug('  Connected')
         except TimeoutError:
-            self.log.info('  Timeout')
+            self.log.debug('  Timeout')
         except:
-            self.log.error('  Failed')
-            raise
+            self.log.debug('  Failed')
+            raise  #todo
         else:
             stdin, stdout, stderr = client.exec_command('kvncstatus')
             rawoutput = stdout.read()
@@ -646,9 +674,13 @@ class KeckVncLauncher(object):
                 sessions = []
             else:
                 sessions = allsessions[allsessions['User'] == accountname]
-                self.log.info(f'  Got {len(sessions)} sessions')
+                self.log.debug(f'  Got {len(sessions)} sessions')
                 names = [x['Desktop'].split('-')[2] for x in sessions]
                 sessions.add_column(Column(data=names, name=('name')))
+
+            #add default row for 'status' session at display port 1
+            sessions.add_row([self.STATUS_PORT, 'status', '', 0, 'status'])
+
         finally:
             client.close()
             return sessions
@@ -665,17 +697,109 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Prompt and wait for quit signal
+    ## Position vncviewers
     ##-------------------------------------------------------------------------
-    def prompt_quit_signal(self):
+    def position_vnc_windows(self):
 
-        sleep(1)
-        quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-        foundq = re.match('^[qQ].*', quit)
-        while foundq is None:
-            sleep(1)
-            quit = input('Hit q to close down any SSH tunnels and firewall auth: ')
-            foundq = re.match('^[qQ].*', quit)
+        self.log.info(f"Positioning VNC windows...")
+
+        #get screen dimensions
+        #alternate command: xrandr |grep \* | awk '{print $1}'
+        cmd = "xdpyinfo | grep dimensions | awk '{print $2}' | awk -Fx '{print $1, $2}'"
+        p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        out = p1.communicate()[0].decode('utf-8')
+        screen_width, screen_height = [int(x) for x in out.split()]
+        self.log.debug(f"Screen size: {screen_width}x{screen_height}")
+
+        #get num rows and cols 
+        #todo: assumming 2x2 always for now; make smarter
+        num_win = len(self.sessions_requested)
+        cols = 2
+        rows = 2
+
+        #get window width height
+        ww = round(screen_width / cols)
+        wh = round(screen_height / rows)
+
+        #get x/y coords (assume two rows)
+        coords = []
+        for row in range(0, rows):
+            for col in range(0, cols):
+                x = round(col * screen_width/cols)
+                y = round(row * screen_height/rows)
+                coords.append([x,y])
+
+        #window coord and size config overrides
+        window_size = self.config.get('window_size', None)
+        if window_size:
+            ww = window_size[0]
+            wh = window_size[1]
+        window_positions = self.config.get('window_positions', None)
+        if window_positions:
+            coords = window_positions
+
+        #get all x-window processes
+        #NOTE: using wmctrl (does not work for Mac)
+        #alternate option: xdotool?
+        xlines = []
+        cmd = ['wmctrl', '-l']
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        while True:
+            line = proc.stdout.readline()
+            if not line: break
+            line = line.rstrip().decode('utf-8')
+            self.log.debug(f'wmctrl line: {line}')
+            xlines.append(line)
+
+        #reposition each vnc session window
+        for i, session in enumerate(self.sessions_requested):
+            self.log.debug(f'Search xlines for "{session}"')
+            win_id = None
+            for line in xlines:
+                if session not in line: continue
+                parts = line.split()
+                win_id = parts[0]
+
+            if win_id:
+                index = i % len(coords)
+                wx = coords[index][0]
+                wy = coords[index][1]
+                cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
+                self.log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            else:
+                self.log.info(f"Could not find window process for VNC session '{session}'")
+
+
+    ##-------------------------------------------------------------------------
+    ## Prompt command line menu and wait for quit signal
+    ##-------------------------------------------------------------------------
+    def prompt_menu(self):
+
+        #todo: add options to open/reopen controls
+        menu = "\n"
+        menu += "--------------------------------------------------\n"
+        menu += "|                    MENU                        |\n"
+        menu += "--------------------------------------------------\n"
+        menu += "|  p               Position VNC windows          |\n"
+        menu += "|  s               Soundplayer restart           |\n"
+        menu += "|  l               List sessions available       |\n"
+        menu += "|  [session name]  Open VNC session by name      |\n"
+        menu += "|  q               Quit (or Control-C)           |\n"
+        menu += "--------------------------------------------------\n"
+        menu += "> "
+
+        quit = None
+        while quit is None:
+            cmd = input(menu).lower()
+            if   cmd == 'q':  quit = True
+            elif cmd == 'p':  self.position_vnc_windows()
+            elif cmd == 's':  self.start_soundplay()
+            elif cmd == 'l':  self.print_sessions_found()
+            elif cmd in self.SESSION_NAMES:
+                self.start_vnc_session(cmd)
+            else:
+                self.log.error(f'Unrecognized command: {cmd}')
 
 
     ##-------------------------------------------------------------------------
@@ -683,6 +807,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def exit_app(self, msg=None):
 
+        #todo: Fix app exit so certain clean ups don't cause errors (ie thread not started, etc
         if msg != None: self.log.info(msg)
 
         #terminate soundplayer
@@ -730,7 +855,7 @@ class KeckVncLauncher(object):
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
 
-    print ("\nStarting Keck VNC Launcher:\n")
+    print ("\nStarting Keck VNC Launcher...\n")
 
     #catch all exceptions so we can exit gracefully
     try:        
