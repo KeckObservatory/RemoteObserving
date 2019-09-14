@@ -9,7 +9,7 @@
 
   ## When first connecting to Keck to determine which VNC server to connect to
   ## (i.e. where to run `kvncinfo -server`) this is the list of computers to try
-  servers_to_try: ['svncserver1', 'kcwi', 'svncserver2', 'mosfire'],
+  servers_to_try: ['svncserver2', svncserver1', 'kcwi', 'mosfire'],
 
   ## This is the command to invoke on the local machine to launch a VNC client
   ## Command will be formatted as [vncviewer] [vncargs] [address]:[port]
