@@ -40,6 +40,7 @@ class KeckVncLauncher(object):
         self.is_authenticated = False
         self.instrument = None
         self.vncserver = None
+        self.is_ssh_key_valid = False
 
 
         #session name consts
@@ -59,6 +60,10 @@ class KeckVncLauncher(object):
         # so assign localport to constant to avoid conflict
         self.STATUS_PORT       = ':1'
         self.STATUS_LOCAL_PORT = 5900
+
+        #ssh key constants
+        self.SSH_KEY_ACCOUNT = 'dmosengv'
+        self.SSH_KEY_SERVER  = 'svncserver2.keck.hawaii.edu'
 
 
     ##-------------------------------------------------------------------------
@@ -117,19 +122,35 @@ class KeckVncLauncher(object):
 
 
         ##-------------------------------------------------------------------------
+        ## Validate ssh key
+        ##-------------------------------------------------------------------------
+        if self.args.nosshkey is False:
+            self.validate_ssh_key()
+        if not self.is_ssh_key_valid:
+            self.vnc_password = getpass(f"Password for user {self.args.account}: ")
+
+
+        ##-------------------------------------------------------------------------
         ## Determine VNC server
         ##-------------------------------------------------------------------------
-        self.vnc_password = getpass(f"Password for user {self.args.account}: ")
-        self.vncserver = self.determine_vnc_server(self.args.account, self.vnc_password)
+        if self.is_ssh_key_valid:
+            self.vncserver = self.get_vnc_server('dmosengv', None, self.instrument)
+        else:
+            self.vncserver = self.get_vnc_server(self.args.account, self.vnc_password, self.instrument)
+        if not self.vncserver:
+            self.exit_app("Could not determine VNC server.")
 
 
         ##-------------------------------------------------------------------------
         ## Determine VNC Sessions
         ##-------------------------------------------------------------------------
-        self.sessions_found = self.determine_vnc_sessions(self.args.account, self.vnc_password, self.vncserver)
-        if len(self.sessions_found) == 0:
+        if self.is_ssh_key_valid:
+            self.engv_account = self.get_engv_account(self.instrument)
+            self.sessions_found = self.get_vnc_sessions(self.vncserver, self.engv_account, None)
+        else:
+            self.sessions_found = self.get_vnc_sessions(self.vncserver, self.args.account, self.vnc_password)
+        if not self.sessions_found or len(self.sessions_found) == 0:
             self.exit_app('No VNC sessions found')
-        self.log.debug("\n" + str(self.sessions_found))
 
 
         ##-------------------------------------------------------------------------
@@ -164,6 +185,14 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def start_vnc_session(self, session_name):
 
+        #which method?
+        if self.is_ssh_key_valid:
+            account = self.engv_account
+            password = None
+        else:
+            account=self.args.account,
+            password=self.vnc_password,
+
         #get session data by name
         #todo: special case for 'status'
         session = None
@@ -196,8 +225,8 @@ class KeckVncLauncher(object):
             self.log.info(f"  remote port = {port}, local port = {localport}")
             server = sshtunnel.SSHTunnelForwarder(
                 vncserver,
-                ssh_username=self.args.account,
-                ssh_password=self.vnc_password,
+                ssh_username=account,
+                ssh_password=password,
                 remote_bind_address=('127.0.0.1', port),
                 local_bind_address=('0.0.0.0', localport)
             )
@@ -279,6 +308,9 @@ class KeckVncLauncher(object):
         parser.add_argument("--nosound", dest="nosound",
             default=False, action="store_true",
             help="Skip start of soundplay application?")
+        parser.add_argument("--nosshkey", dest="nosshkey",
+            default=False, action="store_true",
+            help="Do not attempt to use ssk key connection method.")
         for name in self.SESSION_NAMES:
             parser.add_argument(f"--{name}", 
                 dest=name, 
@@ -562,7 +594,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Determine Instrument
     ##-------------------------------------------------------------------------
-    def determine_instrument(self, accountname):
+    def determine_instrument(self, account):
         accounts = {'mosfire':  [f'mosfire{i}' for i in range(1,10)],
                     'hires':    [f'hires{i}'   for i in range(1,10)],
                     'osiris':   [f'osiris{i}'  for i in range(1,10)],
@@ -598,92 +630,129 @@ class KeckVncLauncher(object):
                     }
 
         for instrument in accounts.keys():
-            if accountname.lower() in accounts[instrument]:
+            if account.lower() in accounts[instrument]:
                 return instrument, telescope[instrument]
 
         return None, None
 
 
     ##-------------------------------------------------------------------------
+    ## Utility function for opening ssh client, executing command and closing
+    ##-------------------------------------------------------------------------
+    def do_ssh_cmd(self, cmd, server, account, password):
+        try:
+            output = None
+            self.log.debug(f'Trying SSH connect to {server} as {account}:')
+
+            client = paramiko.SSHClient()
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(paramiko.WarningPolicy())
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(
+                server, 
+                port     = 22, 
+                timeout  = 6, 
+                username = account, 
+                password = password)
+            self.log.debug('  Connected')
+        except TimeoutError:
+            self.log.debug('  Timeout')
+        except Exception as e:
+            self.log.debug('  Failed: ' + str(e))
+        else:
+            self.log.debug(f'Command: {cmd}')
+            stdin, stdout, stderr = client.exec_command(cmd)
+            output = stdout.read()
+            output = output.decode().strip('\n')
+            self.log.debug(f"Output: '{output}'")
+        finally:
+            client.close()
+            return output
+
+
+    ##-------------------------------------------------------------------------
+    ## Validate ssh key on remote vnc server
+    ##-------------------------------------------------------------------------
+    def validate_ssh_key(self):
+        self.log.info(f"Validating ssh key...")
+
+        self.is_ssh_key_valid = False
+        cmd = 'whoami'
+        data = self.do_ssh_cmd(cmd, self.SSH_KEY_SERVER, self.SSH_KEY_ACCOUNT, None)
+
+        if data == self.SSH_KEY_ACCOUNT:
+            self.is_ssh_key_valid = True
+
+        if self.is_ssh_key_valid: self.log.info("  SSH key OK")
+        else                    : self.log.info("  SSH key invalid")
+
+
+    ##-------------------------------------------------------------------------
+    ## Get engv account for instrument
+    ##-------------------------------------------------------------------------
+    def get_engv_account(self, instrument):
+        self.log.info(f"Getting engv account for instrument {instrument} ...")
+
+        cmd = f'setenv INSTRUMENT {instrument}; kvncinfo -engineering'
+        data = self.do_ssh_cmd(cmd, self.SSH_KEY_SERVER, self.SSH_KEY_ACCOUNT, None)
+
+        engv = None
+        if data and ' ' not in data:
+            engv = data
+
+        if engv: self.log.debug("engv account is: '{}'")
+        else   : self.log.error("Could not get engv account info.")
+
+        return engv
+
+
+    ##-------------------------------------------------------------------------
     ## Determine VNC Server
     ##-------------------------------------------------------------------------
-    def determine_vnc_server(self, accountname, password):
-        self.log.info(f"Determining VNC server for '{accountname}'...")
+    def get_vnc_server(self, account, password, instrument):
+        self.log.info(f"Determining VNC server for '{account}'...")
         vncserver = None
-        for s in self.servers_to_try:
-            try:
-                self.log.debug(f'Trying {s}:')
-                client = paramiko.SSHClient()
-                client.load_system_host_keys()
-                client.set_missing_host_key_policy(paramiko.WarningPolicy())
-                client.connect(f"{s}.keck.hawaii.edu", port=22, timeout=6,
-                               username=accountname, password=password)
-                self.log.debug('  Connected')
-            except TimeoutError:
-                self.log.debug('  Timeout')
-            except:
-                self.log.debug('  Failed')
-            else:
-                stdin, stdout, stderr = client.exec_command('kvncinfo -server')
-                rawoutput = stdout.read()
-                vncserver = rawoutput.decode().strip('\n')
-                self.log.debug(f"  kvncinfo -server returned: '{vncserver}'")
-            finally:
-                client.close()
-                if vncserver is not None and vncserver != '':
-                    self.log.info(f"Got VNC server: '{vncserver}'")
-                    break
-
-        #exit if none
-        if vncserver == None:
-            self.exit_app("Could not determine VNC server.")
+        for server in self.servers_to_try:
+            server += ".keck.hawaii.edu"
+            cmd = f'kvncinfo -server -I {instrument}'
+            data = self.do_ssh_cmd(cmd, server, account, password) 
+            if data and ' ' not in data:
+                vncserver = data
+                self.log.info(f"Got VNC server: '{vncserver}'")
+                break
 
         # todo: Temporary hack for KCWI
         if vncserver == 'vm-kcwivnc':
             vncserver = 'kcwi'
 
-        return f"{vncserver}.keck.hawaii.edu"
+        if vncserver:
+            vncserver += '.keck.hawaii.edu'
+
+        return vncserver
 
 
     ##-------------------------------------------------------------------------
     ## Determine VNC Sessions
     ##-------------------------------------------------------------------------
-    def determine_vnc_sessions(self, accountname, password, vncserver):
-        self.log.info(f"Connecting to '{vncserver}'' to get VNC sessions list...")
-        try:
-            client = paramiko.SSHClient()
-            client.load_system_host_keys()
-            client.set_missing_host_key_policy(paramiko.WarningPolicy())
-            client.connect(vncserver, port=22, timeout=6, 
-                           username=accountname, password=password)
-            self.log.debug('  Connected')
-        except TimeoutError:
-            self.log.debug('  Timeout')
-        except:
-            self.log.debug('  Failed')
-            raise  #todo
-        else:
-            stdin, stdout, stderr = client.exec_command('kvncstatus')
-            rawoutput = stdout.read()
-            output = rawoutput.decode().strip('\n')
-            allsessions = Table.read(output.split('\n'), format='ascii')
-            self.log.debug(f'  Got {len(allsessions)} sessions for all users')
-            if len(allsessions) == 0:
-                self.log.warning(f'Found 0 sessions on {vncserver}')
-                client.close()
-                sessions = []
-            else:
-                sessions = allsessions[allsessions['User'] == accountname]
-                self.log.debug(f'  Got {len(sessions)} sessions')
-                names = [x['Desktop'].split('-')[2] for x in sessions]
-                sessions.add_column(Column(data=names, name=('name')))
+    def get_vnc_sessions(self, vncserver, account, password):
+        self.log.info(f"Connecting to '{vncserver}' as {account} to get VNC sessions list...")
+
+        sessions = []
+        #todo: is the -a option ok to use?
+        cmd = 'kvncstatus -a'
+        data = self.do_ssh_cmd(cmd, vncserver, account, password) 
+        if data:
+            allsessions = Table.read(data.split('\n'), format='ascii')
+            sessions = allsessions[allsessions['User'] == account]
+            self.log.debug(f'  Got {len(sessions)} sessions')
+            names = [x['Desktop'].split('-')[2] for x in sessions]
+            sessions.add_column(Column(data=names, name=('name')))
 
             #add default row for 'status' session at display port 1
             sessions.add_row([self.STATUS_PORT, 'status', '', 0, 'status'])
 
-        finally:
-            client.close()
-            return sessions
+        self.log.debug("\n" + str(sessions))
+        return sessions
 
 
     ##-------------------------------------------------------------------------
@@ -796,6 +865,7 @@ class KeckVncLauncher(object):
             elif cmd == 'p':  self.position_vnc_windows()
             elif cmd == 's':  self.start_soundplay()
             elif cmd == 'l':  self.print_sessions_found()
+            elif cmd == 'v':  self.validate_ssh_key()
             elif cmd in self.SESSION_NAMES:
                 self.start_vnc_session(cmd)
             else:
