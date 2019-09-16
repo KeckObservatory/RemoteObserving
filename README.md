@@ -42,6 +42,9 @@ The following hardware configurations have been tested:
     - wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
     - yum install ./google-chrome-stable_current_*.rpm
 
-# How to configurate and VNC startup script
+# How to configure and run VNC startup script
 - Download or clone this project from github: https://github.com/KeckObservatory/RemoteObserving
 - Edit configurations in keck_vnc_config.yaml (optional: save as local_config.yaml)
+- Generate ssh public/private key pair and email public key to mainland_observing@keck.hawaii.edu
+    cd ~/.ssh
+    ssh-keygen -t rsa -b 4096
