@@ -602,7 +602,7 @@ class KeckVncLauncher(object):
                     'deimos':   [f'deimos{i}'  for i in range(1,10)],
                     'esi':      [f'esi{i}'     for i in range(1,10)],
                     'nirc2':    [f'nirc{i}'    for i in range(1,10)],
-                    'nirspec':  [f'nirspec{i}' for i in range(1,10)],
+                    'nirspec':  [f'nspec{i}'   for i in range(1,10)],
                     'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
                    }
         accounts['mosfire'].append('moseng')
@@ -613,7 +613,7 @@ class KeckVncLauncher(object):
         accounts['deimos'].append('dmoseng')
         accounts['esi'].append('esieng')
         accounts['nirc2'].append('nirceng')
-        accounts['nirspec'].append('nirspeceng')
+        accounts['nirspec'].append('nspeceng')
         accounts['kcwi'].append('kcwieng')
 
         telescope = {'mosfire': 1,
