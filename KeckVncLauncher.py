@@ -206,11 +206,11 @@ class KeckVncLauncher(object):
         if self.do_authenticate:
 
             if self.is_ssh_key_valid:
-                account = self.engv_account
+                account = self.SSH_KEY_ACCOUNT
                 password = None
             else:
-                account=self.args.account,
-                password=self.vnc_password,
+                account=self.args.account
+                password=self.vnc_password
 
             if 'local_ports' in self.config.keys(): 
                 localport = self.config['local_ports'].pop(0)
