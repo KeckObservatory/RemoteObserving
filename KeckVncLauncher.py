@@ -62,7 +62,7 @@ class KeckVncLauncher(object):
         self.STATUS_LOCAL_PORT = 5900
 
         #ssh key constants
-        self.SSH_KEY_ACCOUNT = 'dmosengv'
+        self.SSH_KEY_ACCOUNT = 'kvnc'
         self.SSH_KEY_SERVER  = 'svncserver2.keck.hawaii.edu'
 
 
@@ -134,7 +134,7 @@ class KeckVncLauncher(object):
         ## Determine VNC server
         ##-------------------------------------------------------------------------
         if self.is_ssh_key_valid:
-            self.vncserver = self.get_vnc_server('dmosengv', None, self.instrument)
+            self.vncserver = self.get_vnc_server(self.SSH_KEY_ACCOUNT, None, self.instrument)
         else:
             self.vncserver = self.get_vnc_server(self.args.account, self.vnc_password, self.instrument)
         if not self.vncserver:
@@ -145,10 +145,10 @@ class KeckVncLauncher(object):
         ## Determine VNC Sessions
         ##-------------------------------------------------------------------------
         if self.is_ssh_key_valid:
-            self.engv_account = self.get_engv_account(self.instrument)
-            self.sessions_found = self.get_vnc_sessions(self.vncserver, self.engv_account, None)
+            # self.engv_account = self.get_engv_account(self.instrument)
+            self.sessions_found = self.get_vnc_sessions(self.vncserver, self.instrument, self.SSH_KEY_ACCOUNT, None, self.args.account)
         else:
-            self.sessions_found = self.get_vnc_sessions(self.vncserver, self.args.account, self.vnc_password)
+            self.sessions_found = self.get_vnc_sessions(self.vncserver, self.instrument, self.args.account, self.vnc_password, self.args.account)
         if not self.sessions_found or len(self.sessions_found) == 0:
             self.exit_app('No VNC sessions found')
 
@@ -185,16 +185,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def start_vnc_session(self, session_name):
 
-        #which method?
-        if self.is_ssh_key_valid:
-            account = self.engv_account
-            password = None
-        else:
-            account=self.args.account,
-            password=self.vnc_password,
-
         #get session data by name
-        #todo: special case for 'status'
         session = None
         for tmp in self.sessions_found:
             if tmp['name'] == session_name:
@@ -214,6 +205,14 @@ class KeckVncLauncher(object):
 
         ## If authenticating, open SSH tunnel for appropriate ports
         if self.do_authenticate:
+
+            if self.is_ssh_key_valid:
+                account = self.engv_account
+                password = None
+            else:
+                account=self.args.account,
+                password=self.vnc_password,
+
             if 'local_ports' in self.config.keys(): 
                 localport = self.config['local_ports'].pop(0)
             else:
@@ -734,22 +733,22 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Determine VNC Sessions
     ##-------------------------------------------------------------------------
-    def get_vnc_sessions(self, vncserver, account, password):
+    def get_vnc_sessions(self, vncserver, instrument, account, password, instr_account):
         self.log.info(f"Connecting to '{vncserver}' as {account} to get VNC sessions list...")
 
         sessions = []
-        #todo: is the -a option ok to use?
-        cmd = 'kvncstatus -a'
+        cmd = f'setenv INSTRUMENT {instrument}; kvncstatus -a'
         data = self.do_ssh_cmd(cmd, vncserver, account, password) 
         if data:
             allsessions = Table.read(data.split('\n'), format='ascii')
-            sessions = allsessions[allsessions['User'] == account]
+            sessions = allsessions[allsessions['User'] == instr_account]
             self.log.debug(f'  Got {len(sessions)} sessions')
             names = [x['Desktop'].split('-')[2] for x in sessions]
             sessions.add_column(Column(data=names, name=('name')))
 
             #add default row for 'status' session at display port 1
-            sessions.add_row([self.STATUS_PORT, 'status', '', 0, 'status'])
+            if len(sessions) > 0:
+                sessions.add_row([self.STATUS_PORT, 'status', '', 0, 'status'])
 
         self.log.debug("\n" + str(sessions))
         return sessions
@@ -845,7 +844,6 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def prompt_menu(self):
 
-        #todo: add options to open/reopen controls
         menu = "\n"
         menu += "--------------------------------------------------\n"
         menu += "|                    MENU                        |\n"
