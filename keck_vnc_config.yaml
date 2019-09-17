@@ -7,6 +7,10 @@
   # firewall_port: 259,
   # firewall_user: 'sshuser',
 
+  ## SSH private key file path.  If you created an ssh public/private key pair
+  ## and provided the public key to Keck, enter the full path the private key here.
+  # ssh_pkey: '/home/observer/.ssh/id_rsa',
+
   ## When first connecting to Keck to determine which VNC server to connect to
   ## (i.e. where to run `kvncinfo -server`) this is the list of computers to try
   servers_to_try: ['svncserver2', svncserver1', 'kcwi', 'mosfire'],

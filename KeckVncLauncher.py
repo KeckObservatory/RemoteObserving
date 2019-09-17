@@ -219,12 +219,13 @@ class KeckVncLauncher(object):
                 if session_name == 'status': localport = self.STATUS_LOCAL_PORT
             self.ports_in_use.append(localport)
 
-            log.info(f"Opening SSH tunnel for '{session_name}' on server '{vncserver}':")
+            log.info(f"Opening SSH tunnel for '{session_name}' on server '{vncserver} as {account}':")
             log.info(f"  remote port = {port}, local port = {localport}")
             server = sshtunnel.SSHTunnelForwarder(
                 vncserver,
                 ssh_username=account,
                 ssh_password=password,
+                ssh_pkey=self.ssh_pkey,
                 remote_bind_address=('127.0.0.1', port),
                 local_bind_address=('0.0.0.0', localport)
             )
@@ -232,7 +233,7 @@ class KeckVncLauncher(object):
             try:
                 self.ssh_threads[-1].start()
             except sshtunnel.HandlerSSHTunnelForwarderError as e:
-                log.error('Failed to open ssh tunnel for ')
+                log.error('Failed to open ssh tunnel')
                 log.debug(e)
 
 
@@ -367,6 +368,14 @@ class KeckVncLauncher(object):
                 if not self.firewall_address: log.warning("firewall_address not set")
                 if not self.firewall_user:    log.warning("firewall_user not set")
                 if not self.firewall_port:    log.warning("firewall_port not set")
+
+        #check ssh_pkeys servers_to try
+        self.ssh_pkey = self.config.get('ssh_pkey', None)
+        if not self.ssh_pkey:
+            log.warning("No ssh private key file specified in config file.\n")
+        else:
+            if not pathlib.Path(self.ssh_pkey).exists():
+                log.warning(f"SSH private key path does not exist: {self.ssh_pkey}\n")
 
 
     ##-------------------------------------------------------------------------
@@ -610,6 +619,7 @@ class KeckVncLauncher(object):
                 server, 
                 port     = 22, 
                 timeout  = 6, 
+                key_filename=self.ssh_pkey,
                 username = account, 
                 password = password)
             log.debug('  Connected')
