@@ -54,17 +54,36 @@ The following hardware configurations have been tested:
     yum install ./google-chrome-stable_current_*.rpm
     ```
 
-# How to configure and run VNC startup script
-- Download or clone this project from github: https://github.com/KeckObservatory/RemoteObserving
-- Edit configurations in keck_vnc_config.yaml (optional: save as local_config.yaml)
-- Generate ssh public/private key pair and email public key to mainland_observing@keck.hawaii.edu
+# Download and Configure Keck VNC software
+- Download or clone this project from github: 
     ```
-    cd ~/.ssh
-    ssh-keygen -t rsa -b 4096
+    cd
+    git clone https://github.com/KeckObservatory/KeckRemoteObserving
     ```
+- Edit configuration file: keck_vnc_config.yaml (optional: save as local_config.yaml)
+    - If you are connecting outside of the Keck network, enter the firewall address, port and user info
+    
+- Setup SSH Keys:
+    - Generate ssh public/private key pair and email public key to mainland_observing@keck.hawaii.edu
+        ```
+        cd ~/.ssh
+        ssh-keygen -t rsa -b 4096
+        ```
+    - Edit the Remote Observing config file to include path to your ssh private key:
+        ```
+        ssh_pkey: '/home/observer/.ssh/id_rsa',
+        ```
 - Save VNC session password:
     - Run the 'vncpasswd' command line utility.
     - Edit the Remote Observing config file to include the password file as a VNC start option:
         ```
         vncargs: '-passwd=/home/observer/.vnc/passwd',
-        ````
+        ```
+        
+        
+# Run the VNC launch script:
+Running the script without option, you will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer:
+```
+cd ~/KeckRemoteObserving
+./start_keck_vnc.bash [instrument account]
+```
