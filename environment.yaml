@@ -1,0 +1,10 @@
+name: KRO
+dependencies:
+  - python=3.7
+  - yaml
+  - pyyaml
+  - paramiko
+  - astropy
+  - pip
+  - pip:
+    - sshtunnel
