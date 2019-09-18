@@ -31,13 +31,14 @@
   ## Example using vncpasswd file
   # vncargs: '-passwd=/home/observer/.vnc/passwd',
 
-  ## Always use these local ports:
-  # local_ports: [5911, 5912, 5913, 5914, 5915, 5916, 5917, 5918, 5919],
+  ## For ssh tunnelling, a starting local port number is used and incremented 
+  ## for each port needed.  Default is 5901.
+  # local_port_start: 50001,
 
   ## Soundplay configs
   ## Name of soundplayer executable to use (see ./soundplayer/ folder)
   # soundplayer: 'soundplay-8.5.1-linux-x86_64'
-  ## Path to "aplay" on local computer for command-line sound player.  Default assumed in path as 'aplay'
+  ## Path to "aplay" command-line sound player.  Default assumed in path as 'aplay'.
   # aplay: '/usr/bin/aplay',
 
   ## Window size and positioning configs. Overrides calculated size and/or positioning.

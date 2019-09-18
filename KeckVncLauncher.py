@@ -59,7 +59,7 @@ class KeckVncLauncher(object):
         #NOTE: 'status' session on different server and always on port 1, 
         # so assign localport to constant to avoid conflict
         self.STATUS_PORT       = ':1'
-        self.STATUS_LOCAL_PORT = 5900
+        self.LOCAL_PORT_START  = 5901
 
         #ssh key constants
         self.SSH_KEY_ACCOUNT = 'kvnc'
@@ -202,6 +202,11 @@ class KeckVncLauncher(object):
         display   = int(session['Display'][1:])
         port      = int(f"59{display:02d}")
 
+        #get next local port
+        local_port = self.local_port
+        print ('test local port: ', local_port)
+        self.local_port += 1
+
         ## If authenticating, open SSH tunnel for appropriate ports
         if self.do_authenticate:
 
@@ -212,11 +217,9 @@ class KeckVncLauncher(object):
                 account=self.args.account
                 password=self.vnc_password
 
-            if 'local_ports' in self.config.keys(): 
-                localport = self.config['local_ports'].pop(0)
-            else:
-                localport = port
-                if session_name == 'status': localport = self.STATUS_LOCAL_PORT
+            #get next local port
+            local_port = self.local_port
+            self.local_port += 1
             self.ports_in_use.append(localport)
 
             log.info(f"Opening SSH tunnel for '{session_name}' on server '{vncserver} as {account}':")
@@ -321,6 +324,11 @@ class KeckVncLauncher(object):
         with open(file) as FO:
             config = yaml.safe_load(FO)
 
+        cstr = "CONFIGS:\n"
+        for key, c in config.items():
+            cstr += f"\t{key} = " + str(c) + "\n"
+        log.debug(cstr)
+
         self.config = config
 
 
@@ -343,17 +351,10 @@ class KeckVncLauncher(object):
             log.warning("Config parameter 'vncviewer' undefined.")
             log.warning("You will need to open your vnc viewer manually.\n")
 
-        #checks local ports config
-        if 'local_ports' in self.config.keys():
-            if type(self.config['local_ports']) is not list:
-                log.error("Config parameter 'local_ports' must be a list of integers.")
-                log.error("Or, remove 'local_ports' from config to use default ports.\n")
-                self.exit_app()
-            else:
-                nlp = len(self.config['local_ports'])
-                if nlp < 9:
-                    log.warning(f"Only {nlp} local ports specified.")
-                    log.warning(f"Program may crash if trying to open >{nlp} sessions.\n")
+        #checks local port start config
+        self.local_port = self.LOCAL_PORT_START
+        lps = self.config.get('local_port_start', None)
+        if lps: self.local_port = lps
 
         #check firewall config
         self.do_authenticate = False
