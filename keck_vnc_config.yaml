@@ -3,9 +3,9 @@
   ## Keck firewall, uncomment and fill out the appropriate IP address, port, and
   ## username which will be used to authenticate. If this is being run inside of
   ## the Keck network, leave these lines commented out.
-  # firewall_address: 128.171.99.33,
-  # firewall_port: 259,
-  # firewall_user: 'sshuser',
+  # firewall_address: 111.222.333.44,
+  # firewall_port: 123,
+  # firewall_user: '???',
 
   ## SSH private key file path.  If you created an ssh public/private key pair
   ## and provided the public key to Keck, enter the full path the private key here.
@@ -20,15 +20,12 @@
   vncviewer: 'vncviewer',
   vncprefix: '',
   vncargs: '',
-  ## Example: use VNCviewer for RealVNC vncviewer on macOS
+  ## Example: use VNCviewer for RealVNC vncviewer on macOS:
   # vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer',
-  # vncprefix: '',
-  # vncargs: '',
   ## Example: use built in Screen Sharing app in macOS:
   # vncviewer: 'open',
   # vncprefix: 'vnc://',
-  # vncargs: '',
-  ## Example using vncpasswd file
+  ## Example using vncpasswd file:
   # vncargs: '-passwd=/home/observer/.vnc/passwd',
 
   ## For ssh tunnelling, a starting local port number is used and incremented 
