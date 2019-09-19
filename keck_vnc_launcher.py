@@ -204,7 +204,6 @@ class KeckVncLauncher(object):
 
         #get next local port
         local_port = self.local_port
-        print ('test local port: ', local_port)
         self.local_port += 1
 
         ## If authenticating, open SSH tunnel for appropriate ports
