@@ -219,17 +219,17 @@ class KeckVncLauncher(object):
             #get next local port
             local_port = self.local_port
             self.local_port += 1
-            self.ports_in_use.append(localport)
+            self.ports_in_use.append(local_port)
 
             log.info(f"Opening SSH tunnel for '{session_name}' on server '{vncserver} as {account}':")
-            log.info(f"  remote port = {port}, local port = {localport}")
+            log.info(f"  remote port = {port}, local port = {local_port}")
             server = sshtunnel.SSHTunnelForwarder(
                 vncserver,
                 ssh_username=account,
                 ssh_password=password,
                 ssh_pkey=self.ssh_pkey,
                 remote_bind_address=('127.0.0.1', port),
-                local_bind_address=('0.0.0.0', localport)
+                local_bind_address=('0.0.0.0', local_port)
             )
             self.ssh_threads.append(server)
             try:
@@ -248,7 +248,7 @@ class KeckVncLauncher(object):
         ## Open vncviewers
         if self.do_authenticate is True: 
             vncserver = 'localhost'
-            port = localport
+            port = local_port
         log.info(f"Opening VNCviewer for '{session_name}'")
         self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port)))
         self.vnc_threads[-1].start()
