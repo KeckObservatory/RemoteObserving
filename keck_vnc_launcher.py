@@ -894,7 +894,7 @@ def create_logger():
 
     try:
         ## Create logger object
-        log = logging.getLogger(__name__)
+        log = logging.getLogger('KRO')
         log.setLevel(logging.DEBUG)
 
         #create log file and log dir if not exist
@@ -937,7 +937,7 @@ if __name__ == '__main__':
     #catch all exceptions so we can exit gracefully
     try:        
         create_logger()
-        log = logging.getLogger(__name__)
+        log = logging.getLogger('KRO')
         kvl = KeckVncLauncher()
         kvl.start()
     except Exception as error:
