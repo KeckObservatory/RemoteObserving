@@ -11,6 +11,7 @@ The following hardware configurations have been tested:
     - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
     - RAM: 32GB
     - OS: CentOS 7.6
+- Monitor: 43-inch, 4k resolution
 
 
 # Software requirements:
@@ -48,7 +49,8 @@ The following hardware configurations have been tested:
     yum install epel-release 
     yum install wmctrl
     ```
-- chrome: 
+- (optional) chrome: 
+    Chrome browser is recommended for Zoom sessions
     ```
     wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
     yum install ./google-chrome-stable_current_*.rpm
@@ -59,6 +61,7 @@ The following hardware configurations have been tested:
     ```
     cd
     git clone https://github.com/KeckObservatory/KeckRemoteObserving
+    cd KeckRemoteObserving
     ```
 - Edit configuration file: keck_vnc_config.yaml (optional: save as local_config.yaml)
     - If you are connecting outside of the Keck network, enter the firewall address, port and user info
@@ -73,17 +76,37 @@ The following hardware configurations have been tested:
         ```
         ssh_pkey: '/home/observer/.ssh/id_rsa',
         ```
-- Save VNC session password:
-    - Run the 'vncpasswd' command line utility.
-    - Edit the Remote Observing config file to include the password file as a VNC start option:
+- (optional) Save VNC session password:
+    - Run the 'vncpasswd' command line utility and note where it saves the VNC password file.
+    - Edit keck_vnc_config.yaml to include the password file as a VNC start option:
         ```
         vncargs: '-passwd=/home/observer/.vnc/passwd',
         ```
+- (optional) Add VNC start script to path:
+    ```
+    export PATH=/home/observer/KeckRemoteObserving:$PATH
+    ```
         
         
 # Run the VNC launch script:
-Running the script without option, you will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer:
+From the command line, cd into your install directory and run "start_keck_viewers.bash" followed by the name of the instrument account assigned for your observing night (ie 'nires1', 'mosfire2').  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer:
 ```
 cd ~/KeckRemoteObserving
 ./start_keck_vnc.bash [instrument account]
 ```
+
+To get help on available command line options:
+```
+start_keck_viewers.bash --help
+```
+
+Additionally, you should see a command line menu with more options once you have started the script.
+
+
+
+# Troubleshooting and common problems
+
+Verbose debug information is logged to the KeckRemoteObserving/logs/ folder.  Log files are created based on the UTC date.
+
+If you need assistance, please email mainland_observing@keck.hawaii.edu and attach the most recent log file from the logs folder.
+
