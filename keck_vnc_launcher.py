@@ -36,6 +36,7 @@ class KeckVncLauncher(object):
         self.firewall_pass = None
         self.ssh_threads = None
         self.ports_in_use = None
+        self.vnc_processes = None
         self.do_authenticate = False
         self.is_authenticated = False
         self.instrument = None
@@ -158,6 +159,7 @@ class KeckVncLauncher(object):
         self.ssh_threads  = []
         self.ports_in_use = []
         self.vnc_threads  = []
+        self.vnc_processes = []
         for session_name in self.sessions_requested:
             self.start_vnc_session(session_name)
 
@@ -469,6 +471,8 @@ class KeckVncLauncher(object):
 
         log.debug(f"VNC viewer command: {cmd}")
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+
+        self.vnc_processes.append(proc)
 
         #todo: read output and do window move when we get message the window has been opened
         # while True:
@@ -832,11 +836,31 @@ class KeckVncLauncher(object):
             elif cmd == 'p':  self.position_vnc_windows()
             elif cmd == 's':  self.start_soundplay()
             elif cmd == 'l':  self.print_sessions_found()
-            elif cmd == 'v':  self.validate_ssh_key()
+            #elif cmd == 'v':  self.validate_ssh_key()
+            #elif cmd == 'x':  self.kill_vnc_processes()
             elif cmd in self.SESSION_NAMES:
                 self.start_vnc_session(cmd)
             else:
                 log.error(f'Unrecognized command: {cmd}')
+
+
+    ##-------------------------------------------------------------------------
+    ## Terminate all vnc processes
+    ##-------------------------------------------------------------------------
+    def kill_vnc_processes(self, msg=None):
+
+        log.info('Terminating all VNC sessions.')
+        try:
+            #NOTE: poll() value of None means it still exists.
+            while self.vnc_processes:
+                proc = self.vnc_processes.pop()
+                log.debug('terminating VNC process: ' + str(proc.args))
+                if proc.poll() == None:
+                    proc.terminate()
+
+        except Exception as error:
+            log.info("Error encountered terminating VNC sessions.")
+            log.debug(str(error))
 
 
     ##-------------------------------------------------------------------------
@@ -855,6 +879,10 @@ class KeckVncLauncher(object):
         if self.do_authenticate is True:
             self.close_ssh_threads()
             self.close_authentication(self.firewall_pass)
+
+        #close vnc sessions
+        #NOTE: commenting this out for now until we decide if we should kill on script exit.
+        # self.kill_vnc_processes()
 
         log.info("EXITING APP\n")
         
