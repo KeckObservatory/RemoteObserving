@@ -204,10 +204,6 @@ class KeckVncLauncher(object):
         display   = int(session['Display'][1:])
         port      = int(f"59{display:02d}")
 
-        #get next local port
-        local_port = self.local_port
-        self.local_port += 1
-
         ## If authenticating, open SSH tunnel for appropriate ports
         if self.do_authenticate:
 
