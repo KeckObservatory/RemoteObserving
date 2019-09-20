@@ -251,6 +251,9 @@ class KeckVncLauncher(object):
         parser.add_argument("--nosshkey", dest="nosshkey",
             default=False, action="store_true",
             help="Do not attempt to use ssk key connection method.")
+        parser.add_argument("--viewonly", dest="viewonly",
+            default=False, action="store_true",
+            help="Open VNC sessions in View Only mode")
         for name in self.SESSION_NAMES:
             parser.add_argument(f"--{name}", 
                 dest=name, 
@@ -465,6 +468,7 @@ class KeckVncLauncher(object):
 
         cmd = [vncviewercmd]
         if vncargs: cmd.append(vncargs)
+        if self.args.viewonly: cmd.append('--ViewOnly')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         log.debug(f"VNC viewer command: {cmd}")
