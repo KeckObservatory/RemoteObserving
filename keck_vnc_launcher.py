@@ -209,7 +209,6 @@ class KeckVncLauncher(object):
         ## If authenticating, open SSH tunnel for appropriate ports
         if self.do_authenticate:
 
-            print ('WTF')
             #determine account and password         
             account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
             password = None                 if self.is_ssh_key_valid else self.vnc_password
