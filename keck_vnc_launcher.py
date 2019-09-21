@@ -176,9 +176,8 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Wait for quit signal, then all done
         ##-------------------------------------------------------------------------
-        atexit.register(self.exit_app, msg="Forced app exit")
+        atexit.register(self.exit_app, msg="App exit")
         self.prompt_menu()
-        self.exit_app(msg="Normal app exit")
 
 
     ##-------------------------------------------------------------------------
