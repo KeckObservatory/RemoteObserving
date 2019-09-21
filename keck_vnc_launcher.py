@@ -24,6 +24,7 @@ import math
 import subprocess
 import warnings
 import sshtunnel
+import platform
 
 
 class KeckVncLauncher(object):
@@ -91,7 +92,6 @@ class KeckVncLauncher(object):
         self.get_config()
         self.check_config()
 
-
         ##-------------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
         ##-------------------------------------------------------------------------
@@ -156,6 +156,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Open requested sessions
         ##-------------------------------------------------------------------------
+        self.calc_window_geometry()
         self.ssh_threads  = []
         self.ports_in_use = []
         self.vnc_threads  = []
@@ -235,19 +236,33 @@ class KeckVncLauncher(object):
                 log.error('Failed to open ssh tunnel')
                 log.debug(e)
 
-
         #If vncviewer is not defined, then prompt them to open manually and return now
         if self.config['vncviewer'] in [None, 'None', 'none']:
             log.info(f"\nNo VNC viewer application specified")
             log.info(f"Open your VNC viewer manually\n")
             return
 
+        #determine geometry
+        #NOTE: This doesn't work for mac so only trying for linux
+        geometry = ''
+        if 'linux' in platform.system().lower():
+            i = len(self.vnc_threads) % len(self.geometry)
+            geom = self.geometry[i]
+            width  = geom[0]
+            height = geom[1]
+            xpos   = geom[2]
+            ypos   = geom[3]
+            if width != None and height != None:
+                geometry += f'{width}x{height}'
+            if xpos != None and ypos != None:
+                geometry += f'+{xpos}+{ypos}'
+
         ## Open vncviewers
         if self.do_authenticate is True: 
             vncserver = 'localhost'
             port = local_port
         log.info(f"Opening VNCviewer for '{session_name}'")
-        self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port)))
+        self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port, geometry)))
         self.vnc_threads[-1].start()
         sleep(0.05)
 
@@ -457,15 +472,21 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Launch vncviewer
     ##-------------------------------------------------------------------------
-    def launch_vncviewer(self, vncserver, port):
+    def launch_vncviewer(self, vncserver, port, geometry=None):
 
         vncviewercmd   = self.config.get('vncviewer', 'vncviewer')
         vncprefix      = self.config.get('vncprefix', '')
         vncargs        = self.config.get('vncargs', None)
 
         cmd = [vncviewercmd]
-        if vncargs: cmd.append(vncargs)
-        if self.args.viewonly: cmd.append('--ViewOnly')
+        if vncargs:             cmd.append(vncargs)
+        if self.args.viewonly:  cmd.append('-ViewOnly')
+        if geometry:            cmd.append(f'-geometry={geometry}')
+        #todo: do we want to add these or put in config as defaults?
+        # cmd.append('-Shared')
+        # cmd.append('-FullColor')
+        # cmd.append('-PreferredEncoding=ZRLE')
+        # cmd.append('-AutoSelect=0')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         log.debug(f"VNC viewer command: {cmd}")
@@ -736,12 +757,13 @@ class KeckVncLauncher(object):
                 thread.stop()
 
 
-    ##-------------------------------------------------------------------------
-    ## Position vncviewers
-    ##-------------------------------------------------------------------------
-    def position_vnc_windows(self):
 
-        log.info(f"Positioning VNC windows...")
+    ##-------------------------------------------------------------------------
+    ## Calculate vnc windows size and position
+    ##-------------------------------------------------------------------------
+    def calc_window_geometry(self):
+
+        log.debug(f"Calculating VNC window geometry...")
 
         #get screen dimensions
         #alternate command: xrandr |grep \* | awk '{print $1}'
@@ -757,26 +779,39 @@ class KeckVncLauncher(object):
         cols = 2
         rows = 2
 
+        #window coord and size config overrides
+        window_positions = self.config.get('window_positions', None)
+        window_size = self.config.get('window_size', None)
+
         #get window width height
-        ww = round(screen_width / cols)
-        wh = round(screen_height / rows)
+        if window_size:
+            ww = window_size[0]
+            wh = window_size[1]
+        else:
+            ww = round(screen_width / cols)
+            wh = round(screen_height / rows)
 
         #get x/y coords (assume two rows)
-        coords = []
+        self.geometry = []
         for row in range(0, rows):
             for col in range(0, cols):
                 x = round(col * screen_width/cols)
                 y = round(row * screen_height/rows)
-                coords.append([x,y])
+                if window_positions:
+                    index = len(self.geometry) % len(window_positions)
+                    x = window_positions[index][0]
+                    y = window_positions[index][1]
+                self.geometry.append([ww, wh, x, y])
 
-        #window coord and size config overrides
-        window_size = self.config.get('window_size', None)
-        if window_size:
-            ww = window_size[0]
-            wh = window_size[1]
-        window_positions = self.config.get('window_positions', None)
-        if window_positions:
-            coords = window_positions
+        log.debug('geometry: ' + str(self.geometry))
+
+
+    ##-------------------------------------------------------------------------
+    ## Position vncviewers
+    ##-------------------------------------------------------------------------
+    def position_vnc_windows(self):
+
+        log.info(f"Positioning VNC windows...")
 
         #get all x-window processes
         #NOTE: using wmctrl (does not work for Mac)
@@ -801,9 +836,12 @@ class KeckVncLauncher(object):
                 win_id = parts[0]
 
             if win_id:
-                index = i % len(coords)
-                wx = coords[index][0]
-                wy = coords[index][1]
+                index = i % len(self.geometry)
+                geom = self.geometry[index]
+                ww = geom[0]
+                wh = geom[1]
+                wx = geom[2]
+                wy = geom[3]
                 cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
                 log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
