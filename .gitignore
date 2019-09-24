@@ -1,1 +1,3 @@
 local_config.yaml
+__pycache__/
+logs/

@@ -2,8 +2,11 @@ import os
 import sys
 import subprocess
 import atexit
-from time import sleep
+import time
 import argparse
+import logging
+
+log = logging.getLogger('KRO')
 
 
 class soundplay(object):
@@ -19,6 +22,7 @@ class soundplay(object):
         Connect to sound server
         '''
 
+        log.info(f'Starting soundplayer: server={server}, instrument={instrument}')
         try:
             #massage inputs
             instrument = instrument.lower()
@@ -31,8 +35,8 @@ class soundplay(object):
             #check existing soundplay process
             procs = self.check_existing_process(server, port, instrument)
             if procs and len(procs) > 0:
-                print ("SOUNDPLAY PROCESS ALREADY EXISTS FOR: ", server+':'+port, instrument)
-                print (procs)
+                log.info(f"SOUNDPLAY PROCESS ALREADY EXISTS FOR: {serverport} {instrument}")
+                log.debug(procs)
                 return False
 
             #path to soundplay is relative to this script
@@ -41,13 +45,11 @@ class soundplay(object):
 
             #create command and open process and hold on to handle so we can terminate later
             cmd = [soundplayPath, '-s', serverport, '-T', instrument, '-px', aplay]
-            print ('Connecting to sound server: ', ' '.join(cmd))
+            log.debug('Soundplay cmd: ' + str(cmd))
             self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
         except Exception as error:
-            print ("\nERROR: Could not start soundplayer")
-            print ("Command: " + ' '.join(cmd))
-            print ("Error: " + str(error) + "\n")
+            log.error("Could not start soundplayer")
+            log.error(error)
             return False
 
         return True
@@ -57,8 +59,9 @@ class soundplay(object):
         '''
         Use system ps command to look for processes connected to same server/port/instr combo
         '''
+        #todo: fix this to use proper cmd array and shell=False
         cmd = f'ps -elf | grep soundplay | grep "{server}:{port}" | grep {instrument} | grep -v grep'
-        print ('Checking for existing soundplay process: ', cmd)
+        log.debug('Checking for existing soundplay process: ' + cmd)
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         data = proc.communicate()[0]
         data = data.decode("utf-8").strip()
@@ -75,9 +78,32 @@ class soundplay(object):
 
     def terminate(self):
         if self.proc:
-            print ('\nTerminating soundplay process...\n')
+            log.info('\nTerminating soundplay process...\n')
             self.proc.terminate()
 
+
+
+##-------------------------------------------------------------------------
+## Create logger
+##-------------------------------------------------------------------------
+def create_logger():
+
+    try:
+        ## Create logger object
+        log = logging.getLogger('KRO')
+        log.setLevel(logging.DEBUG)
+
+        #stream/console handler (info+ only)
+        logConsoleHandler = logging.StreamHandler()
+        logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+        logFormat.converter = time.gmtime
+        logConsoleHandler.setFormatter(logFormat)
+        
+        log.addHandler(logConsoleHandler)
+
+    except Exception as error:
+        print (f"ERROR: Unable to create logger")
+        print (str(error))
 
 
 ##-------------------------------------------------------------------------
@@ -87,6 +113,10 @@ if __name__ == "__main__":
     '''
     Run in command line mode
     '''
+
+    #create logger
+    create_logger()
+    log = logging.getLogger('KRO')
 
     # arg parser
     parser = argparse.ArgumentParser(description="Start Keck event sounds player.")
@@ -114,7 +144,7 @@ if __name__ == "__main__":
         atexit.register(exit_handler, sp)
         print ('Hit control-C to terminate program and close soundplay connection.')
         while True:
-            sleep(1)
+            time.sleep(1)
     except KeyboardInterrupt:
         pass
     finally:
