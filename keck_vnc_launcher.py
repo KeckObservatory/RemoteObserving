@@ -179,6 +179,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         atexit.register(self.exit_app, msg="App exit")
         self.prompt_menu()
+        #todo: Do we need to call exit here explicitly?  App was not exiting on MacOs but does on linux.
 
 
     ##-------------------------------------------------------------------------
@@ -242,7 +243,7 @@ class KeckVncLauncher(object):
                 geometry += f'+{xpos}+{ypos}'
 
         ## Open vncviewer as separate thread
-        self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port)))
+        self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port, geometry)))
         self.vnc_threads[-1].start()
         sleep(0.05)
 
