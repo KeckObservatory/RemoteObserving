@@ -194,64 +194,68 @@ class KeckVncLauncher(object):
 
         log.info(f"Opening VNCviewer for '{session_name}'")
 
-        #get session data by name
-        session = None
-        for tmp in self.sessions_found:
-            if tmp['name'] == session_name:
-                session = tmp
-        if not session:            
-            log.error(f"No server VNC session found for '{session_name}'.")
-            self.print_sessions_found()
-            return
-
-        #determine vncserver (only different for "status")
-        vncserver = self.vncserver
-        if session_name == 'status': vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
-
-        #get remote port
-        display   = int(session['Display'][1:])
-        port      = int(f"59{display:02d}")
-
-        ## If authenticating, open SSH tunnel for appropriate ports
-        if self.do_authenticate:
-
-            #determine account and password         
-            account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
-            password = None                 if self.is_ssh_key_valid else self.vnc_password
-
-            #open ssh tunnel
-            port = self.open_ssh_tunnel(vncserver, account, password, self.ssh_pkey, port, None)
-            if not port:
+        try:
+            #get session data by name
+            session = None
+            for tmp in self.sessions_found:
+                if tmp['name'] == session_name:
+                    session = tmp
+            if not session:            
+                log.error(f"No server VNC session found for '{session_name}'.")
+                self.print_sessions_found()
                 return
-            else:
-                vncserver = 'localhost'
 
-        #If vncviewer is not defined, then prompt them to open manually and return now
-        if self.config['vncviewer'] in [None, 'None', 'none']:
-            log.info(f"\nNo VNC viewer application specified")
-            log.info(f"Open your VNC viewer manually\n")
-            return
+            #determine vncserver (only different for "status")
+            vncserver = self.vncserver
+            if session_name == 'status': vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
 
-        #determine geometry
-        #NOTE: This doesn't work for mac so only trying for linux
-        #todo: remove width/height adjustment (so server session doesn't resize)?
-        geometry = ''
-        if 'linux' in platform.system().lower():
-            i = len(self.vnc_threads) % len(self.geometry)
-            geom = self.geometry[i]
-            width  = geom[0]
-            height = geom[1]
-            xpos   = geom[2]
-            ypos   = geom[3]
-            # if width != None and height != None:
-            #     geometry += f'{width}x{height}'
-            if xpos != None and ypos != None:
-                geometry += f'+{xpos}+{ypos}'
+            #get remote port
+            display   = int(session['Display'][1:])
+            port      = int(f"59{display:02d}")
 
-        ## Open vncviewer as separate thread
-        self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port, geometry)))
-        self.vnc_threads[-1].start()
-        sleep(0.05)
+            ## If authenticating, open SSH tunnel for appropriate ports
+            if self.do_authenticate:
+
+                #determine account and password         
+                account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
+                password = None                 if self.is_ssh_key_valid else self.vnc_password
+
+                #open ssh tunnel
+                port = self.open_ssh_tunnel(vncserver, account, password, self.ssh_pkey, port, None)
+                if not port:
+                    return
+                else:
+                    vncserver = 'localhost'
+
+            #If vncviewer is not defined, then prompt them to open manually and return now
+            if self.config['vncviewer'] in [None, 'None', 'none']:
+                log.info(f"\nNo VNC viewer application specified")
+                log.info(f"Open your VNC viewer manually\n")
+                return
+
+            #determine geometry
+            #NOTE: This doesn't work for mac so only trying for linux
+            geometry = ''
+            if 'linux' in platform.system().lower():
+                i = len(self.vnc_threads) % len(self.geometry)
+                geom = self.geometry[i]
+                width  = geom[0]
+                height = geom[1]
+                xpos   = geom[2]
+                ypos   = geom[3]
+                # if width != None and height != None:
+                #     geometry += f'{width}x{height}'
+                if xpos != None and ypos != None:
+                    geometry += f'+{xpos}+{ypos}'
+
+            ## Open vncviewer as separate thread
+            self.vnc_threads.append(Thread(target=self.launch_vncviewer, args=(vncserver, port, geometry)))
+            self.vnc_threads[-1].start()
+            sleep(0.05)
+
+        except Exception as error:
+            log.error("Unable to start vnc session.  See log for details.")
+            log.debug(str(error))
 
 
     ##-------------------------------------------------------------------------
@@ -473,8 +477,8 @@ class KeckVncLauncher(object):
             return local_port
 
         except Exception as e:
-            log.info(f"Failed to open SSH tunnel for {username}@{server}:{remote_port} on local port {local_port}.")
-            log.debug(e)
+            log.error(f"Failed to open SSH tunnel for {username}@{server}:{remote_port} on local port {local_port}.")
+            log.debug(str(e))
             return False
 
 
@@ -512,31 +516,35 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def start_soundplay(self):
 
-        #check for existing first and shutdown
-        if self.sound:
-            self.sound.terminate()
+        try:
+            #check for existing first and shutdown
+            if self.sound:
+                self.sound.terminate()
 
-        #config vars
-        sound_port  = 9798
-        aplay       = self.config.get('aplay', None)
-        soundplayer = self.config.get('soundplayer', None)
+            #config vars
+            sound_port  = 9798
+            aplay       = self.config.get('aplay', None)
+            soundplayer = self.config.get('soundplayer', None)
 
-        #Do we need ssh tunnel for this?
-        if self.do_authenticate:
+            #Do we need ssh tunnel for this?
+            if self.do_authenticate:
 
-            account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
-            password = None                 if self.is_ssh_key_valid else self.vnc_password
-            sound_port = self.open_ssh_tunnel(self.vncserver, account, password, self.ssh_pkey, sound_port, None)
-            if not sound_port:
-                return
-            else:
-                vncserver = 'localhost'
+                account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
+                password = None                 if self.is_ssh_key_valid else self.vnc_password
+                sound_port = self.open_ssh_tunnel(self.vncserver, account, password, self.ssh_pkey, sound_port, None)
+                if not sound_port:
+                    return
+                else:
+                    vncserver = 'localhost'
 
-        self.sound = soundplay()
-        self.sound.connect(self.instrument, self.vncserver, sound_port, aplay=aplay, player=soundplayer)
-        #todo: should we start this as a thread?  
-        # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
-        # soundThread.start()
+            self.sound = soundplay()
+            self.sound.connect(self.instrument, self.vncserver, sound_port, aplay=aplay, player=soundplayer)
+            #todo: should we start this as a thread?  
+            # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
+            # soundThread.start()
+        except Exception as error:
+            log.error('Unable to start soundplay.  See log for details.')
+            log.info(str(error))
 
 
     ##-------------------------------------------------------------------------
@@ -830,41 +838,45 @@ class KeckVncLauncher(object):
 
         log.info(f"Positioning VNC windows...")
 
-        #get all x-window processes
-        #NOTE: using wmctrl (does not work for Mac)
-        #alternate option: xdotool?
-        xlines = []
-        cmd = ['wmctrl', '-l']
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        while True:
-            line = proc.stdout.readline()
-            if not line: break
-            line = line.rstrip().decode('utf-8')
-            log.debug(f'wmctrl line: {line}')
-            xlines.append(line)
+        try:
+            #get all x-window processes
+            #NOTE: using wmctrl (does not work for Mac)
+            #alternate option: xdotool?
+            xlines = []
+            cmd = ['wmctrl', '-l']
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            while True:
+                line = proc.stdout.readline()
+                if not line: break
+                line = line.rstrip().decode('utf-8')
+                log.debug(f'wmctrl line: {line}')
+                xlines.append(line)
 
-        #reposition each vnc session window
-        for i, session in enumerate(self.sessions_requested):
-            log.debug(f'Search xlines for "{session}"')
-            win_id = None
-            for line in xlines:
-                if session not in line: continue
-                parts = line.split()
-                win_id = parts[0]
+            #reposition each vnc session window
+            for i, session in enumerate(self.sessions_requested):
+                log.debug(f'Search xlines for "{session}"')
+                win_id = None
+                for line in xlines:
+                    if session not in line: continue
+                    parts = line.split()
+                    win_id = parts[0]
 
-            if win_id:
-                index = i % len(self.geometry)
-                geom = self.geometry[index]
-                ww = geom[0]
-                wh = geom[1]
-                wx = geom[2]
-                wy = geom[3]
-                # cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
-                cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},-1,-1']
-                log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            else:
-                log.info(f"Could not find window process for VNC session '{session}'")
+                if win_id:
+                    index = i % len(self.geometry)
+                    geom = self.geometry[index]
+                    ww = geom[0]
+                    wh = geom[1]
+                    wx = geom[2]
+                    wy = geom[3]
+                    # cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
+                    cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},-1,-1']
+                    log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
+                    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                else:
+                    log.info(f"Could not find window process for VNC session '{session}'")
+        except Exception as error:
+            log.error("Failed to reposition windows.  See log for details.")
+            log.debug(str(error))
 
 
     ##-------------------------------------------------------------------------
@@ -914,7 +926,7 @@ class KeckVncLauncher(object):
                     proc.terminate()
 
         except Exception as error:
-            log.info("Error encountered terminating VNC sessions.")
+            log.error("Failed to terminate VNC sessions.  See log for details.")
             log.debug(str(error))
 
 
