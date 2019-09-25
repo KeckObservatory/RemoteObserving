@@ -123,11 +123,15 @@ class KeckVncLauncher(object):
 
 
         ##-------------------------------------------------------------------------
-        ## Validate ssh key
+        ## Validate ssh key or use alt method?
         ##-------------------------------------------------------------------------
         if self.args.nosshkey is False:
             self.validate_ssh_key()
-        if not self.is_ssh_key_valid:
+            if not self.is_ssh_key_valid:
+                log.error("\n\n\tCould not validate SSH key.\n\tContact mainland_observing@keck.hawaii.edu "\
+                          "for other options to connect remotely.\n")
+                self.exit_app()
+        else:
             self.vnc_password = getpass(f"Password for user {self.args.account}: ")
 
 
@@ -261,22 +265,22 @@ class KeckVncLauncher(object):
         ## add flags
         parser.add_argument("--authonly", dest="authonly",
             default=False, action="store_true",
-            help="Authenticate through firewall only?")
+            help="Authenticate through firewall only.")
         parser.add_argument("--nosound", dest="nosound",
             default=False, action="store_true",
-            help="Skip start of soundplay application?")
-        parser.add_argument("--nosshkey", dest="nosshkey",
-            default=False, action="store_true",
-            help="Do not attempt to use ssk key connection method.")
+            help="Skip start of soundplay application.")
         parser.add_argument("--viewonly", dest="viewonly",
             default=False, action="store_true",
             help="Open VNC sessions in View Only mode")
+        parser.add_argument("--nosshkey", dest="nosshkey",
+            default=False, action="store_true",
+            help=argparse.SUPPRESS)
         for name in self.SESSION_NAMES:
             parser.add_argument(f"--{name}", 
                 dest=name, 
                 default=False, 
                 action="store_true", 
-                help=f"Open {name}?")
+                help=f"Open {name}")
 
         ## add arguments
         parser.add_argument("account", type=str, help="The user account.")
@@ -871,10 +875,10 @@ class KeckVncLauncher(object):
         menu += "--------------------------------------------------\n"
         menu += "|                    MENU                        |\n"
         menu += "--------------------------------------------------\n"
-        menu += "|  p               Position VNC windows          |\n"
-        menu += "|  s               Soundplayer restart           |\n"
         menu += "|  l               List sessions available       |\n"
         menu += "|  [session name]  Open VNC session by name      |\n"
+        menu += "|  p               Position VNC windows          |\n"
+        menu += "|  s               Soundplayer restart           |\n"
         menu += "|  q               Quit (or Control-C)           |\n"
         menu += "--------------------------------------------------\n"
         menu += "> "
