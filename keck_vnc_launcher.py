@@ -243,8 +243,8 @@ class KeckVncLauncher(object):
             height = geom[1]
             xpos   = geom[2]
             ypos   = geom[3]
-            if width != None and height != None:
-                geometry += f'{width}x{height}'
+            # if width != None and height != None:
+            #     geometry += f'{width}x{height}'
             if xpos != None and ypos != None:
                 geometry += f'+{xpos}+{ypos}'
 
@@ -859,7 +859,8 @@ class KeckVncLauncher(object):
                 wh = geom[1]
                 wx = geom[2]
                 wy = geom[3]
-                cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
+                # cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
+                cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},-1,-1']
                 log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             else:
