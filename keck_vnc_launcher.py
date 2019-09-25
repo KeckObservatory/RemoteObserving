@@ -488,11 +488,6 @@ class KeckVncLauncher(object):
         if self.args.viewonly:  cmd.append('-ViewOnly')
         #todo: make this config on/off so it doesn't break things 
         if geometry:            cmd.append(f'-geometry={geometry}')
-        #todo: Put these in config as defaults
-        # cmd.append('-Shared')
-        # cmd.append('-FullColor')
-        # cmd.append('-PreferredEncoding=ZRLE')
-        # cmd.append('-AutoSelect=0')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         log.debug(f"VNC viewer command: {cmd}")
