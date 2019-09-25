@@ -44,6 +44,7 @@ class KeckVncLauncher(object):
         self.instrument = None
         self.vncserver = None
         self.is_ssh_key_valid = False
+        self.exit = False
 
 
         #session name consts
@@ -184,6 +185,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         atexit.register(self.exit_app, msg="App exit")
         self.prompt_menu()
+        self.exit_app()
         #todo: Do we need to call exit here explicitly?  App was not exiting on MacOs but does on linux.
 
 
@@ -499,16 +501,19 @@ class KeckVncLauncher(object):
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         log.debug(f"VNC viewer command: {cmd}")
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        # proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(cmd)
 
+        #append to proc list so we can terminate on app exit
         self.vnc_processes.append(proc)
 
-        #todo: read output and do window move when we get message the window has been opened
-        # while True:
-        #     line = proc.stdout.readline()
-        #     print ('procline: ', line)
-        #     line = line.rstrip().decode('utf-8')
-
+        #capture all output and log
+        #todo: figure out how to do this realtime as stream instead of only when proc terminates
+        # out, err = proc.communicate()
+        # out = out.decode()
+        # err = err.decode()
+        # log.debug('vnc comm output: ' + out)
+        # if err: log.debug('vnc comm err: ' + err)
 
 
     ##-------------------------------------------------------------------------
@@ -935,6 +940,10 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def exit_app(self, msg=None):
 
+        #hack for preventing this function from being called twice
+        #todo: need to figure out how to use atexit with threads properly
+        if self.exit: return
+
         #todo: Fix app exit so certain clean ups don't cause errors (ie thread not started, etc
         if msg != None: log.info(msg)
 
@@ -950,6 +959,7 @@ class KeckVncLauncher(object):
         #close vnc sessions
         self.kill_vnc_processes()
 
+        self.exit = True
         log.info("EXITING APP\n")        
         sys.exit(1)
 
