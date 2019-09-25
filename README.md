@@ -61,10 +61,16 @@ The following hardware configurations have been tested:
     ```
     cd
     git clone https://github.com/KeckObservatory/KeckRemoteObserving
-    cd KeckRemoteObserving
+    cd ~/KeckRemoteObserving
     ```
 - Edit configuration file: keck_vnc_config.yaml (optional: save as local_config.yaml)
     - If you are connecting outside of the Keck network, enter the firewall address, port and user info
+    
+- Create conda environment
+    ```
+    cd ~/KeckRemoteObserving
+    conda env create -f environment.yaml
+    ```
     
 - Setup SSH Keys:
     - Generate ssh public/private key pair and email public key to mainland_observing@keck.hawaii.edu
