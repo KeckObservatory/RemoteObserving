@@ -1,3 +1,4 @@
+
 #!/usr/env/python
 
 ## Import General Tools
@@ -229,6 +230,7 @@ class KeckVncLauncher(object):
 
         #determine geometry
         #NOTE: This doesn't work for mac so only trying for linux
+        #todo: remove width/height adjustment (so server session doesn't resize)?
         geometry = ''
         if 'linux' in platform.system().lower():
             i = len(self.vnc_threads) % len(self.geometry)
@@ -484,8 +486,9 @@ class KeckVncLauncher(object):
         cmd = [vncviewercmd]
         if vncargs:             cmd.append(vncargs)
         if self.args.viewonly:  cmd.append('-ViewOnly')
+        #todo: make this config on/off so it doesn't break things 
         if geometry:            cmd.append(f'-geometry={geometry}')
-        #todo: do we want to add these or put in config as defaults?
+        #todo: Put these in config as defaults
         # cmd.append('-Shared')
         # cmd.append('-FullColor')
         # cmd.append('-PreferredEncoding=ZRLE')
@@ -933,11 +936,9 @@ class KeckVncLauncher(object):
             self.close_authentication(self.firewall_pass)
 
         #close vnc sessions
-        #NOTE: commenting this out for now until we decide if we should kill on script exit.
-        # self.kill_vnc_processes()
+        self.kill_vnc_processes()
 
-        log.info("EXITING APP\n")
-        
+        log.info("EXITING APP\n")        
         sys.exit(1)
 
 
