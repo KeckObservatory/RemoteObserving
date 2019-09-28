@@ -7,56 +7,53 @@ These scripts are to be used by remote sites to connect to Keck for remote obser
 
 The following hardware configurations have been tested:
 
-- Intel NUC (https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
+- Computer: Intel NUC (https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
     - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
-    - RAM: 32GB
-    - OS: CentOS 7.6
+    - RAM: 16GB
 - Monitor: 43-inch, 4k resolution
 
 
 # Software requirements:
+(NOTE: Examples below assuming sudo/root installation for all users)
 
-### Install CentOS 7.6
+### Install CentOS 7.6 or higher
 - NOTE: Earlier versions of CentOS may work, but have not been tested
 
 ### Install Anaconda python3:
-- Download the latest installer from here: https://www.anaconda.com/distribution/
-    - (downloaded https://repo.anaconda.com/archive/Anaconda3-2019.03-Linux-x86_64.sh)
-- Run the installer
-    - installed to /usr/local/anaconda3-7/
+- Download and run the latest installer: https://www.anaconda.com/distribution/
 - Extra python packages install:
     ```
-    conda install -c anaconda paramiko 
-    conda install -c conda-forge sshtunnel
+    sudo conda install -c anaconda paramiko 
+    sudo conda install -c conda-forge sshtunnel
     ```
-- Add python3 to user path in .bashrc:
+- Add python3 to user path in .bashrc (example below with typical install path):
     ```
     export PATH=/usr/local/anaconda3-7/bin:$PATH
     ```
 
-### Install VNC viewer
+### Install TigerVNC client
+    TigerVNC is recommended as the VNC client for linux.  RealVNC has been tested as well.
     ```
-    yum install tigervnc-x86_64
+    sudo yum install tigervnc-x86_64
     ```
 
-### Install misc 
-- xterm: 
+### Install misc (if not already available with OS install)
+- (optional) wmctrl:
+    (Used for window auto-positioning)
     ```
-    yum install xterm
-    ```
-- wmctrl:
-    ```
-    yum install epel-release 
-    yum install wmctrl
+    sudo yum install epel-release 
+    sudo yum install wmctrl
     ```
 - (optional) chrome: 
     Chrome browser is recommended for Zoom sessions
     ```
     wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
-    yum install ./google-chrome-stable_current_*.rpm
+    sudo yum install ./google-chrome-stable_current_*.rpm
     ```
 
 # Download and Configure Keck VNC software
+(NOTE: Examples below assuming a user named 'observer' and installing to home directory)
+
 - Download or clone this project from github: 
     ```
     cd
@@ -95,7 +92,7 @@ The following hardware configurations have been tested:
         
         
 # Run the VNC launch script:
-From the command line, cd into your install directory and run "start_keck_viewers.bash" followed by the name of the instrument account assigned for your observing night (ie 'nires1', 'mosfire2').  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer:
+From the command line, cd into your install directory and run "start_keck_viewers.bash" followed by the name of the instrument account assigned for your observing night (ie 'nires1', 'mosfire2').  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
 ```
 cd ~/KeckRemoteObserving
 ./start_keck_vnc.bash [instrument account]
@@ -106,8 +103,7 @@ To get help on available command line options:
 start_keck_viewers.bash --help
 ```
 
-Additionally, you should see a command line menu with more options once you have started the script.
-
+NOTE: Be sure to exit the script by using the 'q' quit option or control-c to ensure all VNC processes, SSH tunnels, and authentication are terminated properly.
 
 
 # Troubleshooting and common problems
