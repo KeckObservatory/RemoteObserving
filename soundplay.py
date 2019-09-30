@@ -78,7 +78,7 @@ class soundplay(object):
 
     def terminate(self):
         if self.proc:
-            log.info('\nTerminating soundplay process...\n')
+            log.info('Terminating soundplay process...')
             self.proc.terminate()
 
 
