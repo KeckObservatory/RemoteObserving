@@ -16,7 +16,7 @@ The following hardware configurations have been tested:
 # Software requirements:
 (NOTE: Examples below assuming sudo/root installation for all users)
 
-### Install CentOS 7.6 or higher
+### Install CentOS 7.6
 - NOTE: Earlier versions of CentOS may work, but have not been tested
 
 ### Install Anaconda python3:
@@ -60,7 +60,7 @@ The following hardware configurations have been tested:
     git clone https://github.com/KeckObservatory/KeckRemoteObserving
     cd ~/KeckRemoteObserving
     ```
-- Edit configuration file: keck_vnc_config.yaml (optional: save as local_config.yaml)
+- Edit configuration file "keck_vnc_config.yaml" and save as "local_config.yaml".
     - If you are connecting outside of the Keck network, enter the firewall address, port and user info
     
 - Create conda environment
@@ -75,13 +75,13 @@ The following hardware configurations have been tested:
         cd ~/.ssh
         ssh-keygen -t rsa -b 4096
         ```
-    - Edit the Remote Observing config file to include path to your ssh private key:
+    - Edit "local_config.yaml" file to include path to your ssh private key:
         ```
         ssh_pkey: '/home/observer/.ssh/id_rsa',
         ```
 - (optional) Save VNC session password:
     - Run the 'vncpasswd' command line utility and note where it saves the VNC password file.
-    - Edit keck_vnc_config.yaml to include the password file as a VNC start option:
+    - Edit "local_config.yaml" to include the password file as a VNC start option:
         ```
         vncargs: '-passwd=/home/observer/.vnc/passwd',
         ```
