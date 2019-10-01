@@ -16,7 +16,7 @@ The following hardware configurations have been tested:
 # Software requirements:
 (NOTE: Examples below assuming sudo/root installation for all users)
 
-### Install CentOS 7.6 or higher
+### Install CentOS 7.6
 - NOTE: Earlier versions of CentOS may work, but have not been tested
 
 ### Install Anaconda python3:
