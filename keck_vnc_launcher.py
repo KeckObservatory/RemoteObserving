@@ -919,7 +919,7 @@ class KeckVncLauncher(object):
             elif cmd == 'l':  self.print_sessions_found()
             #elif cmd == 'v':  self.validate_ssh_key()
             #elif cmd == 'x':  self.kill_vnc_processes()
-            elif cmd in self.SESSION_NAMES:
+            elif cmd in self.sessions_found['name']:
                 self.start_vnc_session(cmd)
             else:
                 log.error(f'Unrecognized command: {cmd}')
