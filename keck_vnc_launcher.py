@@ -60,6 +60,14 @@ class KeckVncLauncher(object):
             'status'
         ]
 
+        #default start sessions
+        self.DEFAULT_SESSIONS = [
+            'control0',
+            'control1',
+            'control2',
+            'telstatus',
+        ]
+
         #NOTE: 'status' session on different server and always on port 1, 
         # so assign localport to constant to avoid conflict
         self.STATUS_PORT       = ':1'
@@ -385,6 +393,10 @@ class KeckVncLauncher(object):
             if not pathlib.Path(self.ssh_pkey).exists():
                 log.warning(f"SSH private key path does not exist: {self.ssh_pkey}\n")
 
+        #check default_sessions
+        ds = self.config.get('default_sessions', None)
+        if ds: self.DEFAULT_SESSIONS = ds
+
 
     ##-------------------------------------------------------------------------
     ## Log basic system info
@@ -422,10 +434,7 @@ class KeckVncLauncher(object):
 
         # create default sessions list if none provided
         if len(sessions) == 0:
-            sessions.append('control0')
-            sessions.append('control1')
-            sessions.append('control2')
-            sessions.append('telstatus')
+            sessions = self.DEFAULT_SESSIONS
 
         return sessions
 
