@@ -32,14 +32,14 @@ The following hardware configurations have been tested:
     ```
 
 ### Install TigerVNC client
-    TigerVNC is recommended as the VNC client for linux.  RealVNC has been tested as well.
+TigerVNC is recommended as the VNC client for linux.  RealVNC has been tested as well.
     ```
     sudo yum install tigervnc-x86_64
     ```
 
 ### Install misc (if not already available with OS install)
 - (optional) wmctrl:
-    (Used for window auto-positioning)
+    (Used for auto-positioning VNC windows)
     ```
     sudo yum install epel-release 
     sudo yum install wmctrl
@@ -57,15 +57,15 @@ The following hardware configurations have been tested:
 - Download or clone this project from github: 
     ```
     cd
-    git clone https://github.com/KeckObservatory/KeckRemoteObserving
-    cd ~/KeckRemoteObserving
+    git clone https://github.com/KeckObservatory/RemoteObserving
+    cd ~/RemoteObserving
     ```
 - Edit configuration file "keck_vnc_config.yaml" and save as "local_config.yaml".
     - If you are connecting outside of the Keck network, enter the firewall address, port and user info
     
-- Create conda environment
+- Create conda environment using the provided environment.yaml file:
     ```
-    cd ~/KeckRemoteObserving
+    cd ~/RemoteObserving
     conda env create -f environment.yaml
     ```
     
@@ -80,6 +80,7 @@ The following hardware configurations have been tested:
         ssh_pkey: '/home/observer/.ssh/id_rsa',
         ```
 - (optional) Save VNC session password:
+    - (NOTE: This is for the final password prompt for each VNC window.)
     - Run the 'vncpasswd' command line utility and note where it saves the VNC password file.
     - Edit "local_config.yaml" to include the password file as a VNC start option:
         ```
@@ -87,14 +88,14 @@ The following hardware configurations have been tested:
         ```
 - (optional) Add VNC start script to path:
     ```
-    export PATH=/home/observer/KeckRemoteObserving:$PATH
+    export PATH=/home/observer/RemoteObserving:$PATH
     ```
         
         
 # Run the VNC launch script:
 From the command line, cd into your install directory and run "start_keck_viewers.bash" followed by the name of the instrument account assigned for your observing night (ie 'nires1', 'mosfire2').  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
 ```
-cd ~/KeckRemoteObserving
+cd ~/RemoteObserving
 ./start_keck_vnc.bash [instrument account]
 ```
 
@@ -108,7 +109,7 @@ NOTE: Be sure to exit the script by using the 'q' quit option or control-c to en
 
 # Troubleshooting and common problems
 
-Verbose debug information is logged to the KeckRemoteObserving/logs/ folder.  Log files are created based on the UTC date.
+Verbose debug information is logged to the RemoteObserving/logs/ folder.  Log files are created based on the UTC date.
 
 If you need assistance, please email mainland_observing@keck.hawaii.edu and attach the most recent log file from the logs folder.
 
