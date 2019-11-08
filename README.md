@@ -38,10 +38,11 @@ TigerVNC is recommended as the VNC client for linux.  RealVNC has been tested as
     ```
 
 Important!  If you are using TigerVNC, in the $HOME/.vnc directory, create a file `default.tigervnc` with these two lines: 
-    ```
-    TigerVNC Configuration file Version 1.0 
-    RemoteResize=0 
-    ```
+
+```
+TigerVNC Configuration file Version 1.0
+RemoteResize=0 
+```
 
 ### Install misc (if not already available with OS install)
 - (optional) wmctrl:
