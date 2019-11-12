@@ -503,7 +503,9 @@ class KeckVncLauncher(object):
         vncargs        = self.config.get('vncargs', None)
 
         cmd = [vncviewercmd]
-        if vncargs:             cmd.append(vncargs)
+        if vncargs:  
+            vncargs = vncargs.split()           
+            cmd = cmd + vncargs
         if self.args.viewonly:  cmd.append('-ViewOnly')
         #todo: make this config on/off so it doesn't break things 
         if geometry:            cmd.append(f'-geometry={geometry}')
