@@ -685,11 +685,11 @@ class KeckVncLauncher(object):
                 key_filename=self.ssh_pkey,
                 username = account, 
                 password = password)
-            log.debug('  Connected')
+            log.info('  Connected')
         except TimeoutError:
-            log.debug('  Timeout')
+            log.error('  Timeout')
         except Exception as e:
-            log.debug('  Failed: ' + str(e))
+            log.error('  Failed: ' + str(e))
         else:
             log.debug(f'Command: {cmd}')
             stdin, stdout, stderr = client.exec_command(cmd)
@@ -770,7 +770,7 @@ class KeckVncLauncher(object):
 
         sessions = []
         cmd = f'setenv INSTRUMENT {instrument}; kvncstatus -a'
-        data = self.do_ssh_cmd(cmd, vncserver, account, password) 
+        data = self.do_ssh_cmd(cmd, vncserver, account, password)
         if data:
             allsessions = Table.read(data.split('\n'), format='ascii')
             sessions = allsessions[allsessions['User'] == instr_account]
