@@ -2,6 +2,8 @@
 
 These scripts are to be used by remote sites to connect to Keck for remote observing.
 
+Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical documentation at: https://www2.keck.hawaii.edu/inst/mainland_observing/
+
 
 # Hardware recommendations:
 
@@ -21,24 +23,18 @@ The following hardware configurations have been tested:
 
 ### Install Anaconda python3:
 - Download and run the latest installer: https://www.anaconda.com/distribution/
-- Extra python packages install:
-    ```
-    sudo conda install -c anaconda paramiko 
-    sudo conda install -c conda-forge sshtunnel
-    ```
-- Add python3 to user path in .bashrc (example below with typical install path):
+- Add python3 to user path (example below for ~/.bashrc with typical python install path):
     ```
     export PATH=/usr/local/anaconda3-7/bin:$PATH
     ```
 
 ### Install TigerVNC client
 TigerVNC is recommended as the VNC client for linux.  RealVNC has been tested as well.
-    ```
-    sudo yum install tigervnc-x86_64
-    ```
+```
+sudo yum install tigervnc-x86_64
+```
 
 Important!  If you are using TigerVNC, in the $HOME/.vnc directory, create a file `default.tigervnc` with these two lines: 
-
 ```
 TigerVNC Configuration file Version 1.0
 RemoteResize=0 
@@ -58,6 +54,20 @@ RemoteResize=0
     sudo yum install ./google-chrome-stable_current_*.rpm
     ```
 
+# Notify Keck Mainland Observing of your intent to connect remotely
+Before you can connect to Keck remotely, we need to provide you with the firewall info and two passwords.  As well, we need info about your remote observing station.
+
+- Email mainland_observing@keck.hawaii.edu with the following info about your remote site:
+    - Institution
+    - City, State
+    - Room Name/#
+    - Room phone #
+    - Emergency Services phone #
+    - Site manager/admin email and phone #
+
+Once we receive your request, we will respond with instructions on obtaining the firewall info, firewall password, and VNC session password.
+
+
 # Download and Configure Keck VNC software
 (NOTE: Examples below assuming a user named 'observer' and installing to home directory)
 
@@ -67,27 +77,33 @@ RemoteResize=0
     git clone https://github.com/KeckObservatory/RemoteObserving
     cd ~/RemoteObserving
     ```
-- Edit configuration file "keck_vnc_config.yaml" and save as "local_config.yaml".
-    - If you are connecting outside of the Keck network, enter the firewall address, port and user info
-    
 - Create conda environment using the provided environment.yaml file:
     ```
     cd ~/RemoteObserving
     conda env create -f environment.yaml
     ```
-    
+
+- Edit configuration file "keck_vnc_config.yaml" and save as "local_config.yaml".
+    - If you are connecting outside of the Keck network, enter the firewall address, port and user info
+    ```
+    firewall_address: ???.???.???.???,
+    firewall_port: ???,
+    firewall_user: '???',
+    ```
+
 - Setup SSH Keys:
-    - Generate ssh public/private key pair and email public key to mainland_observing@keck.hawaii.edu
+    - Generate ssh public/private key pair **(no passphrase)** 
         ```
         cd ~/.ssh
         ssh-keygen -t rsa -b 4096
         ```
-    - Edit "local_config.yaml" file to include path to your ssh private key:
+    - Email the **public** key file (ie "id_rsa.pub") to mainland_observing@keck.hawaii.edu
+    - Edit "local_config.yaml" file to include path to your ssh **private** key:
         ```
         ssh_pkey: '/home/observer/.ssh/id_rsa',
         ```
 - (optional) Save VNC session password:
-    - (NOTE: This is for the final password prompt for each VNC window.)
+    - NOTE: This is for the final password prompt for each VNC window.
     - Run the 'vncpasswd' command line utility and note where it saves the VNC password file.
     - Edit "local_config.yaml" to include the password file as a VNC start option:
         ```
