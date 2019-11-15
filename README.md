@@ -4,11 +4,25 @@ These scripts are to be used by remote sites to connect to Keck for remote obser
 
 Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical documentation at: https://www2.keck.hawaii.edu/inst/mainland_observing/
 
+### Notify Keck of your intent to connect remotely
+Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
+
+- Email mainland_observing@keck.hawaii.edu with the following info about your remote site:
+    - Institution
+    - City, State
+    - Room Name/#
+    - Room phone #
+    - Emergency Services phone #
+    - Site manager/admin names, emails and phone #s
+
+Once we receive your request, we will respond with instructions on obtaining the firewall info, firewall password, and VNC session password.
+
 
 # Hardware recommendations:
 
 The following hardware configurations have been tested:
 
+### NUC + 4k monitor:
 - Computer: Intel NUC (https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
     - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
     - RAM: 16GB
@@ -53,20 +67,6 @@ RemoteResize=0
     wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
     sudo yum install ./google-chrome-stable_current_*.rpm
     ```
-
-# Notify Keck Mainland Observing of your intent to connect remotely
-Before you can connect to Keck remotely, we need to provide you with the firewall info and two passwords.  As well, we need info about your remote observing station.
-
-- Email mainland_observing@keck.hawaii.edu with the following info about your remote site:
-    - Institution
-    - City, State
-    - Room Name/#
-    - Room phone #
-    - Emergency Services phone #
-    - Site manager/admin email and phone #
-
-Once we receive your request, we will respond with instructions on obtaining the firewall info, firewall password, and VNC session password.
-
 
 # Download and Configure Keck VNC software
 (NOTE: Examples below assuming a user named 'observer' and installing to home directory)
