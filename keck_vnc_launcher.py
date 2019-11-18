@@ -134,7 +134,7 @@ class KeckVncLauncher(object):
         ##-------------------------------------------------------------------------
         ## Validate ssh key or use alt method?
         ##-------------------------------------------------------------------------
-        if self.args.nosshkey is False:
+        if self.args.nosshkey is False and self.config.get('nosshkey', None) is None:
             self.validate_ssh_key()
             if not self.is_ssh_key_valid:
                 log.error("\n\n\tCould not validate SSH key.\n\tContact mainland_observing@keck.hawaii.edu "\
