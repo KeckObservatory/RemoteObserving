@@ -31,7 +31,7 @@
   # vncargs: '-passwd=/home/observer/.vnc/passwd',
 
   ## Default start sessions if none specified. 
-  default_sessions: ['control0', 'control1', 'control2', 'telstatus']
+  default_sessions: ['control0', 'control1', 'control2', 'telstatus'],
 
   ## For ssh tunnelling, a starting local port number is used and incremented 
   ## for each port needed.  Default is 5901.
