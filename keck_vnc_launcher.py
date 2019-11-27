@@ -113,8 +113,8 @@ class KeckVncLauncher(object):
             if not self.is_authenticated:
                 self.exit_app('Authentication failure!')
 
-        if self.args.authonly is True:
-            self.exit_app('Authentication only')
+#         if self.args.authonly is True:
+#             self.exit_app('Authentication only')
 
 
         ##-------------------------------------------------------------------------
@@ -396,6 +396,9 @@ class KeckVncLauncher(object):
         #check default_sessions
         ds = self.config.get('default_sessions', None)
         log.debug(f'Default sessions from config file: {ds}')
+        if self.args.authonly is True:
+            log.debug(f'authonly is True, so default sessions set to []')
+            ds = []
         if ds is not None: self.DEFAULT_SESSIONS = ds
 
 
@@ -437,7 +440,6 @@ class KeckVncLauncher(object):
         if len(sessions) == 0:
             sessions = self.DEFAULT_SESSIONS
 
-        log.debug(f'Default sessions: {self.DEFAULT_SESSIONS}')
         log.debug(f'Sessions to open: {sessions}')
         return sessions
 
