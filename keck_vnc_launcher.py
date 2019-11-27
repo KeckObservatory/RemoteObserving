@@ -319,7 +319,7 @@ class KeckVncLauncher(object):
         filename = self.args.config
         if filename is not None:
             if not pathlib.Path(filename).is_file():
-                log.error(f'Specified config file "{filename}"" does not exist.')
+                log.error(f'Specified config file "{filename}" does not exist.')
                 self.exit_app()
             else:
                 filenames.insert(0, filename)
@@ -395,7 +395,8 @@ class KeckVncLauncher(object):
 
         #check default_sessions
         ds = self.config.get('default_sessions', None)
-        if ds: self.DEFAULT_SESSIONS = ds
+        log.debug(f'Default sessions from config file: {ds}')
+        if ds is not None: self.DEFAULT_SESSIONS = ds
 
 
     ##-------------------------------------------------------------------------
@@ -436,6 +437,8 @@ class KeckVncLauncher(object):
         if len(sessions) == 0:
             sessions = self.DEFAULT_SESSIONS
 
+        log.debug(f'Default sessions: {self.DEFAULT_SESSIONS}')
+        log.debug(f'Sessions to open: {sessions}')
         return sessions
 
 
