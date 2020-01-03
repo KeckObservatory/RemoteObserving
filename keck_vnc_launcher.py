@@ -184,7 +184,7 @@ class KeckVncLauncher(object):
         ## TODO: Does this work if we are authenticating or do we need an ssh tunnel?
         ##-------------------------------------------------------------------------
         sound = None
-        if self.args.nosound is False:
+        if self.args.nosound is False and self.config.get('nosound', False) is not True:
             self.start_soundplay()
 
 
