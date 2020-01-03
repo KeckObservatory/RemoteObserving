@@ -451,7 +451,7 @@ class KeckVncLauncher(object):
 
         print (f"\nSessions found for account '{self.args.account}':")
         for session in self.sessions_found:
-            print (f"\t{session['name']}")
+            print (f" {session['name']:12s} {session['Display']:5s} {session['Desktop']:s}")
 
 
     ##-------------------------------------------------------------------------
@@ -787,7 +787,7 @@ class KeckVncLauncher(object):
 
             #add default row for 'status' session at display port 1
             if len(sessions) > 0:
-                sessions.add_row([self.STATUS_PORT, 'status', '', 0, 'status'])
+                sessions.add_row([self.STATUS_PORT, 'FACSUM & XMET', '', 0, 'status'])
 
         log.debug("\n" + str(sessions))
         return sessions
