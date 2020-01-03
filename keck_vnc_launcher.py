@@ -279,7 +279,7 @@ class KeckVncLauncher(object):
         ## add flags
         parser.add_argument("--authonly", dest="authonly",
             default=False, action="store_true",
-            help="Authenticate through firewall only.")
+            help="Authenticate through firewall only. Do not launch VNC sessions.")
         parser.add_argument("--nosound", dest="nosound",
             default=False, action="store_true",
             help="Skip start of soundplay application.")
