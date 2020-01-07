@@ -468,9 +468,22 @@ class KeckVncLauncher(object):
     def open_ssh_tunnel(self, server, username, password, ssh_pkey, remote_port, local_port=None):
 
         #get next local port if need be
+        #NOTE: Try up to 100 ports beyond
         if not local_port:
-            local_port = self.local_port
-            self.local_port += 1
+            for i in range(0,100):
+                if self.is_local_port_in_use(self.local_port): 
+                    self.local_port += 1
+                    continue
+                else:
+                    local_port = self.local_port
+                    self.local_port += 1
+                    break
+
+        #if we can't find an open port, warn and return
+        if not local_port:
+            log.error(f"Could not find an open local port for SSH tunnel to {username}@{server}:{remote_port}")
+            self.local_port = self.LOCAL_PORT_START
+            return False
 
         #log
         log.info(f"Opening SSH tunnel for {username}@{server}:{remote_port} on local port {local_port}.")
@@ -495,6 +508,24 @@ class KeckVncLauncher(object):
         except Exception as e:
             log.error(f"Failed to open SSH tunnel for {username}@{server}:{remote_port} on local port {local_port}.")
             log.debug(str(e))
+            return False
+
+
+    ##-------------------------------------------------------------------------
+    ##-------------------------------------------------------------------------
+    def is_local_port_in_use(self, port):
+        cmd = f'lsof -i -P -n | grep LISTEN | grep "{port} (LISTEN)" | grep -v grep'
+        print ("test: ", cmd)
+        log.debug(f'Checking for port {port} in use: ' + cmd)
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        data = proc.communicate()[0]
+        data = data.decode("utf-8").strip()
+        lines = data.split('\n') if data else []
+        if lines:
+            log.debug(f"Port {port} is in use.")
+            print ("test: ", lines)
+            return True
+        else: 
             return False
 
 
