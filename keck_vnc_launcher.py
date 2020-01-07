@@ -479,7 +479,7 @@ class KeckVncLauncher(object):
                     self.local_port += 1
                     break
 
-        #if we can't find an open port, warn and return
+        #if we can't find an open port, error and return
         if not local_port:
             log.error(f"Could not find an open local port for SSH tunnel to {username}@{server}:{remote_port}")
             self.local_port = self.LOCAL_PORT_START
@@ -514,8 +514,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ##-------------------------------------------------------------------------
     def is_local_port_in_use(self, port):
-        cmd = f'lsof -i -P -n | grep LISTEN | grep "{port} (LISTEN)" | grep -v grep'
-        print ("test: ", cmd)
+        cmd = f'lsof -i -P -n | grep LISTEN | grep ":{port} (LISTEN)" | grep -v grep'
         log.debug(f'Checking for port {port} in use: ' + cmd)
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         data = proc.communicate()[0]
@@ -523,7 +522,6 @@ class KeckVncLauncher(object):
         lines = data.split('\n') if data else []
         if lines:
             log.debug(f"Port {port} is in use.")
-            print ("test: ", lines)
             return True
         else: 
             return False
