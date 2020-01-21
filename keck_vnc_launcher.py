@@ -197,7 +197,7 @@ class KeckVncLauncher(object):
         ## TODO: Does this work if we are authenticating or do we need an ssh tunnel?
         ##---------------------------------------------------------------------
         sound = None
-        if self.args.nosound is False and self.config.get('nosound', False) is not True:
+        if self.args.nosound is False and self.config.get('nosound', False) != True:
             self.start_soundplay()
 
 
@@ -243,7 +243,7 @@ class KeckVncLauncher(object):
 
                 #determine account and password         
                 account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
-                password = None                 if self.is_ssh_key_valid else self.vnc_password
+                password = None if self.is_ssh_key_valid else self.vnc_password
 
                 #open ssh tunnel
                 port = self.open_ssh_tunnel(vncserver, account, password,
@@ -297,7 +297,7 @@ class KeckVncLauncher(object):
         ## add flags
         parser.add_argument("--authonly", dest="authonly",
             default=False, action="store_true",
-            help="Authenticate through firewall only. Do not launch VNC sessions.")
+            help="Authenticate through firewall, but do not start VNC sessions.")
         parser.add_argument("--nosound", dest="nosound",
             default=False, action="store_true",
             help="Skip start of soundplay application.")
@@ -400,8 +400,8 @@ class KeckVncLauncher(object):
             else:
                 log.warning("Partial firewall configuration detected in config file:")
                 if not self.firewall_address: log.warning("firewall_address not set")
-                if not self.firewall_user:    log.warning("firewall_user not set")
-                if not self.firewall_port:    log.warning("firewall_port not set")
+                if not self.firewall_user: log.warning("firewall_user not set")
+                if not self.firewall_port: log.warning("firewall_port not set")
 
         #check ssh_pkeys servers_to try
         self.ssh_pkey = self.config.get('ssh_pkey', None)
@@ -409,7 +409,7 @@ class KeckVncLauncher(object):
             log.warning("No ssh private key file specified in config file.\n")
         else:
             if not pathlib.Path(self.ssh_pkey).exists():
-                log.warning(f"SSH private key path does not exist: {self.ssh_pkey}\n")
+                log.warning(f"SSH private key path does not exist: {self.ssh_pkey}")
 
         #check default_sessions
         ds = self.config.get('default_sessions', None)
@@ -467,7 +467,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def print_sessions_found(self):
 
-        print (f"\nSessions found for account '{self.args.account}':")
+        print(f"\nSessions found for account '{self.args.account}':")
         for s in self.sessions_found:
             print(f"  {s['name']:12s} {s['Display']:5s} {s['Desktop']:s}")
 
@@ -568,7 +568,8 @@ class KeckVncLauncher(object):
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         log.debug(f"VNC viewer command: {cmd}")
-        # proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+        #                         stderr=subprocess.PIPE)
         proc = subprocess.Popen(cmd)
 
         #append to proc list so we can terminate on app exit
@@ -602,7 +603,7 @@ class KeckVncLauncher(object):
             if self.do_authenticate:
 
                 account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
-                password = None                 if self.is_ssh_key_valid else self.vnc_password
+                password = None if self.is_ssh_key_valid else self.vnc_password
                 sound_port = self.open_ssh_tunnel(self.vncserver, account,
                                                   password, self.ssh_pkey,
                                                   sound_port, None)
@@ -1046,10 +1047,10 @@ class KeckVncLauncher(object):
 
         #helpful user error message
         supportEmail = 'mainland_observing@keck.hawaii.edu'
-        print ("\n****** PROGRAM ERROR ******\n")
-        print ("Error message: " + str(error) + "\n")
-        print ("If you need troubleshooting assistance:")
-        print (f"* Email {supportEmail}\n")
+        print("\n****** PROGRAM ERROR ******\n")
+        print("Error message: " + str(error) + "\n")
+        print("If you need troubleshooting assistance:")
+        print(f"* Email {supportEmail}\n")
         #todo: call number, website?
 
         #Log error if we have a log object (otherwise dump error to stdout) 
@@ -1057,10 +1058,10 @@ class KeckVncLauncher(object):
         msg = traceback.format_exc()
         if log:
             logfile = log.handlers[0].baseFilename
-            print (f"* Attach log file at: {logfile}\n")
+            print(f"* Attach log file at: {logfile}\n")
             log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
         else:
-            print (msg)
+            print(msg)
 
         self.exit_app()
 
@@ -1098,9 +1099,9 @@ def create_logger():
         log.addHandler(logConsoleHandler)
 
     except Exception as error:
-        print (str(error))
-        print (f"ERROR: Unable to create logger at {logFile}")
-        print ("Make sure you have write access to this directory.\n")
+        print(str(error))
+        print(f"ERROR: Unable to create logger at {logFile}")
+        print("Make sure you have write access to this directory.\n")
         log.info("EXITING APP\n")        
         sys.exit(1)
 
@@ -1110,7 +1111,7 @@ def create_logger():
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
 
-    print ("\nStarting Keck VNC Launcher...\n")
+    print("\nStarting Keck VNC Launcher...\n")
 
     #catch all exceptions so we can exit gracefully
     try:        
