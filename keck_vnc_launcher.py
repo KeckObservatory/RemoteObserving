@@ -848,6 +848,7 @@ class KeckVncLauncher(object):
                 sessions.add_row([self.STATUS_PORT, 'FACSUM & XMET', '', 0,
                                   'status'])
 
+        sessions.sort('Desktop')
         log.debug("\n" + str(sessions))
         return sessions
 
