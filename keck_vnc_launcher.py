@@ -27,12 +27,11 @@ import warnings
 import sshtunnel
 import platform
 
+__version__ = '0.9'
 
 class KeckVncLauncher(object):
 
     def __init__(self):
-        self.version = '0.9'
-
         #init vars we need to shutdown app properly
         self.config = None
         self.sound = None
@@ -440,7 +439,7 @@ class KeckVncLauncher(object):
             log.debug(f'System hostname: {hostname}')
             # ip = socket.gethostbyname(hostname)
             # log.debug(f'System IP Address: {ip}')
-            log.debug(f'Remote Observing Software Version = {self.version}')
+            log.debug(f'Remote Observing Software Version = {__version__}')
         except Exception as error:
             log.error("Unable to log system info.")
             log.debug(str(error))
