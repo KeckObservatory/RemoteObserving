@@ -27,11 +27,11 @@ import warnings
 import sshtunnel
 import platform
 
+__version__ = '0.9'
 
 class KeckVncLauncher(object):
 
     def __init__(self):
-
         #init vars we need to shutdown app properly
         self.config = None
         self.sound = None
@@ -354,10 +354,18 @@ class KeckVncLauncher(object):
 
         #load config file and make sure it has the info we need
         log.info(f'Using config file: {file}')
+
+        # open file a first time just to log the raw contents
+        with open(file) as FO:
+            contents = FO.read()
+#             lines = contents.split('/n')
+        log.debug(f"Contents of config file: {contents}")
+
+        # open file a second time to properly read config
         with open(file) as FO:
             config = yaml.safe_load(FO)
 
-        cstr = "CONFIGS:\n"
+        cstr = "Parsed Configuration:\n"
         for key, c in config.items():
             cstr += f"\t{key} = " + str(c) + "\n"
         log.debug(cstr)
@@ -431,6 +439,7 @@ class KeckVncLauncher(object):
             log.debug(f'System hostname: {hostname}')
             # ip = socket.gethostbyname(hostname)
             # log.debug(f'System IP Address: {ip}')
+            log.info(f'Remote Observing Software Version = {__version__}')
         except Exception as error:
             log.error("Unable to log system info.")
             log.debug(str(error))
