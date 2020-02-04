@@ -439,7 +439,7 @@ class KeckVncLauncher(object):
             log.debug(f'System hostname: {hostname}')
             # ip = socket.gethostbyname(hostname)
             # log.debug(f'System IP Address: {ip}')
-            log.debug(f'Remote Observing Software Version = {__version__}')
+            log.info(f'Remote Observing Software Version = {__version__}')
         except Exception as error:
             log.error("Unable to log system info.")
             log.debug(str(error))
