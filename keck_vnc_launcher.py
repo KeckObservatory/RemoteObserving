@@ -36,7 +36,7 @@ class KeckVncLauncher(object):
         self.config = None
         self.sound = None
         self.firewall_pass = None
-        self.ssh_threads = None
+#         self.ssh_threads = None
         self.ports_in_use = None
         self.vnc_processes = None
         self.do_authenticate = False
@@ -184,7 +184,7 @@ class KeckVncLauncher(object):
         ## Open requested sessions
         ##---------------------------------------------------------------------
         self.calc_window_geometry()
-        self.ssh_threads  = []
+#         self.ssh_threads  = []
         self.ports_in_use = {}
         self.vnc_threads  = []
         self.vnc_processes = []
@@ -491,7 +491,6 @@ class KeckVncLauncher(object):
             print(f"No local ports opened for SSH tunnels")
         else:
             print(f"\nLocal ports used for SSH tunnels:")
-            print(self.ports_in_use)
             print(f"  Local Port | Desktop   | Remote Connection")
             for p in self.ports_in_use.keys():
                 desktop = self.ports_in_use[p][1]
@@ -549,8 +548,8 @@ class KeckVncLauncher(object):
             thread.start()
 
             #if success, keep track of ssh threads and ports in use
-            self.ssh_threads.append(thread)
-            self.ports_in_use[local_port] = [address_and_port, session_name]
+#             self.ssh_threads.append(thread)
+            self.ports_in_use[local_port] = [address_and_port, session_name, thread]
             return local_port
 
         except Exception as e:
@@ -884,12 +883,24 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Close ssh threads
     ##-------------------------------------------------------------------------
-    def close_ssh_threads(self):
-        if self.ssh_threads:
-            for thread in self.ssh_threads:
-                log.info(f'Closing SSH forwarding for {thread.local_bind_port}')
-                thread.stop()
+    def close_ssh_thread(self, p):
+        if p in self.ports_in_use.keys():
+            desktop = self.ports_in_use[p][1]
+            remote_connection = self.ports_in_use[p][0]
+            log.info(f" Closing SSH tunnel for port {p:d}, {desktop:s} "
+                     f"on {remote_connection:s}")
+            thread = self.ports_in_use[p][2]
+            thread.stop()
 
+
+    def close_ssh_threads(self):
+        if len(self.ports_in_use) > 0:
+            for p in self.ports_in_use.keys():
+                self.close_ssh_thread(p)
+#         if self.ssh_threads:
+#             for thread in self.ssh_threads:
+#                 log.info(f'Closing SSH forwarding for {thread.local_bind_port}')
+#                 thread.stop()
 
 
     ##-------------------------------------------------------------------------
@@ -995,28 +1006,33 @@ class KeckVncLauncher(object):
     def prompt_menu(self):
 
         menu = "\n"
-        menu += "--------------------------------------------------\n"
-        menu += "|                    MENU                        |\n"
-        menu += "--------------------------------------------------\n"
-        menu += "|  l               List sessions available       |\n"
-        menu += "|  [session name]  Open VNC session by name      |\n"
-        menu += "|  p               Position VNC windows          |\n"
-        menu += "|  s               Soundplayer restart           |\n"
-        menu += "|  tunnels         List local ports in use       |\n"
-        menu += "|  q               Quit (or Control-C)           |\n"
-        menu += "--------------------------------------------------\n"
+        menu += "---------------------------------------------------\n"
+        menu += "|                    MENU                         |\n"
+        menu += "---------------------------------------------------\n"
+        menu += "|  l               List sessions available        |\n"
+        menu += "|  [session name]  Open VNC session by name       |\n"
+        menu += "|  w               Position VNC windows           |\n"
+        menu += "|  s               Soundplayer restart            |\n"
+#         menu += "|  p               Play a local test sound        |\n"
+        menu += "|  t               List local ports in use        |\n"
+        menu += "|  c [port]        Close ssh tunnel on local port |\n"
+        menu += "|  q               Quit (or Control-C)            |\n"
+        menu += "---------------------------------------------------\n"
         menu += "> "
 
         quit = None
         while quit is None:
             cmd = input(menu).lower()
-            if   cmd == 'q':  quit = True
-            elif cmd == 'p':  self.position_vnc_windows()
-            elif cmd == 's':  self.start_soundplay()
-            elif cmd == 'l':  self.print_sessions_found()
-            #elif cmd == 'v':  self.validate_ssh_key()
-            #elif cmd == 'x':  self.kill_vnc_processes()
-            elif cmd == 'tunnels': self.list_tunnels()
+            cmatch = re.match('c (\d+)', cmd)
+            if   cmd == 'q': quit = True
+            elif cmd == 'w': self.position_vnc_windows()
+            elif cmd == 'p': self.play_test_sound()
+            elif cmd == 's': self.start_soundplay()
+            elif cmd == 'l': self.print_sessions_found()
+            elif cmd == 't': self.list_tunnels()
+            elif cmatch is not None: self.close_ssh_thread(int(cmatch.group(1)))
+            #elif cmd == 'v': self.validate_ssh_key()
+            #elif cmd == 'x': self.kill_vnc_processes()
             elif cmd in self.sessions_found['name']:
                 self.start_vnc_session(cmd)
             else:
