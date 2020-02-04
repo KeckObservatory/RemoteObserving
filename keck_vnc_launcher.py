@@ -650,6 +650,10 @@ class KeckVncLauncher(object):
             log.info(str(error))
 
 
+    def play_test_sound(self):
+        log.warning('Playing of a test sound is not yet implemented')
+
+
     ##-------------------------------------------------------------------------
     ## Authenticate
     ##-------------------------------------------------------------------------
