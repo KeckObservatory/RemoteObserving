@@ -900,22 +900,15 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def close_ssh_thread(self, p):
         if p in self.ports_in_use.keys():
-            desktop = self.ports_in_use[p][1]
-            remote_connection = self.ports_in_use[p][0]
+            remote_connection, desktop, thread = self.ports_in_use.pop(p, None)
             log.info(f" Closing SSH tunnel for port {p:d}, {desktop:s} "
                      f"on {remote_connection:s}")
-            thread = self.ports_in_use[p][2]
             thread.stop()
 
 
     def close_ssh_threads(self):
-        if len(self.ports_in_use) > 0:
-            for p in self.ports_in_use.keys():
-                self.close_ssh_thread(p)
-#         if self.ssh_threads:
-#             for thread in self.ssh_threads:
-#                 log.info(f'Closing SSH forwarding for {thread.local_bind_port}')
-#                 thread.stop()
+        for p in self.ports_in_use.keys():
+            self.close_ssh_thread(p)
 
 
     ##-------------------------------------------------------------------------
