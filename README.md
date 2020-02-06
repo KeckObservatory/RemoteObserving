@@ -71,7 +71,7 @@ RemoteResize=0
 
 We strongly suggest the following manual tests before trying the script.  This will ensure that your system is properly configured to connect to Keck.  
 
- - [ ] Manually authenticate through the Keck firewall using the [instructions](https://www2.keck.hawaii.edu/realpublic/inst/mainland_observing/tech/firewall/)
+ - [ ] Manually authenticate through the Keck firewall using the [instructions](https://www2.keck.hawaii.edu/realpublic/inst/mainland_observing/tech/firewall/).  The steps below will fail unless this step is complete.
  - [ ] Test ssh key and svncserver2: `ssh kvnc@svncserver2.keck.hawaii.edu`.  Your ssh key (if valid) will enable you to connect without a password.
  - [ ] Test numbered account on svncserver1: `ssh hires1@svncserver1.keck.hawaii.edu`.  You will be prompted for the `hires1` user password (or whichever instrument numbered account you choose to use).
  - [ ] Test numbered account on svncserver2: `ssh hires1@svncserver2.keck.hawaii.edu`.
