@@ -2,12 +2,12 @@
 
 These scripts are to be used by remote sites to connect to Keck for remote observing.
 
-Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical documentation at: https://www2.keck.hawaii.edu/inst/mainland_observing/
+Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical documentation at: [https://www2.keck.hawaii.edu/inst/mainland_observing/](https://www2.keck.hawaii.edu/inst/mainland_observing/)
 
 ### Notify Keck of your intent to connect remotely
 Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
 
-- Email mainland_observing@keck.hawaii.edu with the following info about your remote site:
+- Email `mainland_observing@keck.hawaii.edu` with the following info about your remote site:
     - Institution
     - City, State
     - Room Name/#
@@ -19,23 +19,22 @@ Once we receive your request, we will respond with instructions on obtaining the
 
 
 # Hardware recommendations:
-
 The following hardware configurations have been tested:
 
-### NUC + 4k monitor:
-- Computer: Intel NUC (https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
+## NUC + 4k monitor
+- Computer: [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
     - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
     - RAM: 16GB
 - Monitor: 43-inch, 4k resolution
 
 
-# Software requirements:
-(NOTE: Examples below assuming sudo/root installation for all users)
+# Software requirements
+NOTE: Examples below assuming sudo/root installation for all users
 
 ### Install CentOS 7.6
-- NOTE: Earlier versions of CentOS may work, but have not been tested
+NOTE: Earlier versions of CentOS may work, but have not been tested
 
-### Install Anaconda python3:
+### Install Anaconda python3
 - Download and run the latest installer: https://www.anaconda.com/distribution/
 - Add python3 to user path (example below for ~/.bashrc with typical python install path):
     ```
@@ -115,7 +114,8 @@ RemoteResize=0
     ```
         
         
-# Run the VNC launch script:
+# Run the VNC launch script
+
 From the command line, cd into your install directory and run "start_keck_viewers.bash" followed by the name of the instrument account assigned for your observing night (ie 'nires1', 'mosfire2').  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
 ```
 cd ~/RemoteObserving
@@ -134,5 +134,5 @@ NOTE: Be sure to exit the script by using the 'q' quit option or control-c to en
 
 Verbose debug information is logged to the RemoteObserving/logs/ folder.  Log files are created based on the UTC date.
 
-If you need assistance, please email mainland_observing@keck.hawaii.edu and attach the most recent log file from the logs folder.
+If you need assistance, please email `mainland_observing@keck.hawaii.edu` and attach the most recent log file from the logs folder.
 
