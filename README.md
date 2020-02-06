@@ -67,7 +67,24 @@ RemoteResize=0
     sudo yum install ./google-chrome-stable_current_*.rpm
     ```
 
+# Test your connection to Keck
+
+We strongly suggest the following manual tests before trying the script.  This will ensure that your system is properly configured to connect to Keck.  
+
+ - [ ] Manually authenticate through the Keck firewall using the [instructions](https://www2.keck.hawaii.edu/realpublic/inst/mainland_observing/tech/firewall/)
+ - [ ] Test ssh key and svncserver2: `ssh kvnc@svncserver2.keck.hawaii.edu`.  Your ssh key (if valid) will enable you to connect without a password.
+ - [ ] Test numbered account on svncserver1: `ssh hires1@svncserver1.keck.hawaii.edu`.  You will be prompted for the `hires1` user password (or whichever instrument numbered account you choose to use).
+ - [ ] Test numbered account on kcwi: `ssh hires1@kcwi.keck.hawaii.edu`.  You will be prompted for the `hires1` user password (or whichever instrument numbered account you choose to use).
+ - [ ] Test numbered account on hires: `ssh hires1@hires.keck.hawaii.edu`.
+ - [ ] Test numbered account on lris: `ssh hires1@lris.keck.hawaii.edu`.
+ - [ ] Test numbered account on nirc2: `ssh hires1@nirc2.keck.hawaii.edu`.
+ - [ ] Test numbered account on nires: `ssh hires1@nires.keck.hawaii.edu`.
+ - [ ] Test numbered account on nirspec: `ssh hires1@nirspec.keck.hawaii.edu`.
+
+Yes, it is important to test the SSH connection to all machines listed above.  There are possible failure modes which would let you log in to some, but not others.
+
 # Download and Configure Keck VNC software
+
 (NOTE: Examples below assuming a user named 'observer' and installing to home directory)
 
 - Download or clone this project from github: 
