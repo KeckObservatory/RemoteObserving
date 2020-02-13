@@ -27,7 +27,7 @@ import warnings
 import sshtunnel
 import platform
 
-__version__ = '0.9'
+__version__ = '0.9.1'
 
 class KeckVncLauncher(object):
 
@@ -36,7 +36,7 @@ class KeckVncLauncher(object):
         self.config = None
         self.sound = None
         self.firewall_pass = None
-        self.ssh_threads = None
+#         self.ssh_threads = None
         self.ports_in_use = None
         self.vnc_processes = None
         self.do_authenticate = False
@@ -184,8 +184,8 @@ class KeckVncLauncher(object):
         ## Open requested sessions
         ##---------------------------------------------------------------------
         self.calc_window_geometry()
-        self.ssh_threads  = []
-        self.ports_in_use = []
+#         self.ssh_threads  = []
+        self.ports_in_use = {}
         self.vnc_threads  = []
         self.vnc_processes = []
         for session_name in self.sessions_requested:
@@ -218,72 +218,84 @@ class KeckVncLauncher(object):
 
         log.info(f"Opening VNCviewer for '{session_name}'")
 
-        try:
-            #get session data by name
-            session = None
-            for tmp in self.sessions_found:
-                if tmp['name'] == session_name:
-                    session = tmp
-            if not session:            
-                log.error(f"No server VNC session found for '{session_name}'.")
-                self.print_sessions_found()
+#         try:
+        #get session data by name
+        session = None
+        for tmp in self.sessions_found:
+            if tmp['name'] == session_name:
+                session = tmp
+        if not session:
+            log.error(f"No server VNC session found for '{session_name}'.")
+            self.print_sessions_found()
+            return
+
+        #determine vncserver (only different for "status")
+        vncserver = self.vncserver
+        if session_name == 'status':
+            vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
+
+        #get remote port
+        display   = int(session['Display'][1:])
+        port      = int(f"59{display:02d}")
+
+        ## If authenticating, open SSH tunnel for appropriate ports
+        if self.do_authenticate:
+
+            #determine account and password         
+            account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
+            password = None if self.is_ssh_key_valid else self.vnc_password
+
+            # determine if there is already a tunnel for this session
+            local_port = None
+            for p in self.ports_in_use.keys():
+                if session_name == self.ports_in_use[p][1]:
+                    local_port = p
+                    log.info(f"Found existing SSH tunnel on port {port}")
+                    break
+
+            #open ssh tunnel
+            if local_port is None:
+                local_port = self.open_ssh_tunnel(vncserver, account, password,
+                                                  self.ssh_pkey, port, None,
+                                                  session_name=session_name)
+            if not local_port:
                 return
+            else:
+                vncserver = 'localhost'
+        else:
+            local_port = port
 
-            #determine vncserver (only different for "status")
-            vncserver = self.vncserver
-            if session_name == 'status':
-                vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
+        #If vncviewer is not defined, then prompt them to open manually and
+        # return now
+        if self.config['vncviewer'] in [None, 'None', 'none']:
+            log.info(f"\nNo VNC viewer application specified")
+            log.info(f"Open your VNC viewer manually\n")
+            return
 
-            #get remote port
-            display   = int(session['Display'][1:])
-            port      = int(f"59{display:02d}")
+        #determine geometry
+        #NOTE: This doesn't work for mac so only trying for linux
+        geometry = ''
+        if 'linux' in platform.system().lower():
+            i = len(self.vnc_threads) % len(self.geometry)
+            geom = self.geometry[i]
+            width  = geom[0]
+            height = geom[1]
+            xpos   = geom[2]
+            ypos   = geom[3]
+            # if width != None and height != None:
+            #     geometry += f'{width}x{height}'
+            if xpos != None and ypos != None:
+                geometry += f'+{xpos}+{ypos}'
 
-            ## If authenticating, open SSH tunnel for appropriate ports
-            if self.do_authenticate:
+        ## Open vncviewer as separate thread
+        self.vnc_threads.append(Thread(target=self.launch_vncviewer,
+                                       args=(vncserver, local_port, geometry)))
+        self.vnc_threads[-1].start()
+        sleep(0.05)
 
-                #determine account and password         
-                account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
-                password = None if self.is_ssh_key_valid else self.vnc_password
-
-                #open ssh tunnel
-                port = self.open_ssh_tunnel(vncserver, account, password,
-                                            self.ssh_pkey, port, None)
-                if not port:
-                    return
-                else:
-                    vncserver = 'localhost'
-
-            #If vncviewer is not defined, then prompt them to open manually and
-            # return now
-            if self.config['vncviewer'] in [None, 'None', 'none']:
-                log.info(f"\nNo VNC viewer application specified")
-                log.info(f"Open your VNC viewer manually\n")
-                return
-
-            #determine geometry
-            #NOTE: This doesn't work for mac so only trying for linux
-            geometry = ''
-            if 'linux' in platform.system().lower():
-                i = len(self.vnc_threads) % len(self.geometry)
-                geom = self.geometry[i]
-                width  = geom[0]
-                height = geom[1]
-                xpos   = geom[2]
-                ypos   = geom[3]
-                # if width != None and height != None:
-                #     geometry += f'{width}x{height}'
-                if xpos != None and ypos != None:
-                    geometry += f'+{xpos}+{ypos}'
-
-            ## Open vncviewer as separate thread
-            self.vnc_threads.append(Thread(target=self.launch_vncviewer,
-                                           args=(vncserver, port, geometry)))
-            self.vnc_threads[-1].start()
-            sleep(0.05)
-
-        except Exception as error:
-            log.error("Unable to start vnc session.  See log for details.")
-            log.debug(str(error))
+#         except Exception as error:
+#             log.error("Unable to start vnc session.  See log for details.")
+#             log.debug(str(error))
 
 
     ##-------------------------------------------------------------------------
@@ -482,6 +494,22 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
+    ## List Open Tunnels
+    ##-------------------------------------------------------------------------
+    def list_tunnels(self):
+
+        if len(self.ports_in_use) == 0:
+            print(f"No SSH tunnels opened by this program")
+        else:
+            print(f"\nSSH tunnels:")
+            print(f"  Local Port | Desktop   | Remote Connection")
+            for p in self.ports_in_use.keys():
+                desktop = self.ports_in_use[p][1]
+                remote_connection = self.ports_in_use[p][0]
+                print(f"  {p:10d} | {desktop:9s} | {remote_connection:s}")
+
+
+    ##-------------------------------------------------------------------------
     ## Launch xterm
     ##-------------------------------------------------------------------------
     def launch_xterm(self, command, pw, title):
@@ -493,7 +521,7 @@ class KeckVncLauncher(object):
     ## Open ssh tunnel
     ##-------------------------------------------------------------------------
     def open_ssh_tunnel(self, server, username, password, ssh_pkey, remote_port,
-                        local_port=None):
+                        local_port=None, session_name='unknown'):
 
         #get next local port if need be
         #NOTE: Try up to 100 ports beyond
@@ -514,7 +542,8 @@ class KeckVncLauncher(object):
             return False
 
         #log
-        log.info(f"Opening SSH tunnel for {username}@{server}:{remote_port} "
+        address_and_port = f"{username}@{server}:{remote_port}"
+        log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
 
         #try to open ssh tunnel
@@ -530,8 +559,8 @@ class KeckVncLauncher(object):
             thread.start()
 
             #if success, keep track of ssh threads and ports in use
-            self.ssh_threads.append(thread)
-            self.ports_in_use.append(local_port)
+#             self.ssh_threads.append(thread)
+            self.ports_in_use[local_port] = [address_and_port, session_name, thread]
             return local_port
 
         except Exception as e:
@@ -630,6 +659,10 @@ class KeckVncLauncher(object):
         except Exception as error:
             log.error('Unable to start soundplay.  See log for details.')
             log.info(str(error))
+
+
+    def play_test_sound(self):
+        log.warning('Playing of a test sound is not yet implemented')
 
 
     ##-------------------------------------------------------------------------
@@ -865,12 +898,17 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Close ssh threads
     ##-------------------------------------------------------------------------
-    def close_ssh_threads(self):
-        if self.ssh_threads:
-            for thread in self.ssh_threads:
-                log.info(f'Closing SSH forwarding for {thread.local_bind_port}')
-                thread.stop()
+    def close_ssh_thread(self, p):
+        if p in self.ports_in_use.keys():
+            remote_connection, desktop, thread = self.ports_in_use.pop(p, None)
+            log.info(f" Closing SSH tunnel for port {p:d}, {desktop:s} "
+                     f"on {remote_connection:s}")
+            thread.stop()
 
+
+    def close_ssh_threads(self):
+        for p in self.ports_in_use.keys():
+            self.close_ssh_thread(p)
 
 
     ##-------------------------------------------------------------------------
@@ -976,26 +1014,33 @@ class KeckVncLauncher(object):
     def prompt_menu(self):
 
         menu = "\n"
-        menu += "--------------------------------------------------\n"
-        menu += "|                    MENU                        |\n"
-        menu += "--------------------------------------------------\n"
-        menu += "|  l               List sessions available       |\n"
-        menu += "|  [session name]  Open VNC session by name      |\n"
-        menu += "|  p               Position VNC windows          |\n"
-        menu += "|  s               Soundplayer restart           |\n"
-        menu += "|  q               Quit (or Control-C)           |\n"
-        menu += "--------------------------------------------------\n"
+        menu += "---------------------------------------------------\n"
+        menu += "|                    MENU                         |\n"
+        menu += "---------------------------------------------------\n"
+        menu += "|  l               List sessions available        |\n"
+        menu += "|  [session name]  Open VNC session by name       |\n"
+        menu += "|  w               Position VNC windows           |\n"
+        menu += "|  s               Soundplayer restart            |\n"
+#         menu += "|  p               Play a local test sound        |\n"
+        menu += "|  t               List local ports in use        |\n"
+        menu += "|  c [port]        Close ssh tunnel on local port |\n"
+        menu += "|  q               Quit (or Control-C)            |\n"
+        menu += "---------------------------------------------------\n"
         menu += "> "
 
         quit = None
         while quit is None:
             cmd = input(menu).lower()
-            if   cmd == 'q':  quit = True
-            elif cmd == 'p':  self.position_vnc_windows()
-            elif cmd == 's':  self.start_soundplay()
-            elif cmd == 'l':  self.print_sessions_found()
-            #elif cmd == 'v':  self.validate_ssh_key()
-            #elif cmd == 'x':  self.kill_vnc_processes()
+            cmatch = re.match('c (\d+)', cmd)
+            if   cmd == 'q': quit = True
+            elif cmd == 'w': self.position_vnc_windows()
+            elif cmd == 'p': self.play_test_sound()
+            elif cmd == 's': self.start_soundplay()
+            elif cmd == 'l': self.print_sessions_found()
+            elif cmd == 't': self.list_tunnels()
+            elif cmatch is not None: self.close_ssh_thread(int(cmatch.group(1)))
+            #elif cmd == 'v': self.validate_ssh_key()
+            #elif cmd == 'x': self.kill_vnc_processes()
             elif cmd in self.sessions_found['name']:
                 self.start_vnc_session(cmd)
             else:
