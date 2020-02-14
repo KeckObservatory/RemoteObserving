@@ -20,7 +20,7 @@ from soundplay import soundplay
 import atexit
 from datetime import datetime
 import traceback
-import pathlib
+from pathlib import Path
 import math
 import subprocess
 import warnings
@@ -348,7 +348,7 @@ class KeckVncLauncher(object):
         #if config file specified, put that at beginning of list
         filename = self.args.config
         if filename is not None:
-            if not pathlib.Path(filename).is_file():
+            if not Path(filename).is_file():
                 log.error(f'Specified config file "{filename}" does not exist.')
                 self.exit_app()
             else:
@@ -357,7 +357,7 @@ class KeckVncLauncher(object):
         #find first file that exists
         file = None
         for f in filenames:
-            if pathlib.Path(f).is_file():
+            if Path(f).is_file():
                 file = f
                 break
         if not file:
@@ -428,7 +428,7 @@ class KeckVncLauncher(object):
         if not self.ssh_pkey:
             log.warning("No ssh private key file specified in config file.\n")
         else:
-            if not pathlib.Path(self.ssh_pkey).exists():
+            if not Path(self.ssh_pkey).exists():
                 log.warning(f"SSH private key path does not exist: {self.ssh_pkey}")
 
         #check default_sessions
@@ -1024,6 +1024,7 @@ class KeckVncLauncher(object):
 #         menu += "|  p               Play a local test sound        |\n"
         menu += "|  t               List local ports in use        |\n"
         menu += "|  c [port]        Close ssh tunnel on local port |\n"
+        menu += "|  u               Upload log to Keck             |\n"
         menu += "|  q               Quit (or Control-C)            |\n"
         menu += "---------------------------------------------------\n"
         menu += "> "
@@ -1038,6 +1039,7 @@ class KeckVncLauncher(object):
             elif cmd == 's': self.start_soundplay()
             elif cmd == 'l': self.print_sessions_found()
             elif cmd == 't': self.list_tunnels()
+            elif cmd == 'u': self.upload_log()
             elif cmatch is not None: self.close_ssh_thread(int(cmatch.group(1)))
             #elif cmd == 'v': self.validate_ssh_key()
             #elif cmd == 'x': self.kill_vnc_processes()
@@ -1045,6 +1047,38 @@ class KeckVncLauncher(object):
                 self.start_vnc_session(cmd)
             else:
                 log.error(f'Unrecognized command: {cmd}')
+
+
+    ##-------------------------------------------------------------------------
+    ## Upload log file to Keck
+    ##-------------------------------------------------------------------------
+    def upload_log(self):
+        try:
+            client = paramiko.SSHClient()
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(paramiko.WarningPolicy())
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(
+                self.vncserver,
+                port = 22, 
+                timeout = 6, 
+#                 key_filename=self.ssh_pkey,
+                username = self.args.account, 
+                password = self.vnc_password)
+            sftp = client.open_sftp()
+            log.info('  Connected SFTP')
+
+            logfile_handlers = [lh for lh in log.handlers if 
+                                isinstance(lh, logging.FileHandler)]
+            logfile = Path(logfile_handlers.pop(0).baseFilename)
+            destination = logfile.name
+            sftp.put(logfile, destination)
+            log.info(f'  Uploaded {logfile.name}')
+            log.info(f'  to {self.args.account}@{self.vncserver}:~/{destination}')
+        except TimeoutError:
+            log.error('  Timed out trying to upload log file')
+        except Exception as e:
+            log.error('  Unable to upload logfile: ' + str(e))
 
 
     ##-------------------------------------------------------------------------
@@ -1133,7 +1167,7 @@ def create_logger():
 
         #create log file and log dir if not exist
         ymd = datetime.utcnow().date().strftime('%Y%m%d')
-        pathlib.Path('logs/').mkdir(parents=True, exist_ok=True)
+        Path('logs/').mkdir(parents=True, exist_ok=True)
 
         #file handler (full debug logging)
         logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
