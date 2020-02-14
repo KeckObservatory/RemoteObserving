@@ -908,7 +908,7 @@ class KeckVncLauncher(object):
 
 
     def close_ssh_threads(self):
-        for p in self.ports_in_use.keys():
+        for p in list(self.ports_in_use.keys()):
             self.close_ssh_thread(p)
 
 
