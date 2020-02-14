@@ -302,39 +302,7 @@ class KeckVncLauncher(object):
     ## Get command line args
     ##-------------------------------------------------------------------------
     def get_args(self):
-
-        ## create a parser object for understanding command-line arguments
-        parser = argparse.ArgumentParser(description="Keck VNC Launcher")
-
-        ## add flags
-        parser.add_argument("--authonly", dest="authonly",
-            default=False, action="store_true",
-            help="Authenticate through firewall, but do not start VNC sessions.")
-        parser.add_argument("--nosound", dest="nosound",
-            default=False, action="store_true",
-            help="Skip start of soundplay application.")
-        parser.add_argument("--viewonly", dest="viewonly",
-            default=False, action="store_true",
-            help="Open VNC sessions in View Only mode")
-        parser.add_argument("--nosshkey", dest="nosshkey",
-            default=False, action="store_true",
-            help=argparse.SUPPRESS)
-        for name in self.SESSION_NAMES:
-            parser.add_argument(f"--{name}", 
-                dest=name, 
-                default=False, 
-                action="store_true", 
-                help=f"Open {name}")
-
-        ## add arguments
-        parser.add_argument("account", type=str, help="The user account.")
-
-        ## add options
-        parser.add_argument("-c", "--config", dest="config", type=str,
-            help="Path to local configuration file.")
-
-        #parse
-        self.args = parser.parse_args()
+        self.args = create_parser()
         
 
     ##-------------------------------------------------------------------------
@@ -1120,6 +1088,56 @@ class KeckVncLauncher(object):
 
         self.exit_app()
 
+
+##-------------------------------------------------------------------------
+## Create argument parser
+##-------------------------------------------------------------------------
+def create_parser():
+    ## create a parser object for understanding command-line arguments
+    parser = argparse.ArgumentParser(description="Keck VNC Launcher")
+
+    SESSION_NAMES = [
+                'control0',
+                'control1',
+                'control2',
+                'analysis0',
+                'analysis1',
+                'analysis2',
+                'telanalys',
+                'telstatus',
+                'status'
+            ]
+
+    ## add flags
+    parser.add_argument("--authonly", dest="authonly",
+        default=False, action="store_true",
+        help="Authenticate through firewall, but do not start VNC sessions.")
+    parser.add_argument("--nosound", dest="nosound",
+        default=False, action="store_true",
+        help="Skip start of soundplay application.")
+    parser.add_argument("--viewonly", dest="viewonly",
+        default=False, action="store_true",
+        help="Open VNC sessions in View Only mode")
+    parser.add_argument("--nosshkey", dest="nosshkey",
+        default=False, action="store_true",
+        help=argparse.SUPPRESS)
+    for name in SESSION_NAMES:
+        parser.add_argument(f"--{name}", 
+            dest=name, 
+            default=False, 
+            action="store_true", 
+            help=f"Open {name}")
+
+    ## add arguments
+    parser.add_argument("account", type=str, nargs='?', default='hires1',
+                        help="The user account.")
+
+    ## add options
+    parser.add_argument("-c", "--config", dest="config", type=str,
+        help="Path to local configuration file.")
+
+    #parse
+    return parser.parse_args()
 
 ##-------------------------------------------------------------------------
 ## Create logger
