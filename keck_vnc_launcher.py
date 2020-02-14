@@ -788,7 +788,7 @@ class KeckVncLauncher(object):
             self.is_ssh_key_valid = True
 
         if self.is_ssh_key_valid: self.log.info("  SSH key OK")
-        else                    : self.log.info("  SSH key invalid")
+        else                    : self.log.error("  SSH key invalid")
 
 
     ##-------------------------------------------------------------------------
