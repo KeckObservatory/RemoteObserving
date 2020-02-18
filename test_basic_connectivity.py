@@ -9,9 +9,8 @@ create_logger()
 
 # create kvl object
 create_logger()
-log = logging.getLogger('KRO')
 kvl = KeckVncLauncher()
-kvl.log = log
+kvl.log = logging.getLogger('KRO')
 kvl.log_system_info()
 kvl.args = create_parser()
 kvl.get_config()
@@ -44,6 +43,3 @@ def test_connection_to_servers():
         assert output is not None
         assert output != ''
         kvl.log.info(f' Passed')
-
-if __name__ == '__main__':
-    test_firewall_authentication()
