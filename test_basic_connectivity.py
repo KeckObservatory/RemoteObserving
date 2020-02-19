@@ -4,8 +4,6 @@ import logging
 from getpass import getpass
 from keck_vnc_launcher import create_logger, KeckVncLauncher, create_parser
 
-create_logger()
-
 
 # create kvl object
 create_logger()
