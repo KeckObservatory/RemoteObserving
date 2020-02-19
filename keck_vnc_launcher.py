@@ -1054,6 +1054,9 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def upload_log(self):
         try:
+            user = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
+            pw = None if self.is_ssh_key_valid else self.vnc_password
+
             client = paramiko.SSHClient()
             client.load_system_host_keys()
             client.set_missing_host_key_policy(paramiko.WarningPolicy())
@@ -1062,9 +1065,9 @@ class KeckVncLauncher(object):
                 self.vncserver,
                 port = 22, 
                 timeout = 6, 
-#                 key_filename=self.ssh_pkey,
-                username = self.args.account, 
-                password = self.vnc_password)
+                key_filename=self.ssh_pkey,
+                username = user, 
+                password = pw)
             sftp = client.open_sftp()
             log.info('  Connected SFTP')
 
