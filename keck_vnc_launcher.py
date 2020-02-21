@@ -1079,7 +1079,7 @@ class KeckVncLauncher(object):
         #Log error if we have a log object (otherwise dump error to stdout) 
         #and call exit_app function
         msg = traceback.format_exc()
-        if log:
+        if self.log:
             logfile = self.log.handlers[0].baseFilename
             print(f"* Attach log file at: {logfile}\n")
             self.log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
