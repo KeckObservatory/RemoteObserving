@@ -13,8 +13,6 @@ kvl.log_system_info()
 kvl.args = create_parser()
 kvl.get_config()
 kvl.check_config()
-vnc_account = kvl.args.account
-vnc_password = getpass(f"Password for user {vnc_account}: ")
 
 servers_to_test = ['svncserver1', 'svncserver2', 'mosfire', 'hires', 'lris',
                    'kcwi', 'nirc2', 'nires', 'nirspec']
@@ -34,6 +32,13 @@ def test_ssh_key():
 
 
 def test_connection_to_servers():
+    if kvl.is_ssh_key_valid is True:
+        vnc_password = None
+        vnc_account = kvl.SSH_KEY_ACCOUNT
+    else:
+        vnc_account = kvl.args.account
+        vnc_password = getpass(f"Password for user {vnc_account}: ")
+
     for server in servers_to_test:
         kvl.log.info(f'Testing SSH to {vnc_account}@{server}.keck.hawaii.edu')
         output = kvl.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
