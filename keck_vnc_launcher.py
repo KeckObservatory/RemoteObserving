@@ -37,8 +37,9 @@ class KeckVncLauncher(object):
         self.sound = None
         self.firewall_pass = None
 #         self.ssh_threads = None
-        self.ports_in_use = None
-        self.vnc_processes = None
+        self.ports_in_use = {}
+        self.vnc_threads  = []
+        self.vnc_processes = []
         self.do_authenticate = False
         self.is_authenticated = False
         self.instrument = None
@@ -907,7 +908,7 @@ class KeckVncLauncher(object):
 
 
     def close_ssh_threads(self):
-        for p in self.ports_in_use.keys():
+        for p in list(self.ports_in_use.keys()):
             self.close_ssh_thread(p)
 
 
