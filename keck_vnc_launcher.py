@@ -1053,10 +1053,11 @@ class KeckVncLauncher(object):
     ## Upload log file to Keck
     ##-------------------------------------------------------------------------
     def upload_log(self):
+        user = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
+        destination = 'remote-logs/' if self.is_ssh_key_valid else ''
+        pw = None if self.is_ssh_key_valid else self.vnc_password
+        
         try:
-            user = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
-            pw = None if self.is_ssh_key_valid else self.vnc_password
-
             client = paramiko.SSHClient()
             client.load_system_host_keys()
             client.set_missing_host_key_policy(paramiko.WarningPolicy())
@@ -1074,10 +1075,12 @@ class KeckVncLauncher(object):
             logfile_handlers = [lh for lh in log.handlers if 
                                 isinstance(lh, logging.FileHandler)]
             logfile = Path(logfile_handlers.pop(0).baseFilename)
-            destination = logfile.name
+            destination += logfile.name
+            log.debug(f'local logfile = "{logfile}"')
+            log.debug(f'remote destination = "{destination}"')
             sftp.put(logfile, destination)
             log.info(f'  Uploaded {logfile.name}')
-            log.info(f'  to {self.args.account}@{self.vncserver}:~/{destination}')
+            log.info(f'  to {user}@{self.vncserver}:{destination}')
         except TimeoutError:
             log.error('  Timed out trying to upload log file')
         except Exception as e:
