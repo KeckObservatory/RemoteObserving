@@ -990,6 +990,7 @@ class KeckVncLauncher(object):
                  f"  l               List sessions available",
                  f"  [session name]  Open VNC session by name",
                  f"  w               Position VNC windows",
+                 f"  s               Soundplayer restart",
 #                  f"|  p               Play a local test sound",
                  f"  t               List local ports in use",
                  f"  c [port]        Close ssh tunnel on local port",
