@@ -2,9 +2,9 @@
 
 These scripts are to be used by remote sites to connect to Keck for remote observing.
 
-Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical documentation at: [https://www2.keck.hawaii.edu/inst/mainland_observing/](https://www2.keck.hawaii.edu/inst/mainland_observing/)
+Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical remote observing policy and documentation at: [https://www2.keck.hawaii.edu/inst/mainland_observing/](https://www2.keck.hawaii.edu/inst/mainland_observing/)
 
-### Notify Keck of your intent to connect remotely
+## Notify Keck of your intent to connect remotely
 Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
 
 - Email `mainland_observing@keck.hawaii.edu` with the following info about your remote site:
@@ -17,75 +17,55 @@ Before you can connect to Keck remotely, we need to provide you with the firewal
 
 Once we receive your request, we will respond with instructions on obtaining the firewall info, firewall password, and VNC session password.
 
+# Installation
 
-# Hardware recommendations:
+## Hardware recommendations:
 The following hardware configurations have been tested:
 
-## NUC + 4k monitor
-- Computer: [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
-    - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
-    - RAM: 16GB
-- Monitor: 43-inch, 4k resolution
+- NUC + 4k monitor
+    - Computer: [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
+        - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
+        - RAM: 16GB
+    - Monitor: 43-inch, 4k resolution
 
 
-# Software requirements
+## Software requirements
 NOTE: Examples below assuming sudo/root installation for all users
 
-### Install CentOS 7.6
-NOTE: Earlier versions of CentOS may work, but have not been tested
-
-### Install Anaconda python3
-- Download and run the latest installer: https://www.anaconda.com/distribution/
-- Add python3 to user path (example below for ~/.bashrc with typical python install path):
+- Install CentOS 7.6
+    - NOTE: Earlier versions of CentOS may work, but have not been tested
+- Install Anaconda python3
+    - Download and run the latest installer: https://www.anaconda.com/distribution/
+    - Add python3 to user path (example below for ~/.bashrc with typical python install path):
     ```
     export PATH=/usr/local/anaconda3-7/bin:$PATH
     ```
-
-### Install TigerVNC client
-TigerVNC is recommended as the VNC client for linux.  RealVNC has been tested as well.
-```
-sudo yum install tigervnc-x86_64
-```
-
-Important!  If you are using TigerVNC, in the $HOME/.vnc directory, create a file `default.tigervnc` with these two lines: 
-```
-TigerVNC Configuration file Version 1.0
-RemoteResize=0 
-```
-
-### Install misc (if not already available with OS install)
-- (optional) wmctrl:
+- Install TigerVNC client
+    - TigerVNC is recommended as the VNC client for linux.  RealVNC has been tested as well.
+    ```
+    sudo yum install tigervnc-x86_64
+    ```
+    - **Important!** If you are using TigerVNC, in the $HOME/.vnc directory, create a file `default.tigervnc` with these two lines: 
+    ```
+    TigerVNC Configuration file Version 1.0
+    RemoteResize=0 
+    ```
+- Install misc (if not already available with OS install)
+    - (optional) wmctrl:
     (Used for auto-positioning VNC windows)
     ```
     sudo yum install epel-release 
     sudo yum install wmctrl
     ```
-- (optional) chrome: 
+    - (optional) chrome: 
     Chrome browser is recommended for Zoom sessions
     ```
     wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
     sudo yum install ./google-chrome-stable_current_*.rpm
     ```
 
-# Test your connection to Keck
 
-We strongly suggest the following manual tests before trying the script.  This will ensure that your system is properly configured to connect to Keck.  
-
- - [ ] Manually authenticate through the Keck firewall using the [instructions](https://www2.keck.hawaii.edu/realpublic/inst/mainland_observing/tech/firewall/).  The steps below will fail unless this step is complete.
- - [ ] Test ssh key and svncserver2: `ssh kvnc@svncserver2.keck.hawaii.edu`.  Your ssh key (if valid) will enable you to connect without a password.
- - [ ] Test numbered account on svncserver1: `ssh hires1@svncserver1.keck.hawaii.edu`.  You will be prompted for the `hires1` user password (or whichever instrument numbered account you choose to use).
- - [ ] Test numbered account on svncserver2: `ssh hires1@svncserver2.keck.hawaii.edu`
- - [ ] Test numbered account on mosfire: `ssh hires1@mosfire.keck.hawaii.edu`
- - [ ] Test numbered account on hires: `ssh hires1@hires.keck.hawaii.edu`
- - [ ] Test numbered account on lris: `ssh hires1@lris.keck.hawaii.edu`
- - [ ] Test numbered account on kcwi: `ssh hires1@kcwi.keck.hawaii.edu`
- - [ ] Test numbered account on nirc2: `ssh hires1@nirc2.keck.hawaii.edu`
- - [ ] Test numbered account on nires: `ssh hires1@nires.keck.hawaii.edu`
- - [ ] Test numbered account on nirspec: `ssh hires1@nirspec.keck.hawaii.edu`
-
-Yes, it is important to test the SSH connection to all machines listed above.  There are possible failure modes which would let you log in to some, but not others.
-
-# Download and Configure Keck VNC software
+## Download and Configure Keck VNC software
 
 (NOTE: Examples below assuming a user named 'observer' and installing to home directory)
 
@@ -101,7 +81,7 @@ Yes, it is important to test the SSH connection to all machines listed above.  T
     conda env create -f environment.yaml
     ```
 
-- Edit configuration file "keck_vnc_config.yaml" and save as "local_config.yaml".
+- Edit configuration file `keck_vnc_config.yaml` and save as `local_config.yaml`.
     - If you are connecting outside of the Keck network, enter the firewall address, port and user info
     ```
     firewall_address: ???.???.???.???,
@@ -115,15 +95,15 @@ Yes, it is important to test the SSH connection to all machines listed above.  T
         cd ~/.ssh
         ssh-keygen -t rsa -b 4096
         ```
-    - Email the **public** key file (ie "id_rsa.pub") to mainland_observing@keck.hawaii.edu
-    - Edit "local_config.yaml" file to include path to your ssh **private** key:
+    - Email the **public** key file (i.e. `id_rsa.pub`) to `mainland_observing@keck.hawaii.edu`
+    - Edit `local_config.yaml` file to include path to your ssh **private** key:
         ```
         ssh_pkey: '/home/observer/.ssh/id_rsa',
         ```
 - (optional) Save VNC session password:
     - NOTE: This is for the final password prompt for each VNC window.
-    - Run the 'vncpasswd' command line utility and note where it saves the VNC password file.
-    - Edit "local_config.yaml" to include the password file as a VNC start option:
+    - Run the `vncpasswd` command line utility and note where it saves the VNC password file.
+    - Edit `local_config.yaml` to include the password file as a VNC start option:
         ```
         vncargs: '-passwd=/home/observer/.vnc/passwd',
         ```
@@ -131,9 +111,20 @@ Yes, it is important to test the SSH connection to all machines listed above.  T
     ```
     export PATH=/home/observer/RemoteObserving:$PATH
     ```
-        
-        
-# Run the VNC launch script
+
+
+## Test your connection to Keck
+
+From the directory where the Keck VNC software is installed (e.g. `/home/observer/RemoteObserving:$PATH`), run pytest:
+
+`pytest`
+
+This may query you for passwords, depending on your local configuration. It should print out a report which indicates that all tests passed. Make sure there are no test failures.
+
+If there are test failures, email your logfile to `mainland_observing@keck.hawaii.edu`.  Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
+
+
+## Run the VNC launch script
 
 From the command line, cd into your install directory and run "start_keck_viewers.bash" followed by the name of the instrument account assigned for your observing night (ie 'nires1', 'mosfire2').  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
 ```
@@ -143,7 +134,7 @@ cd ~/RemoteObserving
 
 To get help on available command line options:
 ```
-start_keck_viewers.bash --help
+./start_keck_viewers.bash --help
 ```
 
 NOTE: Be sure to exit the script by using the 'q' quit option or control-c to ensure all VNC processes, SSH tunnels, and authentication are terminated properly.
@@ -151,7 +142,7 @@ NOTE: Be sure to exit the script by using the 'q' quit option or control-c to en
 
 # Troubleshooting and common problems
 
-Verbose debug information is logged to the RemoteObserving/logs/ folder.  Log files are created based on the UTC date.
+Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
 If you need assistance, please email `mainland_observing@keck.hawaii.edu` and attach the most recent log file from the logs folder.
 
