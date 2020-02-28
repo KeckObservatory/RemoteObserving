@@ -982,19 +982,23 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def prompt_menu(self):
 
+        line_length = 52
+        lines = [f"-"*(line_length-2),
+                 f"          Keck Remote Observing (v{__version__})",
+                 f"                        MENU",
+                 f"-"*(line_length-2),
+                 f"  l               List sessions available",
+                 f"  [session name]  Open VNC session by name",
+                 f"  w               Position VNC windows",
+#                  f"|  p               Play a local test sound",
+                 f"  t               List local ports in use",
+                 f"  c [port]        Close ssh tunnel on local port",
+                 f"  q               Quit (or Control-C)",
+                 f"-"*(line_length-2),
+                 ]
         menu = "\n"
-        menu += "---------------------------------------------------\n"
-        menu += "|                    MENU                         |\n"
-        menu += "---------------------------------------------------\n"
-        menu += "|  l               List sessions available        |\n"
-        menu += "|  [session name]  Open VNC session by name       |\n"
-        menu += "|  w               Position VNC windows           |\n"
-        menu += "|  s               Soundplayer restart            |\n"
-#         menu += "|  p               Play a local test sound        |\n"
-        menu += "|  t               List local ports in use        |\n"
-        menu += "|  c [port]        Close ssh tunnel on local port |\n"
-        menu += "|  q               Quit (or Control-C)            |\n"
-        menu += "---------------------------------------------------\n"
+        for newline in lines:
+            menu += '|' + newline + ' '*(line_length-len(newline)-1) + '|\n'
         menu += "> "
 
         quit = None
