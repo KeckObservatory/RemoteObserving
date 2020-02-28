@@ -88,20 +88,18 @@ class KeckVncLauncher(object):
         #todo: log these?
         warnings.filterwarnings(action='ignore', module='.*paramiko.*')
 
-
-        ##---------------------------------------------------------------------
-        ## Log basic system info
-        ##---------------------------------------------------------------------
-        self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
-        self.log_system_info()
-
-
         ##---------------------------------------------------------------------
         ## Parse command line args and get config
         ##---------------------------------------------------------------------
         self.get_args()
         self.get_config()
         self.check_config()
+
+        ##---------------------------------------------------------------------
+        ## Log basic system info
+        ##---------------------------------------------------------------------
+        self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
+        self.log_system_info()
 
         ##---------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
@@ -1100,7 +1098,13 @@ class KeckVncLauncher(object):
 ##-------------------------------------------------------------------------
 def create_parser():
     ## create a parser object for understanding command-line arguments
-    parser = argparse.ArgumentParser(description="Keck VNC Launcher")
+    description = (f"Keck VNC Launcher (v{__version__}). This program is used "
+                   f"by approved Keck Remote Observing sites to launch VNC "
+                   f"sessions for the specified instrument account. For "
+                   f"help or information on how to configure the code, please "
+                   f"see the included README.md file or email "
+                   f"mainland_observing@keck.hawaii.edu")
+    parser = argparse.ArgumentParser(description=description)
 
     SESSION_NAMES = [
                 'control0',
@@ -1190,7 +1194,7 @@ def create_logger():
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
 
-    print("\nStarting Keck VNC Launcher...\n")
+#     print("\nStarting Keck VNC Launcher...\n")
 
     #catch all exceptions so we can exit gracefully
     try:        
