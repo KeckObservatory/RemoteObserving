@@ -1049,7 +1049,7 @@ class KeckVncLauncher(object):
             destination = logfile.name
             sftp.put(logfile, destination)
             self.log.info(f'  Uploaded {logfile.name}')
-            self.log.info(f'  to {self.args.account}@{self.vncserver}:~/{destination}')
+            self.log.info(f'  to {self.args.account}@{self.vncserver}:{destination}')
         except TimeoutError:
             self.log.error('  Timed out trying to upload log file')
         except Exception as e:
