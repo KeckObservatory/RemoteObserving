@@ -504,7 +504,8 @@ class KeckVncLauncher(object):
 
         #if we can't find an open port, error and return
         if not local_port:
-            self.log.error(f"Could not find an open local port for SSH tunnel to {username}@{server}:{remote_port}")
+            self.log.error(f"Could not find an open local port for SSH tunnel "
+                           f"to {username}@{server}:{remote_port}")
             self.local_port = self.LOCAL_PORT_START
             return False
 
@@ -527,7 +528,8 @@ class KeckVncLauncher(object):
 
             #if success, keep track of ssh threads and ports in use
 #             self.ssh_threads.append(thread)
-            self.ports_in_use[local_port] = [address_and_port, session_name, thread]
+            self.ports_in_use[local_port] = [address_and_port, session_name,
+                                             thread]
             return local_port
 
         except Exception as e:
