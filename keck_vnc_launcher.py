@@ -20,7 +20,7 @@ from soundplay import soundplay
 import atexit
 from datetime import datetime
 import traceback
-import pathlib
+from pathlib import Path
 import math
 import subprocess
 import warnings
@@ -315,7 +315,7 @@ class KeckVncLauncher(object):
         #if config file specified, put that at beginning of list
         filename = self.args.config
         if filename is not None:
-            if not pathlib.Path(filename).is_file():
+            if not Path(filename).is_file():
                 self.log.error(f'Specified config file "{filename}" does not exist.')
                 self.exit_app()
             else:
@@ -324,7 +324,7 @@ class KeckVncLauncher(object):
         #find first file that exists
         file = None
         for f in filenames:
-            if pathlib.Path(f).is_file():
+            if Path(f).is_file():
                 file = f
                 break
         if not file:
@@ -395,7 +395,7 @@ class KeckVncLauncher(object):
         if not self.ssh_pkey:
             self.log.warning("No ssh private key file specified in config file.\n")
         else:
-            if not pathlib.Path(self.ssh_pkey).exists():
+            if not Path(self.ssh_pkey).exists():
                 self.log.warning(f"SSH private key path does not exist: {self.ssh_pkey}")
 
         #check default_sessions
@@ -1198,7 +1198,7 @@ def create_logger():
 
         #create log file and log dir if not exist
         ymd = datetime.utcnow().date().strftime('%Y%m%d')
-        pathlib.Path('logs/').mkdir(parents=True, exist_ok=True)
+        Path('logs/').mkdir(parents=True, exist_ok=True)
 
         #file handler (full debug logging)
         logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
