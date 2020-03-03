@@ -989,6 +989,7 @@ class KeckVncLauncher(object):
                  f"  [session name]  Open VNC session by name",
                  f"  w               Position VNC windows",
                  f"  s               Soundplayer restart",
+                 f"  u               Upload log to Keck",
 #                  f"|  p               Play a local test sound",
                  f"  t               List local ports in use",
                  f"  c [port]        Close ssh tunnel on local port",
@@ -1008,6 +1009,7 @@ class KeckVncLauncher(object):
             elif cmd == 'w': self.position_vnc_windows()
             elif cmd == 'p': self.play_test_sound()
             elif cmd == 's': self.start_soundplay()
+            elif cmd == 'u': self.upload_log()
             elif cmd == 'l': self.print_sessions_found()
             elif cmd == 't': self.list_tunnels()
             elif cmatch is not None: self.close_ssh_thread(int(cmatch.group(1)))
@@ -1017,6 +1019,41 @@ class KeckVncLauncher(object):
                 self.start_vnc_session(cmd)
             else:
                 self.log.error(f'Unrecognized command: {cmd}')
+
+
+    ##-------------------------------------------------------------------------
+    ## Upload log file to Keck
+    ##-------------------------------------------------------------------------
+    def upload_log(self):
+        try:
+            user = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
+            pw = None if self.is_ssh_key_valid else self.vnc_password
+
+            client = paramiko.SSHClient()
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(paramiko.WarningPolicy())
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(
+                self.vncserver,
+                port = 22, 
+                timeout = 6, 
+                key_filename=self.ssh_pkey,
+                username = user, 
+                password = pw)
+            sftp = client.open_sftp()
+            self.log.info('  Connected SFTP')
+
+            logfile_handlers = [lh for lh in self.log.handlers if 
+                                isinstance(lh, logging.FileHandler)]
+            logfile = Path(logfile_handlers.pop(0).baseFilename)
+            destination = logfile.name
+            sftp.put(logfile, destination)
+            self.log.info(f'  Uploaded {logfile.name}')
+            self.log.info(f'  to {self.args.account}@{self.vncserver}:~/{destination}')
+        except TimeoutError:
+            self.log.error('  Timed out trying to upload log file')
+        except Exception as e:
+            self.log.error('  Unable to upload logfile: ' + str(e))
 
 
     ##-------------------------------------------------------------------------
