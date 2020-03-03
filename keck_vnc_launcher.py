@@ -856,8 +856,8 @@ class KeckVncLauncher(object):
             if len(sessions) > 0:
                 sessions.add_row([self.STATUS_PORT, 'FACSUM & XMET', '', 0,
                                   'status'])
+                sessions.sort('Desktop')
 
-        sessions.sort('Desktop')
         self.log.debug("\n" + str(sessions))
         return sessions
 
