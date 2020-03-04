@@ -26,8 +26,6 @@ import subprocess
 import warnings
 import sshtunnel
 import platform
-import requests
-from packaging import version
 
 __version__ = '1.0.0rc2'
 
@@ -1034,23 +1032,27 @@ class KeckVncLauncher(object):
     def check_version(self):
         url = ('https://raw.githubusercontent.com/KeckObservatory/'
                'RemoteObserving/master/keck_vnc_launcher.py')
-        r = requests.get(url)
-        findversion = re.search("__version__ = '(\d.+)'\n", r.text)
-        if findversion is not None:
-            remote_version = version.parse(findversion.group(1))
-            local_version = version.parse(__version__)
-        else:
-            self.log.warning(f'Unable to determine software version on GitHub')
-            return
-        if remote_version == local_version:
-            self.log.info(f'Your software is up to date (v{__version__})')
-        elif remote_version > local_version:
-            self.log.info(f'Your software (v{__version__}) is ahead of the released version')
-        else:
-            self.log.warning(f'Your local software (v{__version__}) is behind '
-                             f'the currently available version '
-                             f'(v{remote_version})')
-
+        try:
+            import requests
+            from packaging import version
+            r = requests.get(url)
+            findversion = re.search("__version__ = '(\d.+)'\n", r.text)
+            if findversion is not None:
+                remote_version = version.parse(findversion.group(1))
+                local_version = version.parse(__version__)
+            else:
+                self.log.warning(f'Unable to determine software version on GitHub')
+                return
+            if remote_version == local_version:
+                self.log.info(f'Your software is up to date (v{__version__})')
+            elif remote_version > local_version:
+                self.log.info(f'Your software (v{__version__}) is ahead of the released version')
+            else:
+                self.log.warning(f'Your local software (v{__version__}) is behind '
+                                 f'the currently available version '
+                                 f'(v{remote_version})')
+        except:
+            log.warning("Unable to verify remote version")
 
     ##-------------------------------------------------------------------------
     ## Upload log file to Keck
