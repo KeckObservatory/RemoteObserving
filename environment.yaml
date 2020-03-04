@@ -8,3 +8,4 @@ dependencies:
   - paramiko=2.6.0
   - astropy=3.2.1
   - sshtunnel
+  - requests
