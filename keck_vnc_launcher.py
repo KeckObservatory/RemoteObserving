@@ -570,9 +570,11 @@ class KeckVncLauncher(object):
         if vncargs:  
             vncargs = vncargs.split()           
             cmd = cmd + vncargs
-        if self.args.viewonly:  cmd.append('-ViewOnly')
+        if self.args.viewonly:
+            cmd.append('-ViewOnly')
         #todo: make this config on/off so it doesn't break things 
-        if geometry:            cmd.append(f'-geometry={geometry}')
+        if geometry: 
+            cmd.append(f'-geometry={geometry}')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         self.log.debug(f"VNC viewer command: {cmd}")
@@ -1197,7 +1199,7 @@ def create_parser():
         help="Skip start of soundplay application.")
     parser.add_argument("--viewonly", dest="viewonly",
         default=False, action="store_true",
-        help="Open VNC sessions in View Only mode")
+        help="Open VNC sessions in View Only mode (only for TigerVnC viewer)")
     parser.add_argument("--nosshkey", dest="nosshkey",
         default=False, action="store_true",
         help=argparse.SUPPRESS)
