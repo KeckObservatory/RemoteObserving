@@ -17,7 +17,7 @@ Before you can connect to Keck remotely, we need to provide you with the firewal
 
 Once we receive your request, we will respond with instructions on obtaining the firewall info, firewall password, and VNC session password.
 
-# Installation
+# Hardware Setup
 
 ## Displays
 
@@ -25,7 +25,7 @@ The primary hardware requirement for running Keck VNCs is screen space.  Previou
 
 We have also tried a 43 inch 4k resolution TV screen (which works out to about 103 ppi), but it is less readable at that size.  The advantage of a single 4k monitor is that it is easy to have a second monitor beside it which is dedicated to the Zoom connection or to a web browser for documentation or displaying weather conditions.
 
-## Hardware recommendations:
+## Computer Recommendations
 
 The following hardware configuration has been tested at Keck HQ:
 
@@ -33,7 +33,10 @@ The following hardware configuration has been tested at Keck HQ:
     - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
     - RAM: 16GB
 
-## Software requirements
+# Software Installation
+
+## Install Software Dependencies
+
 NOTE: Examples below assuming sudo/root installation for all users
 
 - Install CentOS 7.6
@@ -67,7 +70,6 @@ NOTE: Examples below assuming sudo/root installation for all users
     wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
     sudo yum install ./google-chrome-stable_current_*.rpm
     ```
-
 
 ## Download and Configure Keck VNC software
 
@@ -116,8 +118,7 @@ NOTE: Examples below assuming sudo/root installation for all users
     export PATH=/home/observer/RemoteObserving:$PATH
     ```
 
-
-## Test your connection to Keck
+# Test your connection to Keck
 
 From the directory where the Keck VNC software is installed (e.g. `/home/observer/RemoteObserving`), run pytest:
 
@@ -128,7 +129,7 @@ This may query you for passwords, depending on your local configuration. It shou
 If there are test failures, email your logfile to `mainland_observing@keck.hawaii.edu`.  Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
 
-## Run the VNC launch script
+# Run the VNC launch script
 
 From the command line, cd into your install directory and run `start_keck_viewers` followed by the name of the instrument account assigned for your observing night (ie `nires1`, `mosfire2`).  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
 ```
