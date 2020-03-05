@@ -19,15 +19,19 @@ Once we receive your request, we will respond with instructions on obtaining the
 
 # Installation
 
+## Displays
+
+The primary hardware requirement for running Keck VNCs is screen space.  Previous incarnations of the remote observing system have used four (4) 1920x1200 monitors (~24 inch diagonal) and placed one VNC session per monitor.  An alternative setup would be to use a single, very large 4k monitor and place the four VNC sessions on that one monitor.  In order for the VNC sessions to be of reasonable physical size, the monitor would have to be 43-48 inches (we've found that even 43 inches may be a bit on the small size, see below).  The pixel pitch which we used which works well is 0.272 mm/pixel (or about 93 pixels per inch) for our four 24 inch monitor setup.  
+
+We have also tried a 43 inch 4k resolution TV screen (which works out to about 103 ppi), but it is less readable at that size.  The advantage of a single 4k monitor is that it is easy to have a second monitor beside it which is dedicated to the Zoom connection or to a web browser for documentation or displaying weather conditions.
+
 ## Hardware recommendations:
-The following hardware configurations have been tested:
 
-- NUC + 4k monitor
-    - Computer: [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
-        - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
-        - RAM: 16GB
-    - Monitor: 43-inch, 4k resolution
+The following hardware configuration has been tested at Keck HQ:
 
+- Computer: [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
+    - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
+    - RAM: 16GB
 
 ## Software requirements
 NOTE: Examples below assuming sudo/root installation for all users
@@ -115,7 +119,7 @@ NOTE: Examples below assuming sudo/root installation for all users
 
 ## Test your connection to Keck
 
-From the directory where the Keck VNC software is installed (e.g. `/home/observer/RemoteObserving:$PATH`), run pytest:
+From the directory where the Keck VNC software is installed (e.g. `/home/observer/RemoteObserving`), run pytest:
 
 `pytest`
 
@@ -126,15 +130,15 @@ If there are test failures, email your logfile to `mainland_observing@keck.hawai
 
 ## Run the VNC launch script
 
-From the command line, cd into your install directory and run "start_keck_viewers.bash" followed by the name of the instrument account assigned for your observing night (ie 'nires1', 'mosfire2').  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
+From the command line, cd into your install directory and run `start_keck_viewers` followed by the name of the instrument account assigned for your observing night (ie `nires1`, `mosfire2`).  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
 ```
 cd ~/RemoteObserving
-./start_keck_vnc.bash [instrument account]
+./start_keck_viewers [instrument account]
 ```
 
 To get help on available command line options:
 ```
-./start_keck_viewers.bash --help
+./start_keck_viewers --help
 ```
 
 NOTE: Be sure to exit the script by using the 'q' quit option or control-c to ensure all VNC processes, SSH tunnels, and authentication are terminated properly.
