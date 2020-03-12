@@ -20,14 +20,14 @@ from soundplay import soundplay
 import atexit
 from datetime import datetime
 import traceback
-import pathlib
+from pathlib import Path
 import math
 import subprocess
 import warnings
 import sshtunnel
 import platform
 
-__version__ = '1.0.0rc'
+__version__ = '1.0.0rc2'
 
 class KeckVncLauncher(object):
 
@@ -100,6 +100,7 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
         self.log_system_info()
+        self.check_version()
 
         ##---------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
@@ -314,7 +315,7 @@ class KeckVncLauncher(object):
         #if config file specified, put that at beginning of list
         filename = self.args.config
         if filename is not None:
-            if not pathlib.Path(filename).is_file():
+            if not Path(filename).is_file():
                 self.log.error(f'Specified config file "{filename}" does not exist.')
                 self.exit_app()
             else:
@@ -323,7 +324,7 @@ class KeckVncLauncher(object):
         #find first file that exists
         file = None
         for f in filenames:
-            if pathlib.Path(f).is_file():
+            if Path(f).is_file():
                 file = f
                 break
         if not file:
@@ -394,7 +395,7 @@ class KeckVncLauncher(object):
         if not self.ssh_pkey:
             self.log.warning("No ssh private key file specified in config file.\n")
         else:
-            if not pathlib.Path(self.ssh_pkey).exists():
+            if not Path(self.ssh_pkey).exists():
                 self.log.warning(f"SSH private key path does not exist: {self.ssh_pkey}")
 
         #check default_sessions
@@ -503,7 +504,8 @@ class KeckVncLauncher(object):
 
         #if we can't find an open port, error and return
         if not local_port:
-            self.log.error(f"Could not find an open local port for SSH tunnel to {username}@{server}:{remote_port}")
+            self.log.error(f"Could not find an open local port for SSH tunnel "
+                           f"to {username}@{server}:{remote_port}")
             self.local_port = self.LOCAL_PORT_START
             return False
 
@@ -526,7 +528,8 @@ class KeckVncLauncher(object):
 
             #if success, keep track of ssh threads and ports in use
 #             self.ssh_threads.append(thread)
-            self.ports_in_use[local_port] = [address_and_port, session_name, thread]
+            self.ports_in_use[local_port] = [address_and_port, session_name,
+                                             thread]
             return local_port
 
         except Exception as e:
@@ -566,9 +569,11 @@ class KeckVncLauncher(object):
         if vncargs:  
             vncargs = vncargs.split()           
             cmd = cmd + vncargs
-        if self.args.viewonly:  cmd.append('-ViewOnly')
+        if self.args.viewonly:
+            cmd.append('-ViewOnly')
         #todo: make this config on/off so it doesn't break things 
-        if geometry:            cmd.append(f'-geometry={geometry}')
+        if geometry: 
+            cmd.append(f'-geometry={geometry}')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         self.log.debug(f"VNC viewer command: {cmd}")
@@ -989,9 +994,11 @@ class KeckVncLauncher(object):
                  f"  [session name]  Open VNC session by name",
                  f"  w               Position VNC windows",
                  f"  s               Soundplayer restart",
+                 f"  u               Upload log to Keck",
 #                  f"|  p               Play a local test sound",
                  f"  t               List local ports in use",
                  f"  c [port]        Close ssh tunnel on local port",
+                 f"  v               Check if software is up to date",
                  f"  q               Quit (or Control-C)",
                  f"-"*(line_length-2),
                  ]
@@ -1008,8 +1015,10 @@ class KeckVncLauncher(object):
             elif cmd == 'w': self.position_vnc_windows()
             elif cmd == 'p': self.play_test_sound()
             elif cmd == 's': self.start_soundplay()
+            elif cmd == 'u': self.upload_log()
             elif cmd == 'l': self.print_sessions_found()
             elif cmd == 't': self.list_tunnels()
+            elif cmd == 'v': self.check_version()
             elif cmatch is not None: self.close_ssh_thread(int(cmatch.group(1)))
             #elif cmd == 'v': self.validate_ssh_key()
             #elif cmd == 'x': self.kill_vnc_processes()
@@ -1017,6 +1026,69 @@ class KeckVncLauncher(object):
                 self.start_vnc_session(cmd)
             else:
                 self.log.error(f'Unrecognized command: {cmd}')
+
+
+    ##-------------------------------------------------------------------------
+    ## Check for latest version number on GitHub
+    ##-------------------------------------------------------------------------
+    def check_version(self):
+        url = ('https://raw.githubusercontent.com/KeckObservatory/'
+               'RemoteObserving/master/keck_vnc_launcher.py')
+        try:
+            import requests
+            from packaging import version
+            r = requests.get(url)
+            findversion = re.search("__version__ = '(\d.+)'\n", r.text)
+            if findversion is not None:
+                remote_version = version.parse(findversion.group(1))
+                local_version = version.parse(__version__)
+            else:
+                self.log.warning(f'Unable to determine software version on GitHub')
+                return
+            if remote_version == local_version:
+                self.log.info(f'Your software is up to date (v{__version__})')
+            elif remote_version > local_version:
+                self.log.info(f'Your software (v{__version__}) is ahead of the released version')
+            else:
+                self.log.warning(f'Your local software (v{__version__}) is behind '
+                                 f'the currently available version '
+                                 f'(v{remote_version})')
+        except:
+            log.warning("Unable to verify remote version")
+
+    ##-------------------------------------------------------------------------
+    ## Upload log file to Keck
+    ##-------------------------------------------------------------------------
+    def upload_log(self):
+        try:
+            user = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
+            pw = None if self.is_ssh_key_valid else self.vnc_password
+
+            client = paramiko.SSHClient()
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(paramiko.WarningPolicy())
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(
+                self.vncserver,
+                port = 22, 
+                timeout = 6, 
+                key_filename=self.ssh_pkey,
+                username = user, 
+                password = pw)
+            sftp = client.open_sftp()
+            self.log.info('  Connected SFTP')
+
+            logfile_handlers = [lh for lh in self.log.handlers if 
+                                isinstance(lh, logging.FileHandler)]
+            logfile = Path(logfile_handlers.pop(0).baseFilename)
+            destination = logfile.name
+            sftp.put(logfile, destination)
+            self.log.info(f'  Uploaded {logfile.name}')
+            self.log.info(f'  to {self.args.account}@{self.vncserver}:{destination}')
+        except TimeoutError:
+            self.log.error('  Timed out trying to upload log file')
+        except Exception as e:
+            self.log.error('  Unable to upload logfile: ' + str(e))
 
 
     ##-------------------------------------------------------------------------
@@ -1127,7 +1199,7 @@ def create_parser():
         help="Skip start of soundplay application.")
     parser.add_argument("--viewonly", dest="viewonly",
         default=False, action="store_true",
-        help="Open VNC sessions in View Only mode")
+        help="Open VNC sessions in View Only mode (only for TigerVnC viewer)")
     parser.add_argument("--nosshkey", dest="nosshkey",
         default=False, action="store_true",
         help=argparse.SUPPRESS)
@@ -1161,7 +1233,7 @@ def create_logger():
 
         #create log file and log dir if not exist
         ymd = datetime.utcnow().date().strftime('%Y%m%d')
-        pathlib.Path('logs/').mkdir(parents=True, exist_ok=True)
+        Path('logs/').mkdir(parents=True, exist_ok=True)
 
         #file handler (full debug logging)
         logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
