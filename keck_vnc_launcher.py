@@ -27,7 +27,7 @@ import warnings
 import sshtunnel
 import platform
 
-__version__ = '1.0.0rc2'
+__version__ = '1.0.0rc3'
 
 class KeckVncLauncher(object):
 
