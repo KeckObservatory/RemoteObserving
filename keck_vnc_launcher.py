@@ -193,7 +193,6 @@ class KeckVncLauncher(object):
 
         ##---------------------------------------------------------------------
         ## Open Soundplay
-        ## TODO: Does this work if we are authenticating or do we need an ssh tunnel?
         ##---------------------------------------------------------------------
         sound = None
         if self.args.nosound is False and self.config.get('nosound', False) != True:
@@ -603,6 +602,7 @@ class KeckVncLauncher(object):
             sound_port  = 9798
             aplay       = self.config.get('aplay', None)
             soundplayer = self.config.get('soundplayer', None)
+            vncserver   = self.vncserver
 
             #Do we need ssh tunnel for this?
             if self.do_authenticate:
@@ -618,7 +618,7 @@ class KeckVncLauncher(object):
                     vncserver = 'localhost'
 
             self.sound = soundplay()
-            self.sound.connect(self.instrument, self.vncserver, sound_port,
+            self.sound.connect(self.instrument, vncserver, sound_port,
                                aplay=aplay, player=soundplayer)
             #todo: should we start this as a thread?  
             # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
