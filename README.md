@@ -101,6 +101,7 @@ NOTE: Examples below assuming sudo/root installation for all users
         cd ~/.ssh
         ssh-keygen -t rsa -b 4096
         ```
+    - If you are on macOS, generate the key with `ssh-keygen -t rsa -b 4096 -m PEM` (adding the `-m PEM` option).
     - Email the **public** key file (i.e. `id_rsa.pub`) to `mainland_observing@keck.hawaii.edu`
     - Edit `local_config.yaml` file to include path to your ssh **private** key:
         ```
