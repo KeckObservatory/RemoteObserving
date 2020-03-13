@@ -27,7 +27,7 @@ import warnings
 import sshtunnel
 import platform
 
-__version__ = '1.0.0rc3'
+__version__ = '1.0.0rc4'
 
 class KeckVncLauncher(object):
 
@@ -714,12 +714,12 @@ class KeckVncLauncher(object):
                    }
         accounts['mosfire'].append('moseng')
         accounts['hires'].append('hireseng')
-        accounts['osiris'].append('osiriseng')
+        accounts['osiris'].append('osrseng')
         accounts['lris'].append('lriseng')
         accounts['nires'].append('nireseng')
         accounts['deimos'].append('dmoseng')
         accounts['esi'].append('esieng')
-        accounts['nirc2'].append('nirceng')
+        accounts['nirc2'].append('nirc2eng')
         accounts['nirspec'].append('nspeceng')
         accounts['kcwi'].append('kcwieng')
 
