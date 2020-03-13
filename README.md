@@ -81,7 +81,7 @@ NOTE: Examples below assuming sudo/root installation for all users
     git clone https://github.com/KeckObservatory/RemoteObserving
     cd ~/RemoteObserving
     ```
-- Create conda environment using the provided environment.yaml file:
+- Create a KRO [conda environment](https://docs.conda.io/projects/conda/en/latest/user-guide/concepts/environments.html) using the provided environment.yaml file:
     ```
     cd ~/RemoteObserving
     conda env create -f environment.yaml
