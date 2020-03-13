@@ -1054,7 +1054,7 @@ class KeckVncLauncher(object):
                                  f'the currently available version '
                                  f'(v{remote_version})')
         except:
-            log.warning("Unable to verify remote version")
+            self.log.warning("Unable to verify remote version")
 
     ##-------------------------------------------------------------------------
     ## Upload log file to Keck
