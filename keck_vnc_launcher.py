@@ -176,7 +176,8 @@ class KeckVncLauncher(object):
                                                         self.args.account,
                                                         self.vnc_password,
                                                         self.args.account)
-        if not self.sessions_found or len(self.sessions_found) == 0:
+        if self.args.authonly is False and\
+                (not self.sessions_found or len(self.sessions_found) == 0):
             self.exit_app('No VNC sessions found')
 
 
