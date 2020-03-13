@@ -123,7 +123,10 @@ NOTE: Examples below assuming sudo/root installation for all users
 
 From the directory where the Keck VNC software is installed (e.g. `/home/observer/RemoteObserving`), run pytest:
 
-`pytest`
+```
+conda activate KRO
+pytest
+```
 
 This may query you for passwords, depending on your local configuration. It should print out a report which indicates that all tests passed. Make sure there are no test failures.
 
