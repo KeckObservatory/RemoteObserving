@@ -91,6 +91,7 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Parse command line args and get config
         ##---------------------------------------------------------------------
+        self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
         self.get_args()
         self.get_config()
         self.check_config()
@@ -98,7 +99,6 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Log basic system info
         ##---------------------------------------------------------------------
-        self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
         self.log_system_info()
         self.check_version()
 
