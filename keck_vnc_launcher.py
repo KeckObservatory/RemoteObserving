@@ -1059,7 +1059,7 @@ class KeckVncLauncher(object):
                 self.close_ssh_thread(int(cmatch.group(1)))
             #elif cmd == 'v': self.validate_ssh_key()
             #elif cmd == 'x': self.kill_vnc_processes()
-            elif cmd in self.sessions_found['name']:
+            elif cmd in [s.name for s in self.sessions_found]:
                 self.log.info(f'Recieved command "{cmd}"')
                 self.start_vnc_session(cmd)
             else:
