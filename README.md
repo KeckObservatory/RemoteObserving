@@ -81,7 +81,7 @@ NOTE: Examples below assuming sudo/root installation for all users
     git clone https://github.com/KeckObservatory/RemoteObserving
     cd ~/RemoteObserving
     ```
-- Create conda environment using the provided environment.yaml file:
+- Create a KRO [conda environment](https://docs.conda.io/projects/conda/en/latest/user-guide/concepts/environments.html) using the provided environment.yaml file:
     ```
     cd ~/RemoteObserving
     conda env create -f environment.yaml
@@ -101,6 +101,7 @@ NOTE: Examples below assuming sudo/root installation for all users
         cd ~/.ssh
         ssh-keygen -t rsa -b 4096
         ```
+    - If you are on macOS, generate the key with `ssh-keygen -t rsa -b 4096 -m PEM` (adding the `-m PEM` option).
     - Email the **public** key file (i.e. `id_rsa.pub`) to `mainland_observing@keck.hawaii.edu`
     - Edit `local_config.yaml` file to include path to your ssh **private** key:
         ```
@@ -122,7 +123,10 @@ NOTE: Examples below assuming sudo/root installation for all users
 
 From the directory where the Keck VNC software is installed (e.g. `/home/observer/RemoteObserving`), run pytest:
 
-`pytest`
+```
+conda activate KRO
+pytest
+```
 
 This may query you for passwords, depending on your local configuration. It should print out a report which indicates that all tests passed. Make sure there are no test failures.
 

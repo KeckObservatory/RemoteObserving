@@ -27,7 +27,7 @@ import warnings
 import sshtunnel
 import platform
 
-__version__ = '1.0.0rc2'
+__version__ = '1.0.0rc4'
 
 class KeckVncLauncher(object):
 
@@ -91,6 +91,7 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Parse command line args and get config
         ##---------------------------------------------------------------------
+        self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
         self.get_args()
         self.get_config()
         self.check_config()
@@ -98,7 +99,6 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Log basic system info
         ##---------------------------------------------------------------------
-        self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
         self.log_system_info()
         self.check_version()
 
@@ -176,7 +176,8 @@ class KeckVncLauncher(object):
                                                         self.args.account,
                                                         self.vnc_password,
                                                         self.args.account)
-        if not self.sessions_found or len(self.sessions_found) == 0:
+        if self.args.authonly is False and\
+                (not self.sessions_found or len(self.sessions_found) == 0):
             self.exit_app('No VNC sessions found')
 
 
@@ -714,12 +715,12 @@ class KeckVncLauncher(object):
                    }
         accounts['mosfire'].append('moseng')
         accounts['hires'].append('hireseng')
-        accounts['osiris'].append('osiriseng')
+        accounts['osiris'].append('osrseng')
         accounts['lris'].append('lriseng')
         accounts['nires'].append('nireseng')
         accounts['deimos'].append('dmoseng')
         accounts['esi'].append('esieng')
-        accounts['nirc2'].append('nirceng')
+        accounts['nirc2'].append('nirc2eng')
         accounts['nirspec'].append('nspeceng')
         accounts['kcwi'].append('kcwieng')
 
@@ -1054,7 +1055,7 @@ class KeckVncLauncher(object):
                                  f'the currently available version '
                                  f'(v{remote_version})')
         except:
-            log.warning("Unable to verify remote version")
+            self.log.warning("Unable to verify remote version")
 
     ##-------------------------------------------------------------------------
     ## Upload log file to Keck
