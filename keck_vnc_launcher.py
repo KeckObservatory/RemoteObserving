@@ -85,6 +85,9 @@ class KeckVncLauncher(object):
             'telstatus',
         ]
 
+        #default servers to try at Keck
+        self.servers_to_try = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
+
         #NOTE: 'status' session on different server and always on port 1, 
         # so assign localport to constant to avoid conflict
         self.STATUS_PORT       = ':1'
@@ -373,12 +376,6 @@ class KeckVncLauncher(object):
     ## Check Configuration
     ##-------------------------------------------------------------------------
     def check_config(self):
-
-        #checks servers_to try
-        self.servers_to_try = self.config.get('servers_to_try', None)
-        if not self.servers_to_try:
-            self.log.error("Config parameter 'servers_to_try' undefined.\n")
-            self.exit_app()
 
         #check for vncviewer
         #NOTE: Ok if not specified, we will tell them to open vncviewer manually
