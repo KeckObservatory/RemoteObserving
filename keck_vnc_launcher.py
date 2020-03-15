@@ -29,7 +29,7 @@ import platform
 __version__ = '1.0.0rc4'
 
 
-class Session(object):
+class VNCSession(object):
     '''An object to contain information about a VNC session.
     '''
     def __init__(self, name=None, display=None, desktop=None, user=None, pid=None):
@@ -874,12 +874,12 @@ class KeckVncLauncher(object):
                     self.log.error(f'Unable to parse line: "{line}"')
                 else:
                     display, desktop, user, pid = line.split()
-                    s = Session(display=display, desktop=desktop, user=user, pid=pid)
+                    s = VNCSession(display=display, desktop=desktop, user=user, pid=pid)
                     if s.user == instr_account:
                         sessions.append(s)
         # Add "status" session for either K1 or K2 as appropriate
-        sessions.append(Session(name='status', display=self.STATUS_PORT,
-                                desktop='FACSUM & XMET', user=''))
+        sessions.append(VNCSession(name='status', display=self.STATUS_PORT,
+                                   desktop='FACSUM & XMET', user=''))
 
         self.log.debug(f'  Got {len(sessions)} sessions')
         for s in sessions:
