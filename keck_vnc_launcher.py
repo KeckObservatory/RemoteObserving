@@ -258,9 +258,13 @@ class KeckVncLauncher(object):
                 local_port = self.open_ssh_tunnel(vncserver, account, password,
                                                   self.ssh_pkey, port, None,
                                                   session_name=session_name)
-            if not local_port:
-                return
-            else:
+                except Exception as e:
+                    self.log.error(f"Failed to open SSH tunnel for "
+                              f"{username}@{server}:{remote_port} "
+                              f"on local port {local_port}.")
+                    self.log.debug(str(e))
+                    return
+
                 vncserver = 'localhost'
         else:
             local_port = port
@@ -515,30 +519,22 @@ class KeckVncLauncher(object):
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
 
-        #try to open ssh tunnel
-        try:
-            thread = sshtunnel.SSHTunnelForwarder(
-                server,
-                ssh_username=username,
-                ssh_password=password,
-                ssh_pkey=ssh_pkey,
-                remote_bind_address=('127.0.0.1', remote_port),
-                local_bind_address=('0.0.0.0', local_port),
-            )
-            thread.start()
+        thread = sshtunnel.SSHTunnelForwarder(
+            server,
+            ssh_username=username,
+            ssh_password=password,
+            ssh_pkey=ssh_pkey,
+            remote_bind_address=('127.0.0.1', remote_port),
+            local_bind_address=('0.0.0.0', local_port),
+        )
+        thread.start()
 
-            #if success, keep track of ssh threads and ports in use
+        #if success, keep track of ssh threads and ports in use
 #             self.ssh_threads.append(thread)
-            self.ports_in_use[local_port] = [address_and_port, session_name,
-                                             thread]
-            return local_port
+        self.ports_in_use[local_port] = [address_and_port, session_name,
+                                         thread]
+        return local_port
 
-        except Exception as e:
-            self.log.error(f"Failed to open SSH tunnel for "
-                      f"{username}@{server}:{remote_port} "
-                      f"on local port {local_port}.")
-            self.log.debug(str(e))
-            return False
 
 
     ##-------------------------------------------------------------------------
@@ -615,13 +611,18 @@ class KeckVncLauncher(object):
 
                 account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
                 password = None if self.is_ssh_key_valid else self.vnc_password
-                sound_port = self.open_ssh_tunnel(self.vncserver, account,
-                                                  password, self.ssh_pkey,
-                                                  sound_port, None)
-                if not sound_port:
+                try:
+                    sound_port = self.open_ssh_tunnel(self.vncserver, account,
+                                                      password, self.ssh_pkey,
+                                                      sound_port, None)
+                except Exception as e:
+                    self.log.error(f"Failed to open SSH tunnel for "
+                              f"{username}@{server}:{remote_port} "
+                              f"on local port {local_port}.")
+                    self.log.debug(str(e))
                     return
-                else:
-                    vncserver = 'localhost'
+
+                vncserver = 'localhost'
 
             self.sound = soundplay()
             self.sound.connect(self.instrument, vncserver, sound_port,
