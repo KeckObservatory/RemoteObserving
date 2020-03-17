@@ -37,34 +37,36 @@ The following hardware configuration has been tested at Keck HQ:
 
 ## Install Software Dependencies
 
-NOTE: Examples below assuming sudo/root installation for all users
+NOTE: Examples below assuming sudo/root installation for all users and assume linux (CentOS).  Modify as appropriate for your local OS.
 
-- Install CentOS 7.6
-    - NOTE: Earlier versions of CentOS may work, but have not been tested
+The software has been tested for CentOS 7.6, RedHat, Ubuntu, and macOS.
+
 - Install Anaconda python3
     - Download and run the latest installer: https://www.anaconda.com/distribution/
     - Add python3 to user path (example below for ~/.bashrc with typical python install path):
     ```
     export PATH=/usr/local/anaconda3-7/bin:$PATH
     ```
-- Install TigerVNC client
-    - TigerVNC is recommended as the VNC client for linux.  RealVNC has been tested as well.
-    ```
-    sudo yum install tigervnc-x86_64
-    ```
-    - **Important!** If you are using TigerVNC, in the $HOME/.vnc directory, create a file `default.tigervnc` with these two lines: 
-    ```
-    TigerVNC Configuration file Version 1.0
-    RemoteResize=0 
-    ```
-- Install misc (if not already available with OS install)
-    - (optional) wmctrl:
-    (Used for auto-positioning VNC windows)
-    ```
-    sudo yum install epel-release 
-    sudo yum install wmctrl
-    ```
-    - (optional) chrome: 
+- Install VNC viewer client
+    - **For Linux**
+        - **On Linux:** TigerVNC is recommended as the VNC client.  RealVNC has been tested as well.
+        ```
+        sudo yum install tigervnc-x86_64
+        ```
+        - **Important!** If you are using TigerVNC, in the $HOME/.vnc directory, create a file `default.tigervnc` with these two lines: 
+        ```
+        TigerVNC Configuration file Version 1.0
+        RemoteResize=0 
+        ```
+        - **On Linux:** (optional) Install wmctrl (Used for auto-positioning VNC windows)
+            ```
+            sudo yum install epel-release 
+            sudo yum install wmctrl
+            ```
+    - **For macOS**
+        - **On macOS**: Real VNC's [VNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) is recommended (note, this is the free software, you do not need VNC Viewer Plus).
+        - **On macOS**: It is also possible to use the built in VNC viewer on macOS, but we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen.
+
 
 ## Download and Install Keck VNC software
 
