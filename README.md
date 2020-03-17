@@ -65,13 +65,8 @@ NOTE: Examples below assuming sudo/root installation for all users
     sudo yum install wmctrl
     ```
     - (optional) chrome: 
-    Chrome browser is recommended for Zoom sessions
-    ```
-    wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
-    sudo yum install ./google-chrome-stable_current_*.rpm
-    ```
 
-## Download and Configure Keck VNC software
+## Download and Install Keck VNC software
 
 (NOTE: Examples below assuming a user named 'observer' and installing to home directory)
 
@@ -81,18 +76,16 @@ NOTE: Examples below assuming sudo/root installation for all users
     git clone https://github.com/KeckObservatory/RemoteObserving
     cd ~/RemoteObserving
     ```
+
+- Create configuration file: copy `keck_vnc_config.yaml` to `local_config.yaml`.
+    ```
+    cp keck_vnc_config.yaml local_config.yaml
+    ```
+
 - Create a KRO [conda environment](https://docs.conda.io/projects/conda/en/latest/user-guide/concepts/environments.html) using the provided environment.yaml file:
     ```
     cd ~/RemoteObserving
     conda env create -f environment.yaml
-    ```
-
-- Edit configuration file `keck_vnc_config.yaml` and save as `local_config.yaml`.
-    - If you are connecting outside of the Keck network, enter the firewall address, port and user info
-    ```
-    firewall_address: ???.???.???.???,
-    firewall_port: ???,
-    firewall_user: '???',
     ```
 
 - Setup SSH Keys:
@@ -101,13 +94,17 @@ NOTE: Examples below assuming sudo/root installation for all users
         cd ~/.ssh
         ssh-keygen -t rsa -b 4096
         ```
-    - If you are on macOS, generate the key with `ssh-keygen -t rsa -b 4096 -m PEM` (adding the `-m PEM` option).
+    - Make sure that the resulting key is an RSA key.  The **private** key should have a first line which looks like `-----BEGIN RSA PRIVATE KEY-----` (it should not be an OPENSSH key).  If you do get an OPENSSH key (we've seen this on macOS and ubuntu linux), try generating the key with the `-m PEM` option:
+        ```
+        ssh-keygen -t rsa -b 4096 -m PEM
+        ```
     - Email the **public** key file (i.e. `id_rsa.pub`) to `mainland_observing@keck.hawaii.edu`
     - Edit `local_config.yaml` file to include path to your ssh **private** key:
         ```
         ssh_pkey: '/home/observer/.ssh/id_rsa',
         ```
-- (optional) Save VNC session password:
+
+- (optional) Save VNC session password (not available on macOS):
     - NOTE: This is for the final password prompt for each VNC window.
     - Run the `vncpasswd` command line utility and note where it saves the VNC password file.
     - Edit `local_config.yaml` to include the password file as a VNC start option:
@@ -119,9 +116,32 @@ NOTE: Examples below assuming sudo/root installation for all users
     export PATH=/home/observer/RemoteObserving:$PATH
     ```
 
+## Configure Keck VNC software
+
+Edit the configuration file as appropriate.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading `#`) from lines you want to customize.
+
+- **Configure Firewall:** If you are connecting outside of the Keck network, enter the firewall address, port and user info.  You'll need to get this information from someone at Keck.
+
+    ```
+    firewall_address: ???.???.???.???,
+    firewall_port: ???,
+    firewall_user: '???',
+    ```
+
+- **Configure Local VNC Viewer Software:** This is where one sets `vncviewer` with the path and executable for the local VNC viewer client (we recommend TigerVNC as the most compatible with our system).  Some VNC viewers (such as the built in macOS one) may need a prefix such as `vnc://` which can be set via the `vncprefix` value.  Options which should be passed to the vncviewer application are set in the `vncargs` value (defaults should be good for Tiger VNC).
+    - **Important:** Make sure you have configured your client **not** to resize the sessions (see the note about TigerVNC above).
+
+- **Configure Default Sessions:** Keck instruments typically use 4 VNC sessions for instrument control named "control0", "control1", "control2", and "telstatus".  On a normal invocation of the software (via the `start_keck_viewers` command) it will open the four sessions specified here.  For stations which split the duties among 2 computers, one could set this line to control which computer opens which sessions.
+
+- **Soundplay Configuration:** For compatible systems, uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact `mainland_observing@keck.hawaii.edu` for help configuring this value.  Also, if you local machine's path to the `aplay` executable is non-standard, specify that in the `aplay` value.
+    - At the moment, the default linux executable seems to work for CentOS and Ubuntu linux.  We do not have a functioning soundplay executable for MacOS.
+    - If your system is not compatible, or if you do not want it to have sounds, add a line to your `local_config.yaml` file: `nosound: True,` to avoid starting sounds.  This is important for sites which are using multiple computers for each set of VNC sessions.  Choose one to handle sounds, and set the `nosound: True,` option for the other.
+
 # Test your connection to Keck
 
-From the directory where the Keck VNC software is installed (e.g. `/home/observer/RemoteObserving`), run pytest:
+Only after your SSH key is successfully installed at Keck, you can test your system.
+
+From the directory where the Keck VNC software is installed (e.g. `~/RemoteObserving/`), run pytest:
 
 ```
 conda activate KRO
@@ -146,7 +166,7 @@ To get help on available command line options:
 ./start_keck_viewers --help
 ```
 
-NOTE: Be sure to exit the script by using the 'q' quit option or control-c to ensure all VNC processes, SSH tunnels, and authentication are terminated properly.
+**NOTE:** Be sure to exit the script by using the 'q' quit option or control-c to ensure all VNC processes, SSH tunnels, and authentication are terminated properly.
 
 
 # Troubleshooting and common problems
