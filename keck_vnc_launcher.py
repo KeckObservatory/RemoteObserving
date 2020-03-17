@@ -1031,7 +1031,9 @@ class KeckVncLauncher(object):
         while quit is None:
             cmd = input(menu).lower()
             cmatch = re.match(r'c (\d+)', cmd)
-            if   cmd == 'q':
+            if cmd == '':
+                pass
+            elif cmd == 'q':
                 self.log.info(f'Recieved command "{cmd}"')
                 quit = True
             elif cmd == 'w':
