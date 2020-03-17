@@ -26,7 +26,7 @@ import warnings
 import sshtunnel
 import platform
 
-__version__ = '1.0.0rc4'
+__version__ = '1.0.0rc5'
 
 
 class VNCSession(object):
