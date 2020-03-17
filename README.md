@@ -37,7 +37,7 @@ The following hardware configuration has been tested at Keck HQ:
 
 ## Install Software Dependencies
 
-NOTE: Examples below assuming sudo/root installation for all users and assume linux (CentOS).  Modify as appropriate for your local OS.
+NOTE: Examples below assuming sudo/root installation for all users and were originally written for linux (CentOS).  Modify as appropriate for your local OS.
 
 The software has been tested for CentOS 7.6, RedHat, Ubuntu, and macOS.
 
