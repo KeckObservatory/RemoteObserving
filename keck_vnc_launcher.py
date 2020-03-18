@@ -346,7 +346,7 @@ class KeckVncLauncher(object):
 
         # open file a second time to properly read config
         with open(file) as FO:
-            config = yaml.safe_load(FO)
+            config = yaml.load(FO, Loader=yaml.FullLoader)
 
         cstr = "Parsed Configuration:\n"
         for key, c in config.items():
