@@ -86,7 +86,7 @@ class KeckVncLauncher(object):
         #default servers to try at Keck
         self.servers_to_try = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
 
-        #NOTE: 'status' session on different server and always on port 1, 
+        #NOTE: 'status' session on different server and always on port 1,
         # so assign localport to constant to avoid conflict
         self.STATUS_PORT       = ':1'
         self.LOCAL_PORT_START  = 5901
@@ -100,7 +100,7 @@ class KeckVncLauncher(object):
     ## Start point (main)
     ##-------------------------------------------------------------------------
     def start(self):
-    
+
         #global suppression of paramiko warnings
         #todo: log these?
         warnings.filterwarnings(action='ignore', module='.*paramiko.*')
@@ -144,7 +144,7 @@ class KeckVncLauncher(object):
         ## Determine instrument
         ##---------------------------------------------------------------------
         self.instrument, self.tel = self.determine_instrument(self.args.account)
-        if not self.instrument: 
+        if not self.instrument:
             self.exit_app(f'Invalid instrument account: "{self.args.account}"')
 
 
@@ -600,13 +600,13 @@ class KeckVncLauncher(object):
         vncargs        = self.config.get('vncargs', None)
 
         cmd = [vncviewercmd]
-        if vncargs:  
-            vncargs = vncargs.split()           
+        if vncargs:
+            vncargs = vncargs.split()
             cmd = cmd + vncargs
         if self.args.viewonly:
             cmd.append('-ViewOnly')
-        #todo: make this config on/off so it doesn't break things 
-        if geometry: 
+        #todo: make this config on/off so it doesn't break things
+        if geometry:
             cmd.append(f'-geometry={geometry}')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
@@ -794,11 +794,11 @@ class KeckVncLauncher(object):
             client.set_missing_host_key_policy(paramiko.WarningPolicy())
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             client.connect(
-                server, 
-                port     = 22, 
-                timeout  = 6, 
+                server,
+                port     = 22,
+                timeout  = 6,
                 key_filename=self.ssh_pkey,
-                username = account, 
+                username = account,
                 password = password)
             self.log.info('  Connected')
         except TimeoutError:
@@ -863,7 +863,7 @@ class KeckVncLauncher(object):
         for server in self.servers_to_try:
             server += ".keck.hawaii.edu"
             cmd = f'kvncinfo -server -I {instrument}'
-            data = self.do_ssh_cmd(cmd, server, account, password) 
+            data = self.do_ssh_cmd(cmd, server, account, password)
             if data and ' ' not in data:
                 vncserver = data
                 self.log.info(f"Got VNC server: '{vncserver}'")
@@ -943,7 +943,7 @@ class KeckVncLauncher(object):
         screen_width, screen_height = [int(x) for x in out.split()]
         self.log.debug(f"Screen size: {screen_width}x{screen_height}")
 
-        #get num rows and cols 
+        #get num rows and cols
         #todo: assumming 2x2 always for now; make smarter
         num_win = len(self.sessions_requested)
         cols = 2
@@ -1137,15 +1137,15 @@ class KeckVncLauncher(object):
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             client.connect(
                 self.vncserver,
-                port = 22, 
-                timeout = 6, 
+                port = 22,
+                timeout = 6,
                 key_filename=self.ssh_pkey,
-                username = user, 
+                username = user,
                 password = pw)
             sftp = client.open_sftp()
             self.log.info('  Connected SFTP')
 
-            logfile_handlers = [lh for lh in self.log.handlers if 
+            logfile_handlers = [lh for lh in self.log.handlers if
                                 isinstance(lh, logging.FileHandler)]
             logfile = Path(logfile_handlers.pop(0).baseFilename)
             destination = logfile.name
@@ -1190,7 +1190,7 @@ class KeckVncLauncher(object):
         if msg != None: self.log.info(msg)
 
         #terminate soundplayer
-        if self.sound: 
+        if self.sound:
             self.sound.terminate()
 
         # Close down ssh tunnels and firewall authentication
@@ -1202,7 +1202,7 @@ class KeckVncLauncher(object):
         self.kill_vnc_processes()
 
         self.exit = True
-        self.log.info("EXITING APP\n")        
+        self.log.info("EXITING APP\n")
         sys.exit(1)
 
 
@@ -1219,7 +1219,7 @@ class KeckVncLauncher(object):
         print(f"* Email {supportEmail}\n")
         #todo: call number, website?
 
-        #Log error if we have a log object (otherwise dump error to stdout) 
+        #Log error if we have a log object (otherwise dump error to stdout)
         #and call exit_app function
         msg = traceback.format_exc()
         if self.log:
@@ -1271,10 +1271,10 @@ def create_parser():
         default=False, action="store_true",
         help=argparse.SUPPRESS)
     for name in SESSION_NAMES:
-        parser.add_argument(f"--{name}", 
-            dest=name, 
-            default=False, 
-            action="store_true", 
+        parser.add_argument(f"--{name}",
+            dest=name,
+            default=False,
+            action="store_true",
             help=f"Open {name}")
 
     ## add arguments
@@ -1317,14 +1317,14 @@ def create_logger():
         logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
         logFormat.converter = time.gmtime
         logConsoleHandler.setFormatter(logFormat)
-        
+
         log.addHandler(logConsoleHandler)
 
     except Exception as error:
         print(str(error))
         print(f"ERROR: Unable to create logger at {logFile}")
         print("Make sure you have write access to this directory.\n")
-        log.info("EXITING APP\n")        
+        log.info("EXITING APP\n")
         sys.exit(1)
 
 
@@ -1336,7 +1336,7 @@ if __name__ == '__main__':
 #     print("\nStarting Keck VNC Launcher...\n")
 
     #catch all exceptions so we can exit gracefully
-    try:        
+    try:
         kvl = KeckVncLauncher()
         create_logger()
         kvl.log = logging.getLogger('KRO')
