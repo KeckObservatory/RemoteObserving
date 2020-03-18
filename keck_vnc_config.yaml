@@ -1,45 +1,49 @@
-{
-  ## If you are outside of the Keck network and need to authenticate through the
-  ## Keck firewall, uncomment and fill out the appropriate IP address, port, and
-  ## username which will be used to authenticate. If this is being run inside of
-  ## the Keck network, leave these lines commented out.
-  # firewall_address: 111.222.333.44,
-  # firewall_port: 123,
-  # firewall_user: '???',
+## If you are outside of the Keck network and need to authenticate through the
+## Keck firewall, uncomment and fill out the appropriate IP address, port, and
+## username which will be used to authenticate. If this is being run inside of
+## the Keck network, leave these lines commented out.
+# firewall_address: 111.222.333.44
+# firewall_port: 123
+# firewall_user: '???'
 
-  ## SSH private key file path.  If you created an ssh public/private key pair
-  ## and provided the public key to Keck, enter the full path the private key here.
-  # ssh_pkey: '/home/observer/.ssh/id_rsa',
 
-  ## This is the command to invoke on the local machine to launch a VNC client
-  ## Command will be formatted as [vncviewer] [vncargs] [address]:[port]
-  ## Example: Default setup for TigerVnC's vncviewer wither preferred arg options
-  vncviewer: 'vncviewer',
-  vncprefix: '',
-  vncargs: '-Shared -FullColor -PreferredEncoding=ZRLE -AutoSelect=0',
-  ## Example: use VNCviewer for RealVNC vncviewer on macOS:
-  # vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer',
-  # vncargs: '-Shared',
-  ## Example: use built in Screen Sharing app in macOS:
-  # vncviewer: 'open',
-  # vncprefix: 'vnc://',
-  ## Example using vncpasswd file:
-  # vncargs: '-passwd=/home/observer/.vnc/passwd',
+## SSH private key file path.  If you created an ssh public/private key pair
+## and provided the public key to Keck, enter the full path the private key here.
+# ssh_pkey: '/home/observer/.ssh/id_rsa'
 
-  ## Default start sessions if none specified. 
-  default_sessions: ['control0', 'control1', 'control2', 'telstatus'],
 
-  ## For ssh tunnelling, a starting local port number is used and incremented 
-  ## for each port needed.  Default is 5901.
-  # local_port_start: 50001,
+## This is the command to invoke on the local machine to launch a VNC client
+## Command will be formatted as [vncviewer] [vncargs] [address]:[port]
+## Example: Default setup for TigerVnC's vncviewer wither preferred arg options
+vncviewer: 'vncviewer'
+vncprefix: ''
+vncargs: '-Shared -FullColor -PreferredEncoding=ZRLE -AutoSelect=0'
+## Example: use VNCviewer for RealVNC vncviewer on macOS:
+# vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer'
+# vncargs: '-Shared'
+## Example: use built in Screen Sharing app in macOS:
+# vncviewer: 'open'
+# vncprefix: 'vnc://'
+## Example using vncpasswd file:
+# vncargs: '-passwd=/home/observer/.vnc/passwd'
 
-  ## Soundplay configs
-  ## Name of soundplayer executable to use (see ./soundplayer/ folder)
-  # soundplayer: 'soundplay-8.5.1-linux-x86_64',
-  ## Path to "aplay" command-line sound player.  Default assumed in path as 'aplay'.
-  # aplay: '/usr/bin/aplay',
 
-  ## Window size and positioning configs. Overrides calculated size and/or positioning.
-  # window_size: [1280, 800],
-  # window_positions: [[0, 0], [1280, 0], [0, 1280], [1280, 0]],
-}
+## Default start sessions if none specified. 
+default_sessions: ['control0', 'control1', 'control2', 'telstatus']
+
+
+## For ssh tunnelling, a starting local port number is used and incremented 
+## for each port needed.  Default is 5901.
+# local_port_start: 50001
+
+
+## Soundplay configs
+## Name of soundplayer executable to use (see ./soundplayer/ folder)
+# soundplayer: 'soundplay-8.5.1-linux-x86_64'
+## Path to "aplay" command-line sound player.  Default assumed in path as 'aplay'.
+# aplay: '/usr/bin/aplay'
+
+
+## Window size and positioning configs. Overrides calculated size and/or positioning.
+# window_size: [1280, 800]
+# window_positions: [[0, 0], [1280, 0], [0, 1280], [1280, 0]]
