@@ -1,5 +1,4 @@
-
-#!/usr/env/python
+#! /usr/bin/env python3
 
 ## Import General Tools
 import os
