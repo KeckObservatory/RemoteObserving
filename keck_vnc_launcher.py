@@ -15,7 +15,6 @@ import paramiko
 from time import sleep
 from threading import Thread
 from telnetlib import Telnet
-from astropy.table import Table, Column
 from soundplay import soundplay
 import atexit
 from datetime import datetime
@@ -28,6 +27,23 @@ import sshtunnel
 import platform
 
 __version__ = '1.0.0rc5'
+
+
+class VNCSession(object):
+    '''An object to contain information about a VNC session.
+    '''
+    def __init__(self, name=None, display=None, desktop=None, user=None, pid=None):
+        if name is None and display is not None:
+            name = desktop.split('-')[2]
+        self.name = name
+        self.display = display
+        self.desktop = desktop
+        self.user = user
+        self.pid = pid
+
+    def __str__(self):
+        return f"  {self.name:12s} {self.display:5s} {self.desktop:s}"
+
 
 class KeckVncLauncher(object):
 
@@ -224,9 +240,9 @@ class KeckVncLauncher(object):
 #         try:
         #get session data by name
         session = None
-        for tmp in self.sessions_found:
-            if tmp['name'] == session_name:
-                session = tmp
+        for s in self.sessions_found:
+            if s.name == session_name:
+                session = s
         if not session:
             self.log.error(f"No server VNC session found for '{session_name}'.")
             self.print_sessions_found()
@@ -238,7 +254,7 @@ class KeckVncLauncher(object):
             vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
 
         #get remote port
-        display   = int(session['Display'][1:])
+        display   = int(session.display[1:])
         port      = int(f"59{display:02d}")
 
         ## If authenticating, open SSH tunnel for appropriate ports
@@ -455,7 +471,7 @@ class KeckVncLauncher(object):
 
         print(f"\nSessions found for account '{self.args.account}':")
         for s in self.sessions_found:
-            print(f"  {s['name']:12s} {s['Display']:5s} {s['Desktop']:s}")
+            print(s)
 
 
     ##-------------------------------------------------------------------------
@@ -848,20 +864,23 @@ class KeckVncLauncher(object):
         sessions = []
         cmd = f'setenv INSTRUMENT {instrument}; kvncstatus -a'
         data = self.do_ssh_cmd(cmd, vncserver, account, password)
-        if data:
-            allsessions = Table.read(data.split('\n'), format='ascii')
-            sessions = allsessions[allsessions['User'] == instr_account]
-            self.log.debug(f'  Got {len(sessions)} sessions')
-            names = [x['Desktop'].split('-')[2] for x in sessions]
-            sessions.add_column(Column(data=names, name=('name')))
+        lines = data.split('\n')
+        for line in lines:
+            if line[0] != '#':
+                if len(line.split()) != 4:
+                    self.log.error(f'Unable to parse line: "{line}"')
+                else:
+                    display, desktop, user, pid = line.split()
+                    s = VNCSession(display=display, desktop=desktop, user=user, pid=pid)
+                    if s.user == instr_account:
+                        sessions.append(s)
+        # Add "status" session for either K1 or K2 as appropriate
+        sessions.append(VNCSession(name='status', display=self.STATUS_PORT,
+                                   desktop='FACSUM & XMET', user=''))
 
-            #add default row for 'status' session at display port 1
-            if len(sessions) > 0:
-                sessions.add_row([self.STATUS_PORT, 'FACSUM & XMET', '', 0,
-                                  'status'])
-                sessions.sort('Desktop')
-
-        self.log.debug("\n" + str(sessions))
+        self.log.debug(f'  Got {len(sessions)} sessions')
+        for s in sessions:
+            self.log.debug(s)
         return sessions
 
 
@@ -1040,7 +1059,7 @@ class KeckVncLauncher(object):
                 self.close_ssh_thread(int(cmatch.group(1)))
             #elif cmd == 'v': self.validate_ssh_key()
             #elif cmd == 'x': self.kill_vnc_processes()
-            elif cmd in self.sessions_found['name']:
+            elif cmd in [s.name for s in self.sessions_found]:
                 self.log.info(f'Recieved command "{cmd}"')
                 self.start_vnc_session(cmd)
             else:

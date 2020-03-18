@@ -6,6 +6,5 @@ dependencies:
   - yaml
   - pyyaml=5.1.2
   - paramiko=2.6.0
-  - astropy=3.2.1
   - sshtunnel
   - requests
