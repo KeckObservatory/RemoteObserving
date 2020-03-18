@@ -4,7 +4,7 @@
 ## the Keck network, leave these lines commented out.
 # firewall_address: 111.222.333.44
 # firewall_port: 123
-# firewall_user: '???'
+# firewall_user: ???
 
 
 ## SSH private key file path.  If you created an ssh public/private key pair
@@ -39,9 +39,15 @@ default_sessions: ['control0', 'control1', 'control2', 'telstatus']
 
 ## Soundplay configs
 ## Name of soundplayer executable to use (see ./soundplayer/ folder)
-# soundplayer: 'soundplay-8.5.1-linux-x86_64'
+# soundplayer: 'soundplay'
 ## Path to "aplay" command-line sound player.  Default assumed in path as 'aplay'.
 # aplay: '/usr/bin/aplay'
+## If using macOS, the following configurations are suggested:
+# soundplayer: 'soundplay-107050-8.6.3-macosx10.5-ix86+x86_64'
+# aplay: '/usr/bin/afplay -v %v %s'
+## You may adjust the volume of the sounds by changing the value after -v to something between 1
+## and 100.  To lower it, put in a small value (such as 1).  The %v value means it will use the
+## volume slider on eventsounds.
 
 
 ## Window size and positioning configs. Overrides calculated size and/or positioning.
