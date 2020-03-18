@@ -25,7 +25,7 @@ import subprocess
 import warnings
 import platform
 
-__version__ = '1.0.0rc5'
+__version__ = '1.0.0rc6'
 
 
 class VNCSession(object):
