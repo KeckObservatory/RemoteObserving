@@ -700,8 +700,7 @@ class KeckVncLauncher(object):
             aplay_cmd = aplay_cmd.replace('%s', str(local_path.joinpath(sound_file)))
         else:
             aplay_cmd += f' {local_path.joinpath(sound_file)}'
-        self.log.debug(f'Calling: {aplay_cmd}')
-        
+        self.log.info(f'Calling: {aplay_cmd}')
         subprocess.call(aplay_cmd.split())
 
 
