@@ -491,9 +491,9 @@ class KeckVncLauncher(object):
     def open_ssh_tunnel(self, server, username, password, ssh_pkey, remote_port,
                         local_port=None, session_name='unknown'):
 
-        #get next local port if need be
-        #NOTE: Try up to 100 ports beyond
-        if not local_port:
+        # If the local port is not specified attempt to find one dynamically.
+
+        if local_port is None:
             for i in range(0,100):
                 if self.is_local_port_in_use(self.local_port):
                     self.local_port += 1
@@ -503,17 +503,20 @@ class KeckVncLauncher(object):
                     self.local_port += 1
                     break
 
-        #if we can't find an open port, error and return
-        if not local_port:
+        if local_port is None:
             self.log.error(f"Could not find an open local port for SSH tunnel "
                            f"to {username}@{server}:{remote_port}")
             self.local_port = self.LOCAL_PORT_START
             return False
 
-        #log
+
         address_and_port = f"{username}@{server}:{remote_port}"
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
+
+
+        # We now know everything we need to know in order to establish the
+        # tunnel. Build the command line options and start the child process.
 
         forwarding = f"{local_port}:localhost:{remote_port}"
         command = ['ssh', '-l', username, '-L', forwarding, '-N', '-T', server]
@@ -525,8 +528,17 @@ class KeckVncLauncher(object):
         self.log.debug('ssh command: ' + ' '.join (command))
         process = subprocess.Popen(command)
 
+
+        # Having started the process let's make sure it's actually running.
+        # First try polling,  then confirm the requested local port is in use.
+        # It's a fatal error if either check fails.
+
         if process.poll() is not None:
             raise RuntimeError('subprocess failed to execute ssh')
+
+        # A delay is built-in here as it takes some finite amount of time for
+        # ssh to establish the tunnel. 50 checks with a 0.1 second sleep between
+        # checks is effectively a five second timeout.
 
         checks = 50
         while checks > 0:
