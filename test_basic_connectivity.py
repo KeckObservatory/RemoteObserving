@@ -38,12 +38,12 @@ def test_firewall_authentication():
 def test_ssh_key():
     if kvl.config.get('nosshkey', False) is not True:
         kvl.validate_ssh_key()
-        assert kvl.is_ssh_key_valid is True
+        assert kvl.ssh_key_valid is True
 
 
 @pytest.mark.parametrize("server,result", servers_and_results)
 def test_connection_to_servers(server, result):
-    if kvl.is_ssh_key_valid is True:
+    if kvl.ssh_key_valid is True:
         vnc_account = kvl.SSH_KEY_ACCOUNT
         vnc_password = None
     else:
