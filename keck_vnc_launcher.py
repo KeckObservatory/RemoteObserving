@@ -54,7 +54,7 @@ class KeckVncLauncher(object):
         self.sound = None
         self.firewall_pass = None
         self.ports_in_use = dict()
-        self.vnc_threads  = list()
+        self.vnc_threads = list()
         self.vnc_processes = list()
         self.firewall_requested = False
         self.firewall_opened = False
@@ -90,12 +90,12 @@ class KeckVncLauncher(object):
 
         #NOTE: 'status' session on different server and always on port 1,
         # so assign localport to constant to avoid conflict
-        self.STATUS_PORT       = ':1'
-        self.LOCAL_PORT_START  = 5901
+        self.STATUS_PORT = ':1'
+        self.LOCAL_PORT_START = 5901
 
         #ssh key constants
         self.SSH_KEY_ACCOUNT = 'kvnc'
-        self.SSH_KEY_SERVER  = 'svncserver2.keck.hawaii.edu'
+        self.SSH_KEY_SERVER = 'svncserver2.keck.hawaii.edu'
 
 
     ##-------------------------------------------------------------------------
@@ -211,7 +211,7 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         self.calc_window_geometry()
         self.ports_in_use = dict()
-        self.vnc_threads  = list()
+        self.vnc_threads = list()
         self.vnc_processes = list()
         for session_name in self.sessions_requested:
             self.start_vnc_session(session_name)
@@ -259,14 +259,14 @@ class KeckVncLauncher(object):
             vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
 
         #get remote port
-        display   = int(session.display[1:])
-        port      = int(f"59{display:02d}")
+        display = int(session.display[1:])
+        port = int(f"59{display:02d}")
 
         ## If authenticating, open SSH tunnel for appropriate ports
         if self.firewall_requested == True:
 
             #determine account and password
-            account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
+            account = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
             password = None if self.is_ssh_key_valid else self.vnc_password
 
             # determine if there is already a tunnel for this session
@@ -308,10 +308,10 @@ class KeckVncLauncher(object):
         if 'linux' in platform.system().lower():
             i = len(self.vnc_threads) % len(self.geometry)
             geom = self.geometry[i]
-            width  = geom[0]
+            width = geom[0]
             height = geom[1]
-            xpos   = geom[2]
-            ypos   = geom[3]
+            xpos = geom[2]
+            ypos = geom[3]
             # if width != None and height != None:
             #     geometry += f'{width}x{height}'
             if xpos != None and ypos != None:
@@ -404,16 +404,21 @@ class KeckVncLauncher(object):
         #check firewall config
         self.firewall_requested = False
         self.firewall_address = self.config.get('firewall_address', None)
-        self.firewall_user    = self.config.get('firewall_user',    None)
-        self.firewall_port    = self.config.get('firewall_port',    None)
+        self.firewall_user = self.config.get('firewall_user',    None)
+        self.firewall_port = self.config.get('firewall_port',    None)
         if self.firewall_address or self.firewall_user or self.firewall_port:
-            if self.firewall_address and self.firewall_user and self.firewall_port:
+            if self.firewall_address is not None and \
+               self.firewall_user is not None and \
+               self.firewall_port is not None:
                 self.firewall_requested = True
             else:
-                self.log.warning("Partial firewall configuration detected in config file:")
-                if not self.firewall_address: self.log.warning("firewall_address not set")
-                if not self.firewall_user: self.log.warning("firewall_user not set")
-                if not self.firewall_port: self.log.warning("firewall_port not set")
+                self.log.warning("Incomplete firewall configuration detected:")
+                if self.firewall_address is None:
+                    self.log.warning("firewall_address not set")
+                if self.firewall_user is None:
+                    self.log.warning("firewall_user not set")
+                if self.firewall_port is None:
+                    self.log.warning("firewall_port not set")
 
         #check ssh_pkeys servers_to try
         self.ssh_pkey = self.config.get('ssh_pkey', None)
@@ -606,9 +611,9 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def launch_vncviewer(self, vncserver, port, geometry=None):
 
-        vncviewercmd   = self.config.get('vncviewer', 'vncviewer')
-        vncprefix      = self.config.get('vncprefix', '')
-        vncargs        = self.config.get('vncargs', None)
+        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
+        vncprefix = self.config.get('vncprefix', '')
+        vncargs = self.config.get('vncargs', None)
 
         cmd = [vncviewercmd]
         if vncargs:
@@ -649,15 +654,15 @@ class KeckVncLauncher(object):
                 self.sound.terminate()
 
             #config vars
-            sound_port  = 9798
-            aplay       = self.config.get('aplay', None)
+            sound_port = 9798
+            aplay = self.config.get('aplay', None)
             soundplayer = self.config.get('soundplayer', None)
-            vncserver   = self.vncserver
+            vncserver = self.vncserver
 
             #Do we need ssh tunnel for this?
             if self.firewall_requested == True:
 
-                account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
+                account = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
                 password = None if self.is_ssh_key_valid else self.vnc_password
                 try:
                     sound_port = self.open_ssh_tunnel(self.vncserver, account,
@@ -797,8 +802,8 @@ class KeckVncLauncher(object):
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             client.connect(
                 server,
-                port     = 22,
-                timeout  = 6,
+                port = 22,
+                timeout = 6,
                 key_filename=self.ssh_pkey,
                 username = account,
                 password = password)
