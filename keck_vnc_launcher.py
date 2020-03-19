@@ -50,6 +50,7 @@ class KeckVncLauncher(object):
     def __init__(self):
         #init vars we need to shutdown app properly
         self.config = None
+        self.log = None
         self.sound = None
         self.firewall_pass = None
         self.ports_in_use = dict()
@@ -644,7 +645,7 @@ class KeckVncLauncher(object):
 
         try:
             #check for existing first and shutdown
-            if self.sound:
+            if self.sound is not None:
                 self.sound.terminate()
 
             #config vars
@@ -874,7 +875,7 @@ class KeckVncLauncher(object):
         if vncserver == 'vm-kcwivnc':
             vncserver = 'kcwi'
 
-        if vncserver:
+        if vncserver is not None:
             vncserver += '.keck.hawaii.edu'
 
         return vncserver
@@ -955,12 +956,12 @@ class KeckVncLauncher(object):
         window_size = self.config.get('window_size', None)
 
         #get window width height
-        if window_size:
-            ww = window_size[0]
-            wh = window_size[1]
-        else:
+        if window_size is None:
             ww = round(screen_width / cols)
             wh = round(screen_height / rows)
+        else:
+            ww = window_size[0]
+            wh = window_size[1]
 
         #get x/y coords (assume two rows)
         self.geometry = list()
@@ -1007,7 +1008,7 @@ class KeckVncLauncher(object):
                     parts = line.split()
                     win_id = parts[0]
 
-                if win_id:
+                if win_id is not None:
                     index = i % len(self.geometry)
                     geom = self.geometry[index]
                     ww = geom[0]
@@ -1191,7 +1192,7 @@ class KeckVncLauncher(object):
         if msg != None: self.log.info(msg)
 
         #terminate soundplayer
-        if self.sound:
+        if self.sound is not None:
             self.sound.terminate()
 
         # Close down ssh tunnels and firewall authentication
