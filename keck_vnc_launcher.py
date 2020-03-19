@@ -325,10 +325,6 @@ class KeckVncLauncher(object):
         self.vnc_threads[-1].start()
         time.sleep(0.05)
 
-#         except Exception as error:
-#             self.log.error("Unable to start vnc session.  See log for details.")
-#             self.log.debug(str(error))
-
 
     ##-------------------------------------------------------------------------
     ## Get command line args
@@ -456,9 +452,10 @@ class KeckVncLauncher(object):
             # ip = socket.gethostbyname(hostname)
             # self.log.debug(f'System IP Address: {ip}')
             self.log.info(f'Remote Observing Software Version = {__version__}')
-        except Exception as error:
+        except:
             self.log.error("Unable to log system info.")
-            self.log.debug(str(error))
+            trace = traceback.format_exc()
+            self.log.debug(trace)
 
 
     ##-------------------------------------------------------------------------
@@ -699,9 +696,10 @@ class KeckVncLauncher(object):
             #todo: should we start this as a thread?
             # sound = sound = threading.Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
             # soundThread.start()
-        except Exception as error:
+        except:
             self.log.error('Unable to start soundplay.  See log for details.')
-            self.log.info(str(error))
+            trace = traceback.format_exc()
+            self.log.debug(trace)
 
 
     def play_test_sound(self):
@@ -828,6 +826,8 @@ class KeckVncLauncher(object):
             self.log.error('  Timeout')
         except Exception as e:
             self.log.error('  Failed: ' + str(e))
+            trace = traceback.format_exc()
+            self.log.debug(trace)
         else:
             self.log.debug(f'Command: {cmd}')
             stdin, stdout, stderr = client.exec_command(cmd)
@@ -1010,48 +1010,44 @@ class KeckVncLauncher(object):
 
         self.log.info(f"Positioning VNC windows...")
 
-        try:
-            #get all x-window processes
-            #NOTE: using wmctrl (does not work for Mac)
-            #alternate option: xdotool?
-            xlines = list()
-            cmd = ['wmctrl', '-l']
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            while True:
-                line = proc.stdout.readline()
-                if line is None or line == '':
-                    break
-                line = line.rstrip().decode('utf-8')
-                self.log.debug(f'wmctrl line: {line}')
-                xlines.append(line)
+        #get all x-window processes
+        #NOTE: using wmctrl (does not work for Mac)
+        #alternate option: xdotool?
+        xlines = list()
+        cmd = ['wmctrl', '-l']
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        while True:
+            line = proc.stdout.readline()
+            if line is None or line == '':
+                break
+            line = line.rstrip().decode('utf-8')
+            self.log.debug(f'wmctrl line: {line}')
+            xlines.append(line)
 
-            #reposition each vnc session window
-            for i, session in enumerate(self.sessions_requested):
-                self.log.debug(f'Search xlines for "{session}"')
-                win_id = None
-                for line in xlines:
-                    if session not in line:
-                        continue
-                    parts = line.split()
-                    win_id = parts[0]
+        #reposition each vnc session window
+        for i, session in enumerate(self.sessions_requested):
+            self.log.debug(f'Search xlines for "{session}"')
+            win_id = None
+            for line in xlines:
+                if session not in line:
+                    continue
+                parts = line.split()
+                win_id = parts[0]
 
-                if win_id is not None:
-                    index = i % len(self.geometry)
-                    geom = self.geometry[index]
-                    ww = geom[0]
-                    wh = geom[1]
-                    wx = geom[2]
-                    wy = geom[3]
-                    # cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
-                    cmd = ['wmctrl', '-i', '-r', win_id, '-e',
-                           f'0,{wx},{wy},-1,-1']
-                    self.log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
-                    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-                else:
-                    self.log.info(f"Could not find window process for VNC session '{session}'")
-        except Exception as error:
-            self.log.error("Failed to reposition windows.  See log for details.")
-            self.log.debug(str(error))
+            if win_id is not None:
+                index = i % len(self.geometry)
+                geom = self.geometry[index]
+                ww = geom[0]
+                wh = geom[1]
+                wx = geom[2]
+                wy = geom[3]
+                # cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
+                cmd = ['wmctrl', '-i', '-r', win_id, '-e',
+                       f'0,{wx},{wy},-1,-1']
+                self.log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            else:
+                self.log.info(f"Could not find window process for VNC session '{session}'")
 
 
     ##-------------------------------------------------------------------------
@@ -1092,7 +1088,12 @@ class KeckVncLauncher(object):
                 quit = True
             elif cmd == 'w':
                 self.log.info(f'Recieved command "{cmd}"')
-                self.position_vnc_windows()
+                try:
+                    self.position_vnc_windows()
+                except:
+                    self.log.error("Failed to reposition windows.  See log for details.")
+                    trace = traceback.format_exc()
+                    self.log.debug(trace)
             elif cmd == 'p':
                 self.log.info(f'Recieved command "{cmd}"')
                 self.play_test_sound()
@@ -1185,6 +1186,8 @@ class KeckVncLauncher(object):
             self.log.error('  Timed out trying to upload log file')
         except Exception as e:
             self.log.error('  Unable to upload logfile: ' + str(e))
+            trace = traceback.format_exc()
+            self.log.debug(trace)
 
 
     ##-------------------------------------------------------------------------
@@ -1201,9 +1204,10 @@ class KeckVncLauncher(object):
                 if proc.poll() == None:
                     proc.terminate()
 
-        except Exception as error:
+        except:
             self.log.error("Failed to terminate VNC sessions.  See log for details.")
-            self.log.debug(str(error))
+            trace = traceback.format_exc()
+            self.log.debug(trace)
 
 
     ##-------------------------------------------------------------------------
