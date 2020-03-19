@@ -635,7 +635,7 @@ class KeckVncLauncher(object):
         if self.args.viewonly is not None:
             cmd.append('-ViewOnly')
         #todo: make this config on/off so it doesn't break things
-        if geometry is not None:
+        if geometry is not None and geometry != '':
             cmd.append(f'-geometry={geometry}')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
