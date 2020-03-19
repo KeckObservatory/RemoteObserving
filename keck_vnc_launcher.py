@@ -63,6 +63,8 @@ class KeckVncLauncher(object):
         self.is_ssh_key_valid = False
         self.exit = False
 
+        self.log = logging.getLogger('KRO')
+
 
         #session name consts
         self.SESSION_NAMES = [
@@ -1343,13 +1345,10 @@ def create_logger():
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
 
-#     print("\nStarting Keck VNC Launcher...\n")
-
     #catch all exceptions so we can exit gracefully
     try:
-        kvl = KeckVncLauncher()
         create_logger()
-        kvl.log = logging.getLogger('KRO')
+        kvl = KeckVncLauncher()
         kvl.start()
     except Exception as error:
         kvl.handle_fatal_error(error)
