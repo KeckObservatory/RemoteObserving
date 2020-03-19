@@ -60,7 +60,7 @@ class KeckVncLauncher(object):
         self.firewall_opened = False
         self.instrument = None
         self.vncserver = None
-        self.is_ssh_key_valid = False
+        self.ssh_key_valid = False
         self.exit = False
 
         self.log = logging.getLogger('KRO')
@@ -163,7 +163,7 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         if self.args.nosshkey is False and self.config.get('nosshkey', None) is None:
             self.validate_ssh_key()
-            if self.is_ssh_key_valid == False:
+            if self.ssh_key_valid == False:
                 self.log.error("\n\n\tCould not validate SSH key.\n\t"\
                           "Contact mainland_observing@keck.hawaii.edu "\
                           "for other options to connect remotely.\n")
@@ -175,7 +175,7 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Determine VNC server
         ##---------------------------------------------------------------------
-        if self.is_ssh_key_valid == True:
+        if self.ssh_key_valid == True:
             self.vncserver = self.get_vnc_server(self.SSH_KEY_ACCOUNT,
                                                  None,
                                                  self.instrument)
@@ -190,7 +190,7 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Determine VNC Sessions
         ##---------------------------------------------------------------------
-        if self.is_ssh_key_valid == True:
+        if self.ssh_key_valid == True:
             # self.engv_account = self.get_engv_account(self.instrument)
             self.sessions_found = self.get_vnc_sessions(self.vncserver,
                                                         self.instrument,
@@ -268,8 +268,8 @@ class KeckVncLauncher(object):
         if self.firewall_requested == True:
 
             #determine account and password
-            account = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
-            password = None if self.is_ssh_key_valid else self.vnc_password
+            account = self.SSH_KEY_ACCOUNT if self.ssh_key_valid else self.args.account
+            password = None if self.ssh_key_valid else self.vnc_password
 
             # determine if there is already a tunnel for this session
             local_port = None
@@ -675,8 +675,8 @@ class KeckVncLauncher(object):
             #Do we need ssh tunnel for this?
             if self.firewall_requested == True:
 
-                account = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
-                password = None if self.is_ssh_key_valid else self.vnc_password
+                account = self.SSH_KEY_ACCOUNT if self.ssh_key_valid else self.args.account
+                password = None if self.ssh_key_valid else self.vnc_password
                 try:
                     sound_port = self.open_ssh_tunnel(self.vncserver, account,
                                                       password, self.ssh_pkey,
@@ -845,15 +845,15 @@ class KeckVncLauncher(object):
     def validate_ssh_key(self):
         self.log.info(f"Validating ssh key...")
 
-        self.is_ssh_key_valid = False
+        self.ssh_key_valid = False
         cmd = 'whoami'
         data = self.do_ssh_cmd(cmd, self.SSH_KEY_SERVER, self.SSH_KEY_ACCOUNT,
                                None)
 
         if data == self.SSH_KEY_ACCOUNT:
-            self.is_ssh_key_valid = True
+            self.ssh_key_valid = True
 
-        if self.is_ssh_key_valid == True:
+        if self.ssh_key_valid == True:
             self.log.info("  SSH key OK")
         else:
             self.log.error("  SSH key invalid")
@@ -1158,8 +1158,8 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def upload_log(self):
         try:
-            user = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
-            pw = None if self.is_ssh_key_valid else self.vnc_password
+            user = self.SSH_KEY_ACCOUNT if self.ssh_key_valid else self.args.account
+            pw = None if self.ssh_key_valid else self.vnc_password
 
             client = paramiko.SSHClient()
             client.load_system_host_keys()
