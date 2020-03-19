@@ -540,6 +540,9 @@ class KeckVncLauncher(object):
 
         # We now know everything we need to know in order to establish the
         # tunnel. Build the command line options and start the child process.
+        # The -N and -T options below are somewhat exotic: they request that
+        # the login process not execute any commands and that the server does
+        # not allocate a pseudo-terminal for the established connection.
 
         forwarding = f"{local_port}:localhost:{remote_port}"
         command = ['ssh', '-l', username, '-L', forwarding, '-N', '-T', server]
