@@ -55,8 +55,8 @@ class KeckVncLauncher(object):
         self.ports_in_use = dict()
         self.vnc_threads  = list()
         self.vnc_processes = list()
-        self.do_authenticate = False
-        self.is_authenticated = False
+        self.firewall_requested = False
+        self.firewall_opened = False
         self.instrument = None
         self.vncserver = None
         self.is_ssh_key_valid = False
@@ -124,17 +124,17 @@ class KeckVncLauncher(object):
         ## Authenticate Through Firewall (or Disconnect)
         ##---------------------------------------------------------------------
         #todo: handle blank password error properly
-        self.is_authenticated = False
-        if self.do_authenticate == True:
+        self.firewall_opened = False
+        if self.firewall_requested == True:
             self.firewall_pass = getpass.getpass(f"Password for firewall authentication: ")
             try:
-                self.is_authenticated = self.authenticate(self.firewall_pass)
+                self.firewall_opened = self.open_firewall(self.firewall_pass)
             except:
                 self.log.error('Unable to authenticate through firewall')
                 trace = traceback.format_exc()
                 self.log.debug(trace)
 
-            if self.is_authenticated == False:
+            if self.firewall_opened == False:
                 self.exit_app('Authentication failure!')
 
 #         if self.args.authonly is True:
@@ -262,7 +262,7 @@ class KeckVncLauncher(object):
         port      = int(f"59{display:02d}")
 
         ## If authenticating, open SSH tunnel for appropriate ports
-        if self.do_authenticate == True:
+        if self.firewall_requested == True:
 
             #determine account and password
             account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
@@ -401,13 +401,13 @@ class KeckVncLauncher(object):
         if lps: self.local_port = lps
 
         #check firewall config
-        self.do_authenticate = False
+        self.firewall_requested = False
         self.firewall_address = self.config.get('firewall_address', None)
         self.firewall_user    = self.config.get('firewall_user',    None)
         self.firewall_port    = self.config.get('firewall_port',    None)
         if self.firewall_address or self.firewall_user or self.firewall_port:
             if self.firewall_address and self.firewall_user and self.firewall_port:
-                self.do_authenticate = True
+                self.firewall_requested = True
             else:
                 self.log.warning("Partial firewall configuration detected in config file:")
                 if not self.firewall_address: self.log.warning("firewall_address not set")
@@ -651,7 +651,7 @@ class KeckVncLauncher(object):
             vncserver   = self.vncserver
 
             #Do we need ssh tunnel for this?
-            if self.do_authenticate:
+            if self.firewall_requested == True:
 
                 account  = self.SSH_KEY_ACCOUNT if self.is_ssh_key_valid else self.args.account
                 password = None if self.is_ssh_key_valid else self.vnc_password
@@ -684,9 +684,9 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Authenticate
+    ## Open the firewall hole for ssh traffic
     ##-------------------------------------------------------------------------
-    def authenticate(self, authpass):
+    def open_firewall(self, authpass):
 
         #todo: shorten timeout for mistyped password
 
@@ -711,11 +711,11 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Close Authentication
+    ## Close the firewall hole for ssh traffic
     ##-------------------------------------------------------------------------
-    def close_authentication(self, authpass):
+    def close_firewall(self, authpass):
 
-        if self.is_authenticated == False:
+        if self.firewall_opened == False:
             return
 
         self.log.info('Signing off of firewall authentication')
@@ -1192,12 +1192,12 @@ class KeckVncLauncher(object):
             self.sound.terminate()
 
         # Close down ssh tunnels and firewall authentication
-        if self.do_authenticate == True:
-            self.close_ssh_threads()
-            try:
-                self.close_authentication(self.firewall_pass)
-            except:
-                self.log.error('Unable to close firewall authentication!')
+        self.close_ssh_threads()
+
+        try:
+            self.close_firewall(self.firewall_pass)
+        except:
+            self.log.error('Unable to close firewall authentication!')
 
         #close vnc sessions
         self.kill_vnc_processes()

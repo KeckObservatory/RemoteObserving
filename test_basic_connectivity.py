@@ -28,11 +28,11 @@ servers_and_results = [('svncserver1', 'kaalualu'),
                        ('nirspec', 'vm-nirspec')]
 
 def test_firewall_authentication():
-    kvl.is_authenticated = False
+    kvl.firewall_opened = False
     if kvl.do_authenticate:
         kvl.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
-        kvl.is_authenticated = kvl.authenticate(kvl.firewall_pass)
-        assert kvl.is_authenticated is True
+        kvl.firewall_opened = kvl.open_firewall(kvl.firewall_pass)
+        assert kvl.firewall_opened is True
 
 
 def test_ssh_key():
