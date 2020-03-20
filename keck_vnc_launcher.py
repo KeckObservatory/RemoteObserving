@@ -63,6 +63,7 @@ class KeckVncLauncher(object):
         self.firewall_requested = False
         self.firewall_opened = False
         self.instrument = None
+        self.vnc_password = None
         self.vncserver = None
         self.ssh_key_valid = False
         self.exit = False
@@ -179,7 +180,11 @@ class KeckVncLauncher(object):
                           "for other options to connect remotely.\n")
                 self.exit_app()
         else:
-            self.vnc_password = getpass.getpass(f"Password for user {self.args.account}: ")
+            while self.vnc_password is None:
+                vnc_password = getpass.getpass(f"Password for user {self.args.account}: ")
+                vnc_password = vnc_password.strip()
+                if vnc_password != '':
+                    self.vnc_password = vnc_password
 
 
         ##---------------------------------------------------------------------
@@ -846,37 +851,60 @@ class KeckVncLauncher(object):
     ## Utility function for opening ssh client, executing command and closing
     ##-------------------------------------------------------------------------
     def do_ssh_cmd(self, cmd, server, account, password):
-        try:
-            output = None
-            self.log.debug(f'Trying SSH connect to {server} as {account}:')
+        output = None
+        self.log.debug(f'Trying SSH connect to {server} as {account}:')
 
-            client = paramiko.SSHClient()
-            client.load_system_host_keys()
-            client.set_missing_host_key_policy(paramiko.WarningPolicy())
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(
-                server,
-                port = 22,
-                timeout = 6,
-                key_filename=self.ssh_pkey,
-                username = account,
-                password = password)
-            self.log.info('  Connected')
-        except TimeoutError:
-            self.log.error('  Timeout')
-        except Exception as e:
-            self.log.error('  Failed: ' + str(e))
-            trace = traceback.format_exc()
-            self.log.debug(trace)
+        command = ['ssh', server, '-l', account, '-T']
+
+        if self.ssh_pkey is not None:
+            command.append('-i')
+            command.append(self.ssh_pkey)
+
+        command.append('-oStrictHostKeyChecking=no')
+        command.append('-oKexAlgorithms=+diffie-hellman-group1-sha1')
+        command.append(cmd)
+        self.log.debug('ssh command: ' + ' '.join (command))
+
+        pipe = subprocess.PIPE
+        null = subprocess.DEVNULL
+        stderr = subprocess.STDOUT
+
+        if password is not None:
+            stdin = pipe
         else:
-            self.log.debug(f'Command: {cmd}')
-            stdin, stdout, stderr = client.exec_command(cmd)
-            output = stdout.read()
-            output = output.decode().strip('\n')
-            self.log.debug(f"Output: '{output}'")
-        finally:
-            client.close()
-            return output
+            stdin = null
+
+        proc = subprocess.Popen(command, stdin=stdin, stdout=pipe, stderr=stderr)
+        if proc.poll() is not None:
+            raise RuntimeError('subprocess failed to execute ssh')
+
+        try:
+            stdout,stderr = proc.communicate(password, timeout=6)
+        except subprocess.TimeoutExpired:
+            self.log.error('  Timeout')
+            return
+
+        if proc.returncode != 0:
+            message = '  command failed with error ' + str(proc.returncode)
+            self.log.error(message)
+
+        stdout = stdout.decode()
+        stdout = stdout.strip()
+        self.log.debug(f"Output: '{stdout}'")
+
+        # The first line might be a warning about accepting a ssh host key.
+        # Check for that, and get rid of it from the output.
+
+        lines = stdout.split('\n')
+
+        if len(lines) > 1:
+            if 'Warning: Permanently added' in lines[0]:
+                self.log.debug('Removed warning from command output:')
+                self.log.debug(lines[0])
+                lines = lines[1:]
+                stdout = '\n'.join(lines)
+
+        return stdout
 
 
     ##-------------------------------------------------------------------------
@@ -887,13 +915,17 @@ class KeckVncLauncher(object):
 
         self.ssh_key_valid = False
         cmd = 'whoami'
-        data = self.do_ssh_cmd(cmd, self.SSH_KEY_SERVER, self.SSH_KEY_ACCOUNT,
-                               None)
+        try:
+            data = self.do_ssh_cmd(cmd, self.SSH_KEY_SERVER,
+                                        self.SSH_KEY_ACCOUNT, None)
+        except Exception as e:
+            self.log.error('  Failed: ' + str(e))
+            trace = traceback.format_exc()
+            self.log.debug(trace)
+            data = None
 
         if data == self.SSH_KEY_ACCOUNT:
             self.ssh_key_valid = True
-
-        if self.ssh_key_valid == True:
             self.log.info("  SSH key OK")
         else:
             self.log.error("  SSH key invalid")
@@ -906,11 +938,17 @@ class KeckVncLauncher(object):
         self.log.info(f"Getting engv account for instrument {instrument} ...")
 
         cmd = f'setenv INSTRUMENT {instrument}; kvncinfo -engineering'
-        data = self.do_ssh_cmd(cmd, self.SSH_KEY_SERVER, self.SSH_KEY_ACCOUNT,
-                               None)
+        try:
+            data = self.do_ssh_cmd(cmd, self.SSH_KEY_SERVER,
+                                        self.SSH_KEY_ACCOUNT, None)
+        except Exception as e:
+            self.log.error('  Failed: ' + str(e))
+            trace = traceback.format_exc()
+            self.log.debug(trace)
+            data = None
 
         engv = None
-        if data and ' ' not in data:
+        if data is not None and ' ' not in data:
             engv = data
 
         if engv is not None:
@@ -930,7 +968,15 @@ class KeckVncLauncher(object):
         for server in self.servers_to_try:
             server += ".keck.hawaii.edu"
             cmd = f'kvncinfo -server -I {instrument}'
-            data = self.do_ssh_cmd(cmd, server, account, password)
+
+            try:
+                data = self.do_ssh_cmd(cmd, server, account, password)
+            except Exception as e:
+                self.log.error('  Failed: ' + str(e))
+                trace = traceback.format_exc()
+                self.log.debug(trace)
+                data = None
+
             if data is not None and ' ' not in data:
                 vncserver = data
                 self.log.info(f"Got VNC server: '{vncserver}'")
@@ -955,7 +1001,14 @@ class KeckVncLauncher(object):
 
         sessions = list()
         cmd = f'setenv INSTRUMENT {instrument}; kvncstatus -a'
-        data = self.do_ssh_cmd(cmd, vncserver, account, password)
+        try:
+            data = self.do_ssh_cmd(cmd, vncserver, account, password)
+        except Exception as e:
+            self.log.error('  Failed: ' + str(e))
+            trace = traceback.format_exc()
+            self.log.debug(trace)
+            data = ''
+
         lines = data.split('\n')
         for line in lines:
             if line[0] != '#':
