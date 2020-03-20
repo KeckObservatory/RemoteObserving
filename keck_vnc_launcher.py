@@ -464,26 +464,15 @@ class KeckVncLauncher(object):
     def get_sessions_requested(self, args):
 
         #get sessions to open
-        #todo: use const SESSION_NAMES here
         sessions = list()
-        if args.control0 is True:
-            sessions.append('control0')
-        if args.control1 is True:
-            sessions.append('control1')
-        if args.control2 is True:
-            sessions.append('control2')
-        if args.telstatus is True:
-            sessions.append('telstatus')
-        if args.analysis0 is True:
-            sessions.append('analysis0')
-        if args.analysis1 is True:
-            sessions.append('analysis1')
-        if args.analysis2 is True:
-            sessions.append('analysis2')
-        if args.telanalys is True:
-            sessions.append('telanalys')
-        if args.status is True:
-            sessions.append('status')
+        for attribute in self.SESSION_NAMES:
+            try:
+                argument = getattr(args, attribute)
+            except AttributeError:
+                continue
+
+            if argument == True:
+                sessions.append (attribute)
 
         # create default sessions list if none provided
         if len(sessions) == 0:
