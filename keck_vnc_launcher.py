@@ -117,10 +117,32 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
         ##---------------------------------------------------------------------
-        #todo: handle blank password error properly
-        self.firewall_opened = False
+
         if self.firewall_requested == True:
-            self.firewall_pass = getpass.getpass(f"Password for firewall authentication: ")
+            self.firewall_opened = self.test_firewall()
+        else:
+            self.firewall_opened = False
+
+        # Only prompt for the firewall password if it is required for opening
+        # or closing the firewall hole.
+
+        need_password = False
+        close_requested = self.config.get('firewall_cleanup', False)
+        if close_requested == True:
+            need_password = True
+
+        if self.firewall_requested == True and self.firewall_opened == False:
+            need_password = True
+
+        if need_password == True:
+            while self.firewall_pass is None:
+                firewall_pass = getpass.getpass(f"Password for firewall authentication: ")
+                firewall_pass = firewall_pass.strip()
+                if firewall_pass != '':
+                    self.firewall_pass = firewall_pass
+
+
+        if self.firewall_requested == True and self.firewall_opened == False:
             try:
                 self.firewall_opened = self.open_firewall(self.firewall_pass)
             except:
@@ -130,9 +152,6 @@ class KeckVncLauncher(object):
 
             if self.firewall_opened == False:
                 self.exit_app('Authentication failure!')
-
-#         if self.args.authonly is True:
-#             self.exit_app('Authentication only')
 
 
         ##---------------------------------------------------------------------
@@ -712,7 +731,7 @@ class KeckVncLauncher(object):
         if self.firewall_opened == False:
             return
 
-        self.log.info('Signing off of firewall authentication')
+        self.log.info('Closing firewall hole')
         tn = telnetlib.Telnet(self.firewall_address, int(self.firewall_port))
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{self.firewall_user}\n'.encode('ascii'))
@@ -726,6 +745,56 @@ class KeckVncLauncher(object):
             self.log.info('User was signed off from all services')
         else:
             self.log.error(result)
+
+
+    ##-------------------------------------------------------------------------
+    ## Check to see whether the firewall hole is already open.
+    ##-------------------------------------------------------------------------
+    def test_firewall(self):
+        ''' Return True if the sshuser firewall hole is open; otherwise
+            return False. Also return False if the test cannot be performed.
+        '''
+
+        try:
+            netcat = subprocess.check_output(['which', 'ncat'])
+        except CalledProcessError:
+            netcat = None
+
+        try:
+            ping = subprocess.check_output(['which', 'ping'])
+        except CalledProcessError:
+            ping = None
+
+
+        # The netcat test is more rigorous, in that it attempts to contact
+        # an ssh daemon that should be available to us after opening the
+        # firewall hole. The ping check is a reasonable fallback and was
+        # the traditional way the old mainland observing script would confirm
+        # the firewall status.
+
+        if netcat is not None:
+            netcat = netcat.decode()
+            netcat = netcat.strip()
+            command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w 2']
+
+        elif ping is not None:
+            ping = ping.decode()
+            ping = ping.strip()
+            command = [ping, '128.171.95.100', '-c 1 -w 5']
+
+        else:
+            # No way to check the firewall status. Assume it is closed,
+            # authentication will be required.
+            return False
+
+        null = subprocess.DEVNULL
+        proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
+        result = proc.wait()
+
+        if result == 0:
+            return True
+
+        return False
 
 
     ##-------------------------------------------------------------------------
