@@ -267,6 +267,7 @@ class KeckVncLauncher(object):
             for p in self.ports_in_use.keys():
                 if session_name == self.ports_in_use[p][1]:
                     local_port = p
+                    vncserver = 'localhost'
                     self.log.info(f"Found existing SSH tunnel on port {port}")
                     break
 
@@ -311,9 +312,10 @@ class KeckVncLauncher(object):
                 geometry += f'+{xpos}+{ypos}'
 
         ## Open vncviewer as separate thread
-        self.vnc_threads.append(threading.Thread(target=self.launch_vncviewer,
-                                       args=(vncserver, local_port, geometry)))
-        self.vnc_threads[-1].start()
+        args = (vncserver, local_port, geometry)
+        vnc_thread = threading.Thread(target=self.launch_vncviewer, args=args)
+        vnc_thread.start()
+        self.vnc_threads.append(vnc_thread)
         time.sleep(0.05)
 
 
@@ -1052,14 +1054,17 @@ class KeckVncLauncher(object):
         quit = None
         while quit is None:
             cmd = input(menu).lower()
-            cmatch = re.match(r'c (\d+)', cmd)
+            cmd = cmd.strip()
+
             if cmd == '':
-                pass
-            elif cmd == 'q':
-                self.log.info(f'Recieved command "{cmd}"')
+                continue
+
+            self.log.info(f'Recieved command "{cmd}"')
+            cmatch = re.match(r'c (\d+)', cmd)
+
+            if cmd == 'q':
                 quit = True
             elif cmd == 'w':
-                self.log.info(f'Recieved command "{cmd}"')
                 try:
                     self.position_vnc_windows()
                 except:
@@ -1067,34 +1072,23 @@ class KeckVncLauncher(object):
                     trace = traceback.format_exc()
                     self.log.debug(trace)
             elif cmd == 'p':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.play_test_sound()
             elif cmd == 's':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.start_soundplay()
             elif cmd == 'u':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.upload_log()
             elif cmd == 'l':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.print_sessions_found()
             elif cmd == 't':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.list_tunnels()
             elif cmd == 'v':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.check_version()
-            elif cmatch is not None:
-                self.log.info(f'Recieved command "{cmd}"')
-                self.close_ssh_thread(int(cmatch.group(1)))
-            #elif cmd == 'v': self.validate_ssh_key()
-            #elif cmd == 'x': self.kill_vnc_processes()
             elif cmd in [s.name for s in self.sessions_found]:
-                self.log.info(f'Recieved command "{cmd}"')
                 self.start_vnc_session(cmd)
+            elif cmatch is not None:
+                self.close_ssh_thread(int(cmatch.group(1)))
             else:
-                self.log.info(f'Recieved command "{cmd}"')
-                self.log.error(f'Unrecognized command: "{cmd}"')
+                self.log.error('Unrecognized command: ' + repr(cmd))
 
 
     ##-------------------------------------------------------------------------
