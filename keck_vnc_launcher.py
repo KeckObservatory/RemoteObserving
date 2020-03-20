@@ -465,14 +465,14 @@ class KeckVncLauncher(object):
 
         #get sessions to open
         sessions = list()
-        for attribute in self.SESSION_NAMES:
+        for session in self.SESSION_NAMES:
             try:
-                argument = getattr(args, attribute)
+                requested = getattr(args, session)
             except AttributeError:
                 continue
 
-            if argument == True:
-                sessions.append (attribute)
+            if requested == True:
+                sessions.append (session)
 
         # create default sessions list if none provided
         if len(sessions) == 0:
