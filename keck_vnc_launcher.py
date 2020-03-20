@@ -28,6 +28,10 @@ import soundplay
 
 __version__ = '1.0.0rc6'
 
+SESSION_NAMES = ('control0', 'control1', 'control2',
+                 'analysis0', 'analysis1', 'analysis2',
+                 'telanalys', 'telstatus', 'status')
+
 
 class VNCSession(object):
     '''An object to contain information about a VNC session.
@@ -66,21 +70,8 @@ class KeckVncLauncher(object):
         self.log = logging.getLogger('KRO')
 
 
-        #session name consts
-        self.SESSION_NAMES = [
-            'control0',
-            'control1',
-            'control2',
-            'analysis0',
-            'analysis1',
-            'analysis2',
-            'telanalys',
-            'telstatus',
-            'status'
-        ]
-
         #default start sessions
-        self.DEFAULT_SESSIONS = [
+        self.default_sessions = [
             'control0',
             'control1',
             'control2',
@@ -437,7 +428,7 @@ class KeckVncLauncher(object):
             self.log.debug(f'authonly is True, so default sessions set to []')
             ds = list()
         if ds is not None:
-            self.DEFAULT_SESSIONS = ds
+            self.default_sessions = ds
 
 
     ##-------------------------------------------------------------------------
@@ -465,7 +456,7 @@ class KeckVncLauncher(object):
 
         #get sessions to open
         sessions = list()
-        for session in self.SESSION_NAMES:
+        for session in SESSION_NAMES:
             try:
                 requested = getattr(args, session)
             except AttributeError:
@@ -476,7 +467,7 @@ class KeckVncLauncher(object):
 
         # create default sessions list if none provided
         if len(sessions) == 0:
-            sessions = self.DEFAULT_SESSIONS
+            sessions = self.default_sessions
 
         self.log.debug(f'Sessions to open: {sessions}')
         return sessions
@@ -1273,18 +1264,6 @@ def create_parser():
                    f"mainland_observing@keck.hawaii.edu")
     parser = argparse.ArgumentParser(description=description)
 
-    SESSION_NAMES = [
-                'control0',
-                'control1',
-                'control2',
-                'analysis0',
-                'analysis1',
-                'analysis2',
-                'telanalys',
-                'telstatus',
-                'status'
-            ]
-
     ## add flags
     parser.add_argument("--authonly", dest="authonly",
         default=False, action="store_true",
@@ -1303,7 +1282,7 @@ def create_parser():
             dest=name,
             default=False,
             action="store_true",
-            help=f"Open {name}")
+            help=f"Open {name} VNC session")
 
     ## add arguments
     parser.add_argument("account", type=str, nargs='?', default='hires1',
