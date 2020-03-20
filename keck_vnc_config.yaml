@@ -8,7 +8,8 @@
 
 ## If the firewall authentication has been performed, should the script
 ## de-authenticate when it exits? This is generally not required; the firewall
-## authorization will automatically expire after 24 hours.
+## authorization will automatically expire after 24 hours. Set this option to
+## True to close the firewall hole when the script exits.
 firewall_cleanup: False
 
 ## SSH private key file path.  If you created an ssh public/private key pair
