@@ -357,14 +357,11 @@ class KeckVncLauncher(object):
         self.log.info(f'Using config file: {file}')
 
         # open file a first time just to log the raw contents
-        with open(file) as FO:
-            contents = FO.read()
-#             lines = contents.split('/n')
+        contents = open(file).read()
         self.log.debug(f"Contents of config file: {contents}")
 
         # open file a second time to properly read config
-        with open(file) as FO:
-            config = yaml.load(FO, Loader=yaml.FullLoader)
+        config = yaml.load(open(file), Loader=yaml.FullLoader)
 
         cstr = "Parsed Configuration:\n"
         for key, c in config.items():
@@ -1193,21 +1190,24 @@ class KeckVncLauncher(object):
             return
 
         self.exit = True
-        #todo: Fix app exit so certain clean ups don't cause errors (ie thread not started, etc
+        #todo: Fix app exit so certain clean ups don't cause errors
+        #(ie thread not started, etc
         if msg is not None:
             self.log.info(msg)
 
-        #terminate soundplayer
         if self.sound is not None:
             self.sound.terminate()
 
-        # Close down ssh tunnels and firewall authentication
         self.close_ssh_threads()
 
-        try:
-            self.close_firewall(self.firewall_pass)
-        except:
-            self.log.error('Unable to close firewall authentication!')
+        close_requested = self.config.get('firewall_cleanup', False)
+        if close_requested == True:
+            try:
+                self.close_firewall(self.firewall_pass)
+            except:
+                self.log.error('Unable to close the firewall hole!')
+        else:
+            self.log.info('Leaving firewall authentication unchanged.')
 
         #close vnc sessions
         self.kill_vnc_processes()
