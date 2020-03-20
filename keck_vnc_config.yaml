@@ -6,9 +6,14 @@
 # firewall_port: 123
 # firewall_user: '???'
 
+## If the firewall authentication has been performed, should the script
+## de-authenticate when it exits? This is generally not required; the firewall
+## authorization will automatically expire after 24 hours.
+firewall_cleanup: False
 
 ## SSH private key file path.  If you created an ssh public/private key pair
-## and provided the public key to Keck, enter the full path the private key here.
+## and provided the public key to Keck, enter the full path for the private key
+## here.
 # ssh_pkey: '/home/observer/.ssh/id_rsa'
 
 
