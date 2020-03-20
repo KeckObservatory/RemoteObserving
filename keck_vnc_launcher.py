@@ -545,14 +545,15 @@ class KeckVncLauncher(object):
             command.append(ssh_pkey)
 
         self.log.debug('ssh command: ' + ' '.join (command))
-        process = subprocess.Popen(command)
+        null = subprocess.DEVNULL
+        proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
 
 
         # Having started the process let's make sure it's actually running.
         # First try polling,  then confirm the requested local port is in use.
         # It's a fatal error if either check fails.
 
-        if process.poll() is not None:
+        if proc.poll() is not None:
             raise RuntimeError('subprocess failed to execute ssh')
 
         # A delay is built-in here as it takes some finite amount of time for
@@ -571,7 +572,7 @@ class KeckVncLauncher(object):
         if checks == 0:
             raise RuntimeError('ssh tunnel failed to open after 5 seconds')
 
-        in_use = [address_and_port, session_name, process]
+        in_use = [address_and_port, session_name, proc]
         self.ports_in_use[local_port] = in_use
         return local_port
 
@@ -614,9 +615,8 @@ class KeckVncLauncher(object):
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         self.log.debug(f"VNC viewer command: {cmd}")
-        # proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-        #                         stderr=subprocess.PIPE)
-        proc = subprocess.Popen(cmd)
+        null = subprocess.DEVNULL
+        proc = subprocess.Popen(cmd, stdin=null, stdout=null, stderr=null)
 
         #append to proc list so we can terminate on app exit
         self.vnc_processes.append(proc)
