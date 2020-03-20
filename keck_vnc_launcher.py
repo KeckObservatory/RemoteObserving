@@ -500,14 +500,6 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Launch xterm
-    ##-------------------------------------------------------------------------
-    def launch_xterm(self, command, pw, title):
-        cmd = ['xterm', '-hold', '-title', title, '-e', f'"{command}"']
-        xterm = subprocess.call(cmd)
-
-
-    ##-------------------------------------------------------------------------
     ## Open ssh tunnel
     ##-------------------------------------------------------------------------
     def open_ssh_tunnel(self, server, username, password, ssh_pkey, remote_port,
