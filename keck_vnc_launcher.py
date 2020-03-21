@@ -136,7 +136,7 @@ class KeckVncLauncher(object):
 
         if need_password == True:
             while self.firewall_pass is None:
-                firewall_pass = getpass.getpass(f"Password for firewall authentication: ")
+                firewall_pass = getpass(f"Password for firewall authentication: ")
                 firewall_pass = firewall_pass.strip()
                 if firewall_pass != '':
                     self.firewall_pass = firewall_pass
@@ -732,7 +732,7 @@ class KeckVncLauncher(object):
             return
 
         self.log.info('Closing firewall hole')
-        tn = telnetlib.Telnet(self.firewall_address, int(self.firewall_port))
+        tn = Telnet(self.firewall_address, int(self.firewall_port))
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{self.firewall_user}\n'.encode('ascii'))
         tn.read_until(b"password: ", timeout=5)
