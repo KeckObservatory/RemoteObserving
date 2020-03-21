@@ -1272,7 +1272,7 @@ class KeckVncLauncher(object):
 
         logfile_handlers = [lh for lh in self.log.handlers if
                             isinstance(lh, logging.FileHandler)]
-        logfile = pathlib.Path(logfile_handlers.pop(0).baseFilename)
+        logfile = Path(logfile_handlers.pop(0).baseFilename)
 
         source = str(logfile)
         destination = account + '@' + self.vncserver + ':' + logfile.name
