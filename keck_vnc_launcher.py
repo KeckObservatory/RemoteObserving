@@ -8,7 +8,6 @@ import getpass
 import logging
 import math
 import os
-import paramiko
 import pathlib
 import platform
 import re
@@ -96,10 +95,6 @@ class KeckVncLauncher(object):
     ## Start point (main)
     ##-------------------------------------------------------------------------
     def start(self):
-
-        #global suppression of paramiko warnings
-        #todo: log these?
-        warnings.filterwarnings(action='ignore', module='.*paramiko.*')
 
         ##---------------------------------------------------------------------
         ## Parse command line args and get config
@@ -1201,7 +1196,12 @@ class KeckVncLauncher(object):
             elif cmd == 's':
                 self.start_soundplay()
             elif cmd == 'u':
-                self.upload_log()
+                try:
+                    self.upload_log()
+                except Exception as e:
+                    self.log.error('  Unable to upload logfile: ' + str(e))
+                    trace = traceback.format_exc()
+                    self.log.debug(trace)
             elif cmd == 'l':
                 self.print_sessions_found()
             elif cmd == 't':
@@ -1248,38 +1248,62 @@ class KeckVncLauncher(object):
     ## Upload log file to Keck
     ##-------------------------------------------------------------------------
     def upload_log(self):
+
+        if self.ssh_key_valid == True:
+            account = self.SSH_KEY_ACCOUNT
+        else:
+            account = self.args.account
+
+        if self.ssh_key_valid == True:
+            password = None
+        else:
+            password = self.vnc_password
+
+        logfile_handlers = [lh for lh in self.log.handlers if
+                            isinstance(lh, logging.FileHandler)]
+        logfile = pathlib.Path(logfile_handlers.pop(0).baseFilename)
+
+        source = str(logfile)
+        destination = account + '@' + self.vncserver + ':' + logfile.name
+
+        command = ['scp',]
+
+        if self.ssh_pkey is not None:
+            command.append('-i')
+            command.append(self.ssh_pkey)
+
+        command.append('-oStrictHostKeyChecking=no')
+        command.append('-oKexAlgorithms=+diffie-hellman-group1-sha1')
+        command.append(source)
+        command.append(destination)
+
+
+        self.log.debug('scp command: ' + ' '.join (command))
+
+        pipe = subprocess.PIPE
+        null = subprocess.DEVNULL
+
+        if password is not None:
+            stdin = pipe
+        else:
+            stdin = null
+
+        proc = subprocess.Popen(command, stdin=stdin, stdout=null, stderr=null)
+        if proc.poll() is not None:
+            raise RuntimeError('subprocess failed to execute scp')
+
         try:
-            user = self.SSH_KEY_ACCOUNT if self.ssh_key_valid else self.args.account
-            pw = None if self.ssh_key_valid else self.vnc_password
+            stdout,stderr = proc.communicate(password, timeout=10)
+        except subprocess.TimeoutExpired:
+            self.log.error('  Timeout attempting to upload log file')
+            return
 
-            client = paramiko.SSHClient()
-            client.load_system_host_keys()
-            client.set_missing_host_key_policy(paramiko.WarningPolicy())
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(
-                self.vncserver,
-                port = 22,
-                timeout = 6,
-                key_filename=self.ssh_pkey,
-                username = user,
-                password = pw)
-            sftp = client.open_sftp()
-            self.log.info('  Connected SFTP')
-
-            logfile_handlers = [lh for lh in self.log.handlers if
-                                isinstance(lh, logging.FileHandler)]
-            logfile = pathlib.Path(logfile_handlers.pop(0).baseFilename)
-            destination = logfile.name
-            sftp.put(logfile, destination)
+        if proc.returncode != 0:
+            message = '  command failed with error ' + str(proc.returncode)
+            self.log.error(message)
+        else:
             self.log.info(f'  Uploaded {logfile.name}')
-            self.log.info(f'  to {self.args.account}@{self.vncserver}:{destination}')
-        except TimeoutError:
-            self.log.error('  Timed out trying to upload log file')
-        except Exception as e:
-            self.log.error('  Unable to upload logfile: ' + str(e))
-            trace = traceback.format_exc()
-            self.log.debug(trace)
-
+            self.log.info(f'  to {destination}')
 
     ##-------------------------------------------------------------------------
     ## Terminate all vnc processes
