@@ -757,12 +757,12 @@ class KeckVncLauncher(object):
 
         try:
             netcat = subprocess.check_output(['which', 'ncat'])
-        except CalledProcessError:
+        except subprocess.CalledProcessError:
             netcat = None
 
         try:
             ping = subprocess.check_output(['which', 'ping'])
-        except CalledProcessError:
+        except subprocess.CalledProcessError:
             ping = None
 
 
@@ -775,12 +775,24 @@ class KeckVncLauncher(object):
         if netcat is not None:
             netcat = netcat.decode()
             netcat = netcat.strip()
-            command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w 2']
+            command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w', '2']
 
         elif ping is not None:
             ping = ping.decode()
             ping = ping.strip()
-            command = [ping, '128.171.95.100', '-c 1 -w 5']
+            command = [ping, '128.171.95.100']
+
+            os = platform.system()
+            os = os.lower()
+
+            # Ping once, wait up to five seconds for a response.
+            if os == 'linux':
+                command.extend(['-c', '1,' '-w', '5']
+            elif os == 'darwin':
+                command.extend(['-c', '1,' '-W', '5000']
+            else:
+                # Don't understand how ping works on this platform.
+                return False
 
         else:
             # No way to check the firewall status. Assume it is closed,
