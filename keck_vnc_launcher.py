@@ -3,20 +3,20 @@
 ## Import standard modules
 import argparse
 import atexit
-import datetime
-import getpass
+from datetime import datetime
+from getpass import getpass
 import logging
 import math
 import os
 import paramiko
-import pathlib
+from pathlib import Path
 import platform
 import re
 import socket
 import subprocess
 import sys
-import telnetlib
-import threading
+from telnetlib import Telnet
+from threading import Thread
 import time
 import traceback
 import warnings
@@ -120,7 +120,7 @@ class KeckVncLauncher(object):
         #todo: handle blank password error properly
         self.firewall_opened = False
         if self.firewall_requested == True:
-            self.firewall_pass = getpass.getpass(f"Password for firewall authentication: ")
+            self.firewall_pass = getpass(f"Password for firewall authentication: ")
             try:
                 self.firewall_opened = self.open_firewall(self.firewall_pass)
             except:
@@ -160,7 +160,7 @@ class KeckVncLauncher(object):
                           "for other options to connect remotely.\n")
                 self.exit_app()
         else:
-            self.vnc_password = getpass.getpass(f"Password for user {self.args.account}: ")
+            self.vnc_password = getpass(f"Password for user {self.args.account}: ")
 
 
         ##---------------------------------------------------------------------
@@ -313,7 +313,7 @@ class KeckVncLauncher(object):
 
         ## Open vncviewer as separate thread
         args = (vncserver, local_port, geometry)
-        vnc_thread = threading.Thread(target=self.launch_vncviewer, args=args)
+        vnc_thread = Thread(target=self.launch_vncviewer, args=args)
         vnc_thread.start()
         self.vnc_threads.append(vnc_thread)
         time.sleep(0.05)
@@ -337,7 +337,7 @@ class KeckVncLauncher(object):
         #if config file specified, put that at beginning of list
         filename = self.args.config
         if filename is not None:
-            if not pathlib.Path(filename).is_file():
+            if not Path(filename).is_file():
                 self.log.error(f'Specified config file "{filename}" does not exist.')
                 self.exit_app()
             else:
@@ -346,7 +346,7 @@ class KeckVncLauncher(object):
         #find first file that exists
         file = None
         for f in filenames:
-            if pathlib.Path(f).is_file():
+            if Path(f).is_file():
                 file = f
                 break
         if file is None:
@@ -420,7 +420,7 @@ class KeckVncLauncher(object):
         if self.ssh_pkey is None:
             self.log.warning("No ssh private key file specified in config file.\n")
         else:
-            if not pathlib.Path(self.ssh_pkey).exists():
+            if not Path(self.ssh_pkey).exists():
                 self.log.warning(f"SSH private key path does not exist: {self.ssh_pkey}")
 
         #check default_sessions
@@ -668,7 +668,7 @@ class KeckVncLauncher(object):
             self.sound.connect(self.instrument, vncserver, sound_port,
                                aplay=aplay, player=soundplayer)
             #todo: should we start this as a thread?
-            # sound = sound = threading.Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
+            # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
             # soundThread.start()
         except:
             self.log.error('Unable to start soundplay.  See log for details.')
@@ -690,7 +690,7 @@ class KeckVncLauncher(object):
         self.log.info(f'Authenticating through firewall as:')
         self.log.info(f' {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
 
-        tn = telnetlib.Telnet(self.firewall_address, int(self.firewall_port))
+        tn = Telnet(self.firewall_address, int(self.firewall_port))
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{self.firewall_user}\n'.encode('ascii'))
         tn.read_until(b"password: ", timeout=5)
@@ -716,7 +716,7 @@ class KeckVncLauncher(object):
             return
 
         self.log.info('Signing off of firewall authentication')
-        tn = telnetlib.Telnet(self.firewall_address, int(self.firewall_port))
+        tn = Telnet(self.firewall_address, int(self.firewall_port))
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{self.firewall_user}\n'.encode('ascii'))
         tn.read_until(b"password: ", timeout=5)
@@ -1149,7 +1149,7 @@ class KeckVncLauncher(object):
 
             logfile_handlers = [lh for lh in self.log.handlers if
                                 isinstance(lh, logging.FileHandler)]
-            logfile = pathlib.Path(logfile_handlers.pop(0).baseFilename)
+            logfile = Path(logfile_handlers.pop(0).baseFilename)
             destination = logfile.name
             sftp.put(logfile, destination)
             self.log.info(f'  Uploaded {logfile.name}')
@@ -1298,8 +1298,8 @@ def create_logger():
         log.setLevel(logging.DEBUG)
 
         #create log file and log dir if not exist
-        ymd = datetime.datetime.utcnow().date().strftime('%Y%m%d')
-        pathlib.Path('logs/').mkdir(parents=True, exist_ok=True)
+        ymd = datetime.utcnow().date().strftime('%Y%m%d')
+        Path('logs/').mkdir(parents=True, exist_ok=True)
 
         #file handler (full debug logging)
         logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
