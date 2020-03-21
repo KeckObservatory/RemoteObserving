@@ -1236,10 +1236,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def upload_log(self):
 
-        if self.ssh_key_valid == True:
-            account = self.kvnc_account
-        else:
-            account = self.args.account
+        account = self.kvnc_account
 
         logfile_handlers = [lh for lh in self.log.handlers if
                             isinstance(lh, logging.FileHandler)]
