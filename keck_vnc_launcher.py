@@ -3,19 +3,19 @@
 ## Import standard modules
 import argparse
 import atexit
-import datetime
-import getpass
+from datetime import datetime
+from getpass import getpass
 import logging
 import math
 import os
-import pathlib
+from pathlib import Path
 import platform
 import re
 import socket
 import subprocess
 import sys
-import telnetlib
-import threading
+from telnetlib import Telnet
+from threading import Thread
 import time
 import traceback
 import warnings
@@ -132,11 +132,10 @@ class KeckVncLauncher(object):
 
         if need_password == True:
             while self.firewall_pass is None:
-                firewall_pass = getpass.getpass(f"Password for firewall authentication: ")
+                firewall_pass = getpass(f"Password for firewall authentication: ")
                 firewall_pass = firewall_pass.strip()
                 if firewall_pass != '':
                     self.firewall_pass = firewall_pass
-
 
         if self.firewall_requested == True and self.firewall_opened == False:
             try:
@@ -176,11 +175,10 @@ class KeckVncLauncher(object):
                 self.exit_app()
         else:
             while self.vnc_password is None:
-                vnc_password = getpass.getpass(f"Password for user {self.args.account}: ")
+                vnc_password = getpass(f"Password for user {self.args.account}: ")
                 vnc_password = vnc_password.strip()
                 if vnc_password != '':
                     self.vnc_password = vnc_password
-
 
         ##---------------------------------------------------------------------
         ## Determine VNC server
@@ -332,7 +330,7 @@ class KeckVncLauncher(object):
 
         ## Open vncviewer as separate thread
         args = (vncserver, local_port, geometry)
-        vnc_thread = threading.Thread(target=self.launch_vncviewer, args=args)
+        vnc_thread = Thread(target=self.launch_vncviewer, args=args)
         vnc_thread.start()
         self.vnc_threads.append(vnc_thread)
         time.sleep(0.05)
@@ -356,7 +354,7 @@ class KeckVncLauncher(object):
         #if config file specified, put that at beginning of list
         filename = self.args.config
         if filename is not None:
-            if not pathlib.Path(filename).is_file():
+            if not Path(filename).is_file():
                 self.log.error(f'Specified config file "{filename}" does not exist.')
                 self.exit_app()
             else:
@@ -365,7 +363,7 @@ class KeckVncLauncher(object):
         #find first file that exists
         file = None
         for f in filenames:
-            if pathlib.Path(f).is_file():
+            if Path(f).is_file():
                 file = f
                 break
         if file is None:
@@ -436,7 +434,7 @@ class KeckVncLauncher(object):
         if self.ssh_pkey is None:
             self.log.warning("No ssh private key file specified in config file.\n")
         else:
-            if not pathlib.Path(self.ssh_pkey).exists():
+            if not Path(self.ssh_pkey).exists():
                 self.log.warning(f"SSH private key path does not exist: {self.ssh_pkey}")
 
         #check default_sessions
@@ -623,7 +621,7 @@ class KeckVncLauncher(object):
         if vncargs is not None:
             vncargs = vncargs.split()
             cmd = cmd + vncargs
-        if self.args.viewonly is not None:
+        if self.args.viewonly == True:
             cmd.append('-ViewOnly')
         #todo: make this config on/off so it doesn't break things
         if geometry is not None and geometry != '':
@@ -684,7 +682,7 @@ class KeckVncLauncher(object):
             self.sound.connect(self.instrument, vncserver, sound_port,
                                aplay=aplay, player=soundplayer)
             #todo: should we start this as a thread?
-            # sound = sound = threading.Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
+            # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
             # soundThread.start()
         except:
             self.log.error('Unable to start soundplay.  See log for details.')
@@ -706,7 +704,7 @@ class KeckVncLauncher(object):
         self.log.info(f'Authenticating through firewall as:')
         self.log.info(f' {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
 
-        tn = telnetlib.Telnet(self.firewall_address, int(self.firewall_port))
+        tn = Telnet(self.firewall_address, int(self.firewall_port))
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{self.firewall_user}\n'.encode('ascii'))
         tn.read_until(b"password: ", timeout=5)
@@ -732,7 +730,7 @@ class KeckVncLauncher(object):
             return
 
         self.log.info('Closing firewall hole')
-        tn = telnetlib.Telnet(self.firewall_address, int(self.firewall_port))
+        tn = Telnet(self.firewall_address, int(self.firewall_port))
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{self.firewall_user}\n'.encode('ascii'))
         tn.read_until(b"password: ", timeout=5)
@@ -757,12 +755,12 @@ class KeckVncLauncher(object):
 
         try:
             netcat = subprocess.check_output(['which', 'ncat'])
-        except CalledProcessError:
+        except subprocess.CalledProcessError:
             netcat = None
 
         try:
             ping = subprocess.check_output(['which', 'ping'])
-        except CalledProcessError:
+        except subprocess.CalledProcessError:
             ping = None
 
 
@@ -775,18 +773,31 @@ class KeckVncLauncher(object):
         if netcat is not None:
             netcat = netcat.decode()
             netcat = netcat.strip()
-            command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w 2']
+            command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w', '2']
 
         elif ping is not None:
             ping = ping.decode()
             ping = ping.strip()
-            command = [ping, '128.171.95.100', '-c 1 -w 5']
+            command = [ping, '128.171.95.100']
+
+            os = platform.system()
+            os = os.lower()
+
+            # Ping once, wait up to five seconds for a response.
+            if os == 'linux':
+                command.extend(['-c', '1', '-w', '5'])
+            elif os == 'darwin':
+                command.extend(['-c', '1', '-W', '5000'])
+            else:
+                # Don't understand how ping works on this platform.
+                return False
 
         else:
             # No way to check the firewall status. Assume it is closed,
             # authentication will be required.
             return False
 
+        self.log.debug('firewall test: ' + ' '.join (command))
         null = subprocess.DEVNULL
         proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
         result = proc.wait()
@@ -1277,7 +1288,6 @@ class KeckVncLauncher(object):
         command.append(source)
         command.append(destination)
 
-
         self.log.debug('scp command: ' + ' '.join (command))
 
         pipe = subprocess.PIPE
@@ -1444,8 +1454,8 @@ def create_logger():
         log.setLevel(logging.DEBUG)
 
         #create log file and log dir if not exist
-        ymd = datetime.datetime.utcnow().date().strftime('%Y%m%d')
-        pathlib.Path('logs/').mkdir(parents=True, exist_ok=True)
+        ymd = datetime.utcnow().date().strftime('%Y%m%d')
+        Path('logs/').mkdir(parents=True, exist_ok=True)
 
         #file handler (full debug logging)
         logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
