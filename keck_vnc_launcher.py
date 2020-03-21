@@ -787,9 +787,9 @@ class KeckVncLauncher(object):
 
             # Ping once, wait up to five seconds for a response.
             if os == 'linux':
-                command.extend(['-c', '1,' '-w', '5']
+                command.extend(['-c', '1', '-w', '5'])
             elif os == 'darwin':
-                command.extend(['-c', '1,' '-W', '5000']
+                command.extend(['-c', '1', '-W', '5000'])
             else:
                 # Don't understand how ping works on this platform.
                 return False
@@ -799,6 +799,7 @@ class KeckVncLauncher(object):
             # authentication will be required.
             return False
 
+        self.log.debug('firewall test: ' + ' '.join (command))
         null = subprocess.DEVNULL
         proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
         result = proc.wait()
