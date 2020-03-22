@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 ## Import standard modules
+import os
 import argparse
 import atexit
 from datetime import datetime
@@ -353,10 +354,15 @@ class KeckVncLauncher(object):
 
         # open file a first time just to log the raw contents
         contents = open(file).read()
-        self.log.debug(f"Contents of config file: {contents}")
+        self.log.debug(f"Contents of config file:\n{contents}")
 
         # open file a second time to properly read config
         config = yaml.load(open(file), Loader=yaml.FullLoader)
+
+        for key in ['ssh_pkey', 'vncviewer', 'soundplayer', 'aplay']:
+            if key in config.keys():
+                config[key] = os.path.expanduser(config[key])
+                config[key] = os.path.expandvars(config[key])
 
         cstr = "Parsed Configuration:\n"
         for key, c in config.items():
@@ -408,7 +414,7 @@ class KeckVncLauncher(object):
                 self.log.warning("firewall_port not set")
 
         #check ssh_pkeys servers_to try
-        self.ssh_pkey = str(Path(self.config.get('ssh_pkey', None)).expanduser())
+        self.ssh_pkey = self.config.get('ssh_pkey', None)
         if self.ssh_pkey is None:
             self.log.warning("No ssh private key file specified in config file.\n")
         else:
