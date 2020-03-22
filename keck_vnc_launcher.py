@@ -408,7 +408,7 @@ class KeckVncLauncher(object):
                 self.log.warning("firewall_port not set")
 
         #check ssh_pkeys servers_to try
-        self.ssh_pkey = self.config.get('ssh_pkey', None)
+        self.ssh_pkey = str(Path(self.config.get('ssh_pkey', None)).expanduser())
         if self.ssh_pkey is None:
             self.log.warning("No ssh private key file specified in config file.\n")
         else:
