@@ -122,7 +122,7 @@ Edit the configuration file as appropriate.  Read the comments in the configurat
 - **Configure Path to Private SSH Key:** Enter the path to the **private** key corresponding to the public key that you emailed to Keck in the appropriate field.  For example:
 
     ```
-    ssh_pkey: '/home/observer/.ssh/id_rsa'
+    ssh_pkey: '~/.ssh/id_rsa'
     ```
 
 - **Configure Local VNC Viewer Software:** This is where one sets `vncviewer` with the path and executable for the local VNC viewer client (we recommend TigerVNC as the most compatible with our system).  Some VNC viewers (such as the built in macOS one) may need a prefix such as `vnc://` which can be set via the `vncprefix` value.  Options which should be passed to the vncviewer application are set in the `vncargs` value (defaults should be good for Tiger VNC).
@@ -134,8 +134,6 @@ Edit the configuration file as appropriate.  Read the comments in the configurat
             ```
             vncargs: '-passwd=/home/observer/.vnc/passwd'
             ```
-
-- **Configure Default Sessions:** Keck instruments typically use 4 VNC sessions for instrument control named "control0", "control1", "control2", and "telstatus".  On a normal invocation of the software (via the `start_keck_viewers` command) it will open the four sessions specified here.  For stations which split the duties among 2 computers, one could set this line to control which computer opens which sessions.
 
 - **Soundplay Configuration:** For compatible systems, uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact `mainland_observing@keck.hawaii.edu` for help configuring this value if needed.  Also, if your local machine's path to the aplay executable is non-standard, specify that in the aplay value.
     - At the moment, the default linux executable seems to work for CentOS and Ubuntu linux.
@@ -150,6 +148,9 @@ Edit the configuration file as appropriate.  Read the comments in the configurat
         nosound: True
         ```
     to avoid starting sounds.  This is important for sites which are using multiple computers for each set of VNC sessions.  Choose one to handle sounds, and set the `nosound: True,` option for the other.
+
+- **Configure Default Sessions:** Keck instruments typically use 4 VNC sessions for instrument control named "control0", "control1", "control2", and "telstatus".  On a normal invocation of the software (via the `start_keck_viewers` command) it will open the four sessions specified here.  For stations which split the duties among 2 computers, one could set this line to control which computer opens which sessions.
+
 
 # Test your connection to Keck
 
