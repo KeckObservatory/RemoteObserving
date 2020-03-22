@@ -5,5 +5,4 @@ dependencies:
   - python=3.7
   - yaml
   - pyyaml=5.1.2
-  - paramiko=2.6.0
   - requests
