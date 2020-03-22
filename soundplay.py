@@ -12,7 +12,7 @@ log = logging.getLogger('KRO')
 class soundplay(object):
 
     def __init__(self):
-        
+
         #class vars
         self.proc = None
 
@@ -98,7 +98,7 @@ def create_logger():
         logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
         logFormat.converter = time.gmtime
         logConsoleHandler.setFormatter(logFormat)
-        
+
         log.addHandler(logConsoleHandler)
 
     except Exception as error:

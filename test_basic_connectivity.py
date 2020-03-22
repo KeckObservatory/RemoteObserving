@@ -28,22 +28,22 @@ servers_and_results = [('svncserver1', 'kaalualu'),
                        ('nirspec', 'vm-nirspec')]
 
 def test_firewall_authentication():
-    kvl.is_authenticated = False
+    kvl.firewall_opened = False
     if kvl.do_authenticate:
         kvl.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
-        kvl.is_authenticated = kvl.authenticate(kvl.firewall_pass)
-        assert kvl.is_authenticated is True
+        kvl.firewall_opened = kvl.open_firewall(kvl.firewall_pass)
+        assert kvl.firewall_opened is True
 
 
 def test_ssh_key():
     if kvl.config.get('nosshkey', False) is not True:
         kvl.validate_ssh_key()
-        assert kvl.is_ssh_key_valid is True
+        assert kvl.ssh_key_valid is True
 
 
 @pytest.mark.parametrize("server,result", servers_and_results)
 def test_connection_to_servers(server, result):
-    if kvl.is_ssh_key_valid is True:
+    if kvl.ssh_key_valid is True:
         vnc_account = kvl.SSH_KEY_ACCOUNT
         vnc_password = None
     else:
