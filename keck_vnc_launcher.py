@@ -553,7 +553,9 @@ class KeckVncLauncher(object):
         # not allocate a pseudo-terminal for the established connection.
 
         forwarding = f"{local_port}:localhost:{remote_port}"
-        command = ['ssh', '-l', username, '-L', forwarding, '-N', '-T', server]
+        command = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T']
+        command.append('-oStrictHostKeyChecking=no')
+        command.append('-oKexAlgorithms=+diffie-hellman-group1-sha1')
 
         if ssh_pkey is not None:
             command.append('-i')
