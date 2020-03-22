@@ -1201,8 +1201,10 @@ class KeckVncLauncher(object):
             cmatch = re.match(r'c (\d+)', cmd)
 
             if cmd == 'q':
+                self.log.info(f'Recieved command "{cmd}"')
                 quit = True
             elif cmd == 'w':
+                self.log.info(f'Recieved command "{cmd}"')
                 try:
                     self.position_vnc_windows()
                 except:
@@ -1216,6 +1218,7 @@ class KeckVncLauncher(object):
                 self.log.info(f'Recieved command "{cmd}"')
                 self.start_soundplay()
             elif cmd == 'u':
+                self.log.info(f'Recieved command "{cmd}"')
                 try:
                     self.upload_log()
                 except Exception as e:
@@ -1235,6 +1238,7 @@ class KeckVncLauncher(object):
                 self.log.info(f'Recieved command "{cmd}"')
                 self.start_vnc_session(cmd)
             elif cmatch is not None:
+                self.log.info(f'Recieved command "{cmd}"')
                 self.close_ssh_thread(int(cmatch.group(1)))
             else:
                 self.log.error('Unrecognized command: ' + repr(cmd))
