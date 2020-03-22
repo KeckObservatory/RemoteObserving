@@ -117,10 +117,31 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
         ##---------------------------------------------------------------------
-        #todo: handle blank password error properly
-        self.firewall_opened = False
+
         if self.firewall_requested == True:
-            self.firewall_pass = getpass(f"Password for firewall authentication: ")
+            self.firewall_opened = self.test_firewall()
+        else:
+            self.firewall_opened = False
+
+        # Only prompt for the firewall password if it is required for opening
+        # or closing the firewall hole.
+
+        need_password = False
+        close_requested = self.config.get('firewall_cleanup', False)
+        if close_requested == True:
+            need_password = True
+
+        if self.firewall_requested == True and self.firewall_opened == False:
+            need_password = True
+
+        if need_password == True:
+            while self.firewall_pass is None:
+                firewall_pass = getpass(f"Password for firewall authentication: ")
+                firewall_pass = firewall_pass.strip()
+                if firewall_pass != '':
+                    self.firewall_pass = firewall_pass
+
+        if self.firewall_requested == True and self.firewall_opened == False:
             try:
                 self.firewall_opened = self.open_firewall(self.firewall_pass)
             except:
@@ -130,9 +151,6 @@ class KeckVncLauncher(object):
 
             if self.firewall_opened == False:
                 self.exit_app('Authentication failure!')
-
-#         if self.args.authonly is True:
-#             self.exit_app('Authentication only')
 
 
         ##---------------------------------------------------------------------
@@ -357,14 +375,11 @@ class KeckVncLauncher(object):
         self.log.info(f'Using config file: {file}')
 
         # open file a first time just to log the raw contents
-        with open(file) as FO:
-            contents = FO.read()
-#             lines = contents.split('/n')
+        contents = open(file).read()
         self.log.debug(f"Contents of config file: {contents}")
 
         # open file a second time to properly read config
-        with open(file) as FO:
-            config = yaml.load(FO, Loader=yaml.FullLoader)
+        config = yaml.load(open(file), Loader=yaml.FullLoader)
 
         cstr = "Parsed Configuration:\n"
         for key, c in config.items():
@@ -743,7 +758,7 @@ class KeckVncLauncher(object):
         if self.firewall_opened == False:
             return
 
-        self.log.info('Signing off of firewall authentication')
+        self.log.info('Closing firewall hole')
         tn = Telnet(self.firewall_address, int(self.firewall_port))
         tn.read_until(b"User: ", timeout=5)
         tn.write(f'{self.firewall_user}\n'.encode('ascii'))
@@ -757,6 +772,69 @@ class KeckVncLauncher(object):
             self.log.info('User was signed off from all services')
         else:
             self.log.error(result)
+
+
+    ##-------------------------------------------------------------------------
+    ## Check to see whether the firewall hole is already open.
+    ##-------------------------------------------------------------------------
+    def test_firewall(self):
+        ''' Return True if the sshuser firewall hole is open; otherwise
+            return False. Also return False if the test cannot be performed.
+        '''
+
+        try:
+            netcat = subprocess.check_output(['which', 'ncat'])
+        except subprocess.CalledProcessError:
+            netcat = None
+
+        try:
+            ping = subprocess.check_output(['which', 'ping'])
+        except subprocess.CalledProcessError:
+            ping = None
+
+
+        # The netcat test is more rigorous, in that it attempts to contact
+        # an ssh daemon that should be available to us after opening the
+        # firewall hole. The ping check is a reasonable fallback and was
+        # the traditional way the old mainland observing script would confirm
+        # the firewall status.
+
+        if netcat is not None:
+            netcat = netcat.decode()
+            netcat = netcat.strip()
+            command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w', '2']
+
+        elif ping is not None:
+            ping = ping.decode()
+            ping = ping.strip()
+            command = [ping, '128.171.95.100']
+
+            os = platform.system()
+            os = os.lower()
+
+            # Ping once, wait up to five seconds for a response.
+            if os == 'linux':
+                command.extend(['-c', '1', '-w', '5'])
+            elif os == 'darwin':
+                command.extend(['-c', '1', '-W', '5000'])
+            else:
+                # Don't understand how ping works on this platform.
+                return False
+
+        else:
+            # No way to check the firewall status. Assume it is closed,
+            # authentication will be required.
+            return False
+
+        self.log.debug('firewall test: ' + ' '.join (command))
+        null = subprocess.DEVNULL
+        proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
+        result = proc.wait()
+
+        if result == 0:
+            return True
+
+        return False
 
 
     ##-------------------------------------------------------------------------
@@ -1229,21 +1307,24 @@ class KeckVncLauncher(object):
             return
 
         self.exit = True
-        #todo: Fix app exit so certain clean ups don't cause errors (ie thread not started, etc
+        #todo: Fix app exit so certain clean ups don't cause errors
+        #(ie thread not started, etc
         if msg is not None:
             self.log.info(msg)
 
-        #terminate soundplayer
         if self.sound is not None:
             self.sound.terminate()
 
-        # Close down ssh tunnels and firewall authentication
         self.close_ssh_threads()
 
-        try:
-            self.close_firewall(self.firewall_pass)
-        except:
-            self.log.error('Unable to close firewall authentication!')
+        close_requested = self.config.get('firewall_cleanup', False)
+        if close_requested == True:
+            try:
+                self.close_firewall(self.firewall_pass)
+            except:
+                self.log.error('Unable to close the firewall hole!')
+        else:
+            self.log.info('Leaving firewall authentication unchanged.')
 
         #close vnc sessions
         self.kill_vnc_processes()

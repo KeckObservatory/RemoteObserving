@@ -6,9 +6,15 @@
 # firewall_port: 123
 # firewall_user: ???
 
+## If the firewall authentication has been performed, should the script
+## de-authenticate when it exits? This is generally not required; the firewall
+## authorization will automatically expire after 24 hours. Set this option to
+## True to close the firewall hole when the script exits.
+firewall_cleanup: False
 
 ## SSH private key file path.  If you created an ssh public/private key pair
-## and provided the public key to Keck, enter the full path the private key here.
+## and provided the public key to Keck, enter the full path for the private key
+## here.
 # ssh_pkey: '/home/observer/.ssh/id_rsa'
 
 
@@ -28,11 +34,11 @@ vncargs: '-Shared -FullColor -PreferredEncoding=ZRLE -AutoSelect=0'
 # vncargs: '-passwd=/home/observer/.vnc/passwd'
 
 
-## Default start sessions if none specified. 
+## Default start sessions if none specified.
 default_sessions: ['control0', 'control1', 'control2', 'telstatus']
 
 
-## For ssh tunnelling, a starting local port number is used and incremented 
+## For ssh tunnelling, a starting local port number is used and incremented
 ## for each port needed.  Default is 5901.
 # local_port_start: 50001
 
