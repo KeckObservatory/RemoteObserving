@@ -539,6 +539,7 @@ class KeckVncLauncher(object):
         command = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T']
         command.append('-oStrictHostKeyChecking=no')
         command.append('-oKexAlgorithms=+diffie-hellman-group1-sha1')
+        command.append('-oCompression=yes')
 
         if ssh_pkey is not None:
             command.append('-i')
