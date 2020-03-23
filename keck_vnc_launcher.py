@@ -680,31 +680,19 @@ class KeckVncLauncher(object):
             self.log.warning('Sounds are not enabled on this install.  See config file.')
             return
 
-        # Look for a sound file
-        local_path = Path('~/.soundboard/').expanduser()
-        if local_path.is_dir() is False:
-            self.log.warning(f'Could not find local cache of sound files: {local_path}.')
-            return
-        local_files = [f.name for f in local_path.glob('*.au')]
-        local_files += [f.name for f in local_path.glob('*.wav')]
-        if len(local_files) == 0:
-            self.log.warning(f'No sound files present in: {local_path}.')
-            return
-        self.log.debug(f'Found {len(local_files)} sound files in {local_path}')
-        # Choose expo_default.au file to play if available
-        sound_file = 'expo_default.au' if 'expo_default.au' in local_files else local_files[0]
-        self.log.debug(f'Playing: {sound_file}')
+        # Build the soundplay test command.
+        soundplayer = self.config.get('soundplayer', None)
+        soundplayer = soundplay.full_path(soundplayer)
 
-        aplay_cmd = self.config.get('aplay', None)
-        if aplay_cmd is None:
-            self.log.warning('No aplay configured.  See config file.')
-            return
-        if aplay_cmd.find('%s'):
-            aplay_cmd = aplay_cmd.replace('%s', str(local_path.joinpath(sound_file)))
-        else:
-            aplay_cmd += f' {local_path.joinpath(sound_file)}'
-        self.log.info(f'Calling: {aplay_cmd}')
-        subprocess.call(aplay_cmd.split())
+        command = [soundplayer, '-l']
+
+        aplay = self.config.get('aplay', None)
+        if aplay is not None:
+            command.append(aplay)
+
+
+        self.log.info('Calling: ' + ' '.join (command))
+        subprocess.call(command)
 
 
     ##-------------------------------------------------------------------------
