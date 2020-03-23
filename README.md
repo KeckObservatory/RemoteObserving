@@ -1,6 +1,6 @@
 # RemoteObserving
 
-These scripts are to be used by remote sites to connect to Keck for remote observing.
+These scripts are to be used by remote sites to connect to W. M. Keck Observatory for remote observing.
 
 Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical remote observing policy and documentation at: [https://www2.keck.hawaii.edu/inst/mainland_observing/](https://www2.keck.hawaii.edu/inst/mainland_observing/)
 
@@ -21,7 +21,7 @@ Once we receive your request, we will respond with instructions on obtaining the
 
 ## Displays
 
-The primary hardware requirement for running Keck VNCs is screen space.  Previous incarnations of the remote observing system have used four (4) 1920x1200 monitors (~24 inch diagonal) and placed one VNC session per monitor.  An alternative setup would be to use a single, very large 4k monitor and place the four VNC sessions on that one monitor.  In order for the VNC sessions to be of reasonable physical size, the monitor would have to be 43-48 inches (we've found that even 43 inches may be a bit on the small size, see below).  The pixel pitch which we used which works well is 0.272 mm/pixel (or about 93 pixels per inch) for our four 24 inch monitor setup.  
+The primary hardware requirement for running Keck VNCs is screen space.  Previous incarnations of the remote observing system have used four (4) 1920x1200 monitors (~24 inch diagonal) and placed one VNC session per monitor.  An alternative setup would be to use a single, very large 4k monitor and place the four VNC sessions on that one monitor.  In order for the VNC sessions to be of reasonable physical size, the monitor would have to be 43-48 inches (we've found that even 43 inches may be a bit on the small size, see below).  The pixel pitch which we used which works well is 0.272 mm/pixel (or about 93 pixels per inch) for our four 24 inch monitor setup.
 
 We have also tried a 43 inch 4k resolution TV screen (which works out to about 103 ppi), but it is less readable at that size.  The advantage of a single 4k monitor is that it is easy to have a second monitor beside it which is dedicated to the Zoom connection or to a web browser for documentation or displaying weather conditions.
 
@@ -37,9 +37,9 @@ The following hardware configuration has been tested at Keck HQ:
 
 ## Install Software Dependencies
 
-NOTE: Examples below assuming sudo/root installation for all users and were originally written for linux (CentOS).  Modify as appropriate for your local OS.
+NOTE: Examples below assuming sudo/root installation for all users and were originally written for Linux (CentOS).  Modify as appropriate for your local OS.
 
-The software has been tested for CentOS 7.6, RedHat, Ubuntu, and macOS.
+The software has been tested for CentOS/RedHat 7.6, Ubuntu, and macOS.
 
 - Install Anaconda python3
     - Download and run the latest installer: https://www.anaconda.com/distribution/
@@ -53,14 +53,14 @@ The software has been tested for CentOS 7.6, RedHat, Ubuntu, and macOS.
         ```
         sudo yum install tigervnc-x86_64
         ```
-        - **Important!** If you are using TigerVNC, in the $HOME/.vnc directory, create a file `default.tigervnc` with these two lines: 
+        - **Important!** If you are using TigerVNC, in the $HOME/.vnc directory, create a file `default.tigervnc` with these two lines:
         ```
         TigerVNC Configuration file Version 1.0
-        RemoteResize=0 
+        RemoteResize=0
         ```
         - **On Linux:** (optional) Install wmctrl (Used for auto-positioning VNC windows)
             ```
-            sudo yum install epel-release 
+            sudo yum install epel-release
             sudo yum install wmctrl
             ```
     - **For macOS**
@@ -72,7 +72,7 @@ The software has been tested for CentOS 7.6, RedHat, Ubuntu, and macOS.
 
 (NOTE: Examples below assuming a user named 'observer' and installing to home directory)
 
-- Download or clone this project from github: 
+- Download or clone this project from github:
     ```
     cd
     git clone https://github.com/KeckObservatory/RemoteObserving
@@ -91,12 +91,12 @@ The software has been tested for CentOS 7.6, RedHat, Ubuntu, and macOS.
     ```
 
 - Setup SSH Keys:
-    - Generate ssh public/private key pair **(no passphrase)** 
+    - Generate ssh public/private key pair **(no passphrase)**
         ```
         cd ~/.ssh
         ssh-keygen -t rsa -b 4096
         ```
-    - Make sure that the resulting key is an RSA key.  The **private** key should have a first line which looks like `-----BEGIN RSA PRIVATE KEY-----` (it should not be an OPENSSH key).  If you do get an OPENSSH key (we've seen this on macOS and ubuntu linux), try generating the key with the `-m PEM` option:
+    - Make sure that the resulting key is an RSA key.  The **private** key should have a first line which looks like `-----BEGIN RSA PRIVATE KEY-----` (it should not be an OPENSSH key).  If you do get an OPENSSH key (we've seen this on macOS and Ubuntu Linux), try generating the key with the `-m PEM` option:
         ```
         ssh-keygen -t rsa -b 4096 -m PEM
         ```
@@ -136,7 +136,7 @@ Edit the configuration file as appropriate.  Read the comments in the configurat
             ```
 
 - **Soundplay Configuration:** For compatible systems, uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact `mainland_observing@keck.hawaii.edu` for help configuring this value if needed.  Also, if your local machine's path to the aplay executable is non-standard, specify that in the aplay value.
-    - At the moment, the default linux executable seems to work for CentOS and Ubuntu linux.
+    - At the moment, the default Linux executable seems to work for CentOS and Ubuntu Linux.
     - For macOS, use the settings as described in the `keck_vnc_config.yaml` section which specify a specific soundplay executable and a specific aplay calling format:
         ```
         soundplayer: 'soundplay-107050-8.6.3-macosx10.5-ix86+x86_64'
