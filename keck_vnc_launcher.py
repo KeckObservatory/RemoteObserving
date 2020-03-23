@@ -1301,6 +1301,7 @@ class KeckVncLauncher(object):
 
         command.append('-oStrictHostKeyChecking=no')
         command.append('-oKexAlgorithms=+diffie-hellman-group1-sha1')
+        command.append('-oCompression=yes')
         command.append(source)
         command.append(destination)
 
