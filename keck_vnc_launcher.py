@@ -691,6 +691,7 @@ class KeckVncLauncher(object):
 
         aplay = self.config.get('aplay', None)
         if aplay is not None:
+            command.append('-px')
             command.append(aplay)
 
 
