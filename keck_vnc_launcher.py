@@ -794,7 +794,7 @@ class KeckVncLauncher(object):
         elif ping is not None:
             ping = ping.decode()
             ping = ping.strip()
-            command = [ping, '128.171.95.100']
+            command = [ping,]
 
             os = platform.system()
             os = os.lower()
@@ -807,6 +807,8 @@ class KeckVncLauncher(object):
             else:
                 # Don't understand how ping works on this platform.
                 return False
+
+            command.append('128.171.95.100')
 
         else:
             # No way to check the firewall status. Assume it is closed,
