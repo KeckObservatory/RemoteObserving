@@ -50,7 +50,7 @@ class soundplay(object):
 
             if aplay is not None:
                 cmd.append('-px')
-                cmd.append('aplay')
+                cmd.append(aplay)
 
             log.debug('Soundplay cmd: ' + str(cmd))
             self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
