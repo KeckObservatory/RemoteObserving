@@ -65,6 +65,7 @@ class KeckVncLauncher(object):
         self.instrument = None
         self.vncserver = None
         self.ssh_key_valid = False
+        self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
         self.exit = False
 
         self.log = logging.getLogger('KRO')
@@ -538,8 +539,10 @@ class KeckVncLauncher(object):
         forwarding = f"{local_port}:localhost:{remote_port}"
         command = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T']
         command.append('-oStrictHostKeyChecking=no')
-        command.append('-oKexAlgorithms=+diffie-hellman-group1-sha1')
         command.append('-oCompression=yes')
+
+        if self.ssh_additional_kex is not None:
+            command.append('-oKexAlgorithms=' + self.ssh_additional_kex)
 
         if ssh_pkey is not None:
             command.append('-i')
@@ -867,8 +870,10 @@ class KeckVncLauncher(object):
             command.append('-i')
             command.append(self.ssh_pkey)
 
+        if self.ssh_additional_kex is not None:
+            command.append('-oKexAlgorithms=' + self.ssh_additional_kex)
+
         command.append('-oStrictHostKeyChecking=no')
-        command.append('-oKexAlgorithms=+diffie-hellman-group1-sha1')
         command.append(cmd)
         self.log.debug('ssh command: ' + ' '.join (command))
 
@@ -889,6 +894,25 @@ class KeckVncLauncher(object):
         if proc.returncode != 0:
             message = '  command failed with error ' + str(proc.returncode)
             self.log.error(message)
+
+            # Older ssh binaries don't like the '+' option when specifying
+            # key exchange algorithms. Any binaries that old won't need the
+            # value specified at all, so remove the option for all future
+            # ssh calls.
+
+            # This check is only made here instead of in all the places
+            # KexAlgorithms is specified because do_ssh_cmd() is always
+            # the first method to attempt an ssh connection regardless of
+            # how the launcher is invoked.
+
+            # If the recursive call still fails that's a real failure that
+            # the caller will need to address.
+
+            if self.ssh_additional_kex is not None:
+                self.ssh_additional_kex = None
+
+                return self.do_ssh_cmd(cmd, server, account)
+
 
         stdout = stdout.decode()
         stdout = stdout.strip()
@@ -1287,8 +1311,10 @@ class KeckVncLauncher(object):
             command.append('-i')
             command.append(self.ssh_pkey)
 
+        if self.ssh_additional_kex is not None:
+            command.append('-oKexAlgorithms=' + self.ssh_additional_kex)
+
         command.append('-oStrictHostKeyChecking=no')
-        command.append('-oKexAlgorithms=+diffie-hellman-group1-sha1')
         command.append('-oCompression=yes')
         command.append(source)
         command.append(destination)
