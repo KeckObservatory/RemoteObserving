@@ -696,7 +696,9 @@ class KeckVncLauncher(object):
 
 
         self.log.info('Calling: ' + ' '.join (command))
-        subprocess.call(command)
+        test_sound_STDOUT = subprocess.check_output(command)
+        for line in test_sound_STDOUT.decode().split('\n'):
+            self.log.debug(f'  {line}')
 
 
     ##-------------------------------------------------------------------------
