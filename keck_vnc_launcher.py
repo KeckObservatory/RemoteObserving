@@ -1223,10 +1223,8 @@ class KeckVncLauncher(object):
             cmatch = re.match(r'c (\d+)', cmd)
 
             if cmd == 'q':
-                self.log.info(f'Recieved command "{cmd}"')
                 quit = True
             elif cmd == 'w':
-                self.log.info(f'Recieved command "{cmd}"')
                 try:
                     self.position_vnc_windows()
                 except:
@@ -1234,13 +1232,10 @@ class KeckVncLauncher(object):
                     trace = traceback.format_exc()
                     self.log.debug(trace)
             elif cmd == 'p':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.play_test_sound()
             elif cmd == 's':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.start_soundplay()
             elif cmd == 'u':
-                self.log.info(f'Recieved command "{cmd}"')
                 try:
                     self.upload_log()
                 except Exception as e:
@@ -1248,19 +1243,14 @@ class KeckVncLauncher(object):
                     trace = traceback.format_exc()
                     self.log.debug(trace)
             elif cmd == 'l':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.print_sessions_found()
             elif cmd == 't':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.list_tunnels()
             elif cmd == 'v':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.check_version()
             elif cmd in [s.name for s in self.sessions_found]:
-                self.log.info(f'Recieved command "{cmd}"')
                 self.start_vnc_session(cmd)
             elif cmatch is not None:
-                self.log.info(f'Recieved command "{cmd}"')
                 self.close_ssh_thread(int(cmatch.group(1)))
             else:
                 self.log.error('Unrecognized command: ' + repr(cmd))
