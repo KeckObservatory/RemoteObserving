@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 import logging
 import subprocess
 import re
@@ -18,23 +19,24 @@ kvl.check_config()
 def test_tigervnc_config():
     vncviewercmd = kvl.config.get('vncviewer', 'vncviewer')
 
-    try:
-        cmd = [vncviewercmd, '--help']
-        kvl.log.info(f'Checking VNC viewer: {" ".join(cmd)}')
-        help_STDOUT = subprocess.check_output(cmd)
-    except:
-        kvl.log.warning(f'Command {" ".join(cmd)} Failed')
-        raise
+    cmd = [vncviewercmd, '--help']
+    kvl.log.info(f'Checking VNC viewer: {" ".join(cmd)}')
+    result = subprocess.run(cmd, capture_output=True)
+    output = result.stdout.decode() + '\n' + result.stderr.decode()
 
-    if re.search(r'TigerVNC', help_STDOUT.decode()):
+    if re.search(r'TigerVNC', output):
         # VNC Viewer is TigerVNC, so we need to verify the RemoteResize config
-        with open(Path('~/.vnc/default.tigervnc').expanduser()) as FO:
+        tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
+        assert tigervnc_config_file.exists()
+        with open(tigervnc_config_file) as FO:
             tiger_config = FO.read()
         RRsearch = re.search(r'RemoteResize=(\d)', tiger_config)
         if RRsearch is None:
-            log.error('Could not find RemoteResize setting')
+            kvl.log.error('Could not find RemoteResize setting')
             assert RRsearch is not None
         else:
             remote_resize_value  = int(RRsearch.group(1))
-            log.info(f'Found RemoteResize set to {remote_resize_value}')
-            assert remote_resize_value == 1
+            kvl.log.info(f'Found RemoteResize set to {remote_resize_value}')
+            if remote_resize_value !=0:
+                kvl.log.error('RemoteResize must be set to 1')
+                assert remote_resize_value == 0
