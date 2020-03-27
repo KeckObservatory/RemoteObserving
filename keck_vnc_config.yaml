@@ -27,6 +27,11 @@ vncviewer: 'vncviewer'
 vncprefix: ''
 vncargs: '-Shared -FullColor -PreferredEncoding=ZRLE -AutoSelect=0'
 ##
+##   Example: TigerVNC (macOS)
+#vncviewer: '/Applications/TigerVNC Viewer 1.10.1.app/Contents/MacOS/TigerVNC Viewer'
+#vncprefix: ''
+#vncargs: '-Shared -FullColor'
+##
 ##   Example: RealVNC (macOS)
 # vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer'
 # vncprefix: ''
