@@ -683,31 +683,22 @@ class KeckVncLauncher(object):
             self.log.warning('Sounds are not enabled on this install.  See config file.')
             return
 
-        # Look for a sound file
-        local_path = Path('~/.soundboard/').expanduser()
-        if local_path.is_dir() is False:
-            self.log.warning(f'Could not find local cache of sound files: {local_path}.')
-            return
-        local_files = [f.name for f in local_path.glob('*.au')]
-        local_files += [f.name for f in local_path.glob('*.wav')]
-        if len(local_files) == 0:
-            self.log.warning(f'No sound files present in: {local_path}.')
-            return
-        self.log.debug(f'Found {len(local_files)} sound files in {local_path}')
-        # Choose expo_default.au file to play if available
-        sound_file = 'expo_default.au' if 'expo_default.au' in local_files else local_files[0]
-        self.log.debug(f'Playing: {sound_file}')
+        # Build the soundplay test command.
+        soundplayer = self.config.get('soundplayer', None)
+        soundplayer = soundplay.full_path(soundplayer)
 
-        aplay_cmd = self.config.get('aplay', None)
-        if aplay_cmd is None:
-            self.log.warning('No aplay configured.  See config file.')
-            return
-        if aplay_cmd.find('%s'):
-            aplay_cmd = aplay_cmd.replace('%s', str(local_path.joinpath(sound_file)))
-        else:
-            aplay_cmd += f' {local_path.joinpath(sound_file)}'
-        self.log.info(f'Calling: {aplay_cmd}')
-        subprocess.call(aplay_cmd.split())
+        command = [soundplayer, '-l']
+
+        aplay = self.config.get('aplay', None)
+        if aplay is not None:
+            command.append('-px')
+            command.append(aplay)
+
+
+        self.log.info('Calling: ' + ' '.join (command))
+        test_sound_STDOUT = subprocess.check_output(command)
+        for line in test_sound_STDOUT.decode().split('\n'):
+            self.log.debug(f'  {line}')
 
 
     ##-------------------------------------------------------------------------
@@ -1234,10 +1225,8 @@ class KeckVncLauncher(object):
             cmatch = re.match(r'c (\d+)', cmd)
 
             if cmd == 'q':
-                self.log.info(f'Recieved command "{cmd}"')
                 quit = True
             elif cmd == 'w':
-                self.log.info(f'Recieved command "{cmd}"')
                 try:
                     self.position_vnc_windows()
                 except:
@@ -1245,13 +1234,10 @@ class KeckVncLauncher(object):
                     trace = traceback.format_exc()
                     self.log.debug(trace)
             elif cmd == 'p':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.play_test_sound()
             elif cmd == 's':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.start_soundplay()
             elif cmd == 'u':
-                self.log.info(f'Recieved command "{cmd}"')
                 try:
                     self.upload_log()
                 except Exception as e:
@@ -1259,19 +1245,14 @@ class KeckVncLauncher(object):
                     trace = traceback.format_exc()
                     self.log.debug(trace)
             elif cmd == 'l':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.print_sessions_found()
             elif cmd == 't':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.list_tunnels()
             elif cmd == 'v':
-                self.log.info(f'Recieved command "{cmd}"')
                 self.check_version()
             elif cmd in [s.name for s in self.sessions_found]:
-                self.log.info(f'Recieved command "{cmd}"')
                 self.start_vnc_session(cmd)
             elif cmatch is not None:
-                self.log.info(f'Recieved command "{cmd}"')
                 self.close_ssh_thread(int(cmatch.group(1)))
             else:
                 self.log.error('Unrecognized command: ' + repr(cmd))

@@ -5,6 +5,7 @@ import atexit
 import time
 import argparse
 import logging
+import platform
 
 log = logging.getLogger('KRO')
 
@@ -17,7 +18,7 @@ class soundplay(object):
         self.proc = None
 
 
-    def connect(self, instrument, server=None, port=9798, aplay='aplay', player='soundplay'):
+    def connect(self, instrument, server=None, port=9798, aplay='aplay', player=None):
         '''
         Connect to sound server
         '''
@@ -27,10 +28,15 @@ class soundplay(object):
             #massage inputs
             instrument = instrument.lower()
             port = str(port)
-            if server == None: server = self.getVncServer(instrument)
+            if server is None:
+                server = self.getVncServer(instrument)
             serverport = f'{server}:{port}'
-            if aplay  == None: aplay  = 'aplay'
-            if player == None: player = 'soundplay'
+
+            # TODO: It should be OK for aplay to be None here.
+            if aplay is None:
+                aplay = 'aplay'
+
+            soundplayPath = full_path(player)
 
             #check existing soundplay process
             procs = self.check_existing_process(server, port, instrument)
@@ -39,12 +45,13 @@ class soundplay(object):
                 log.debug(procs)
                 return False
 
-            #path to soundplay is relative to this script
-            #todo: auto-detect based on OS, etc?
-            soundplayPath  = os.path.dirname(os.path.abspath(__file__)) + "/soundplayer/" + player
-
             #create command and open process and hold on to handle so we can terminate later
-            cmd = [soundplayPath, '-s', serverport, '-T', instrument, '-px', aplay]
+            cmd = [soundplayPath, '-s', serverport, '-T', instrument]
+
+            if aplay is not None:
+                cmd.append('-px')
+                cmd.append(aplay)
+
             log.debug('Soundplay cmd: ' + str(cmd))
             self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except Exception as error:
@@ -80,6 +87,44 @@ class soundplay(object):
         if self.proc:
             log.info('Terminating soundplay process...')
             self.proc.terminate()
+
+
+
+##-------------------------------------------------------------------------
+## Get the full path to the soundplay executable
+##-------------------------------------------------------------------------
+
+def full_path(player=None):
+
+    remobs_base = os.path.dirname(os.path.abspath(__file__))
+    soundplayers = os.path.join(remobs_base, 'soundplayer')
+
+    if player is None:
+        system = platform.system()
+        system = system.lower()
+        arch = platform.machine()
+        arch = arch.lower()
+
+        specific = '.'.join(('soundplay', system, arch))
+        sound_path = os.path.join(soundplayers, specific)
+
+        if os.path.exists(sound_path):
+            pass
+        else:
+            sound_path = os.path.join(soundplayers, 'soundplay')
+
+    else:
+        if os.path.exists(player):
+            sound_path = player
+        else:
+            sound_path = os.path.join(soundplayers, player)
+
+        if os.path.exists(sound_path):
+            pass
+        else:
+            raise ValueError('invalid soundplay binary name: ' + player)
+
+    return sound_path
 
 
 
