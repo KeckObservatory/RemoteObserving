@@ -915,7 +915,7 @@ class KeckVncLauncher(object):
 
             if self.ssh_additional_kex is not None:
                 self.ssh_additional_kex = None
-
+                self.log.info('Retrying ssh with different key exchange flag')
                 return self.do_ssh_cmd(cmd, server, account)
 
 
