@@ -57,7 +57,7 @@ aplay: '/usr/bin/aplay'
 ##   changing the value after -v to something between 1 and 100.  To lower it,
 ##   put in a small value (e.g. 1).  The %v value means it will use the volume
 ##   slider on eventsounds.
-# soundplayer: 'soundplay-107050-8.6.3-macosx10.5-ix86+x86_64'
+# soundplayer: 'soundplay.darwin.x86_64'
 # aplay: '/usr/bin/afplay -v %v %s'
 
 
