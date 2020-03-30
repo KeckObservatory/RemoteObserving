@@ -19,7 +19,7 @@ if [ -n `which conda` ]; then
         $CONDA_BASE/envs/KRO/bin/python3 keck_vnc_launcher.py $@
     else
         # Try launching via conda base environment
-        CONDA_BASE/bin/python3 keck_vnc_launcher.py $@
+        $CONDA_BASE/bin/python3 keck_vnc_launcher.py $@
     fi
 else
     # just try whatever is in the path and hope it works
