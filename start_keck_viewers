@@ -1,16 +1,22 @@
 #!/bin/bash
 
-#activate conda environment
-# NOTE: The KRO environment is created with: conda env create -f environment.yaml
-CONDA_BASE=$(conda info --base)
-source $CONDA_BASE/etc/profile.d/conda.sh
-conda activate KRO
-#NOTE: old method using 'source' will work too but not preferred
-#source activate KRO
+# If we're using conda python
+if [ -n `which conda` ]; then
+    #activate conda environment
+    # NOTE: The KRO environment is created with: conda env create -f environment.yaml
+    CONDA_BASE=$(conda info --base)
+    source $CONDA_BASE/etc/profile.d/conda.sh
+    conda activate KRO
+    #NOTE: old method using 'source' will work too but not preferred
+    source activate KRO
 
-#change to script dir (so we don't need full path to keck_vnc_launcher.py)
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-cd $DIR
+    #change to script dir (so we don't need full path to keck_vnc_launcher.py)
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+    cd $DIR
 
-#launch
-python3 keck_vnc_launcher.py $@
+    #launch
+    $CONDA_BASE/envs/KRO/bin/python3 keck_vnc_launcher.py $@
+else
+    # just try whatever is in the path and hope it works
+    python3 keck_vnc_launcher.py $@
+fi
