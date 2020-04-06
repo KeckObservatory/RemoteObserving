@@ -4,11 +4,14 @@
 CONDA=`which conda 2> /dev/null`
 
 if [ "$CONDA" != "" ]; then
-    #activate conda environment
-    # NOTE: The KRO environment is created with: conda env create -f environment.yaml
-    CONDA_BASE=$(conda info --base)
+
+    # activate conda environment
+    # NOTE: The KRO environment is created with:
+    #	conda env create -f environment.yaml
+
+    CONDA_BASE=`$CONDA info --base`
     source $CONDA_BASE/etc/profile.d/conda.sh
-    conda activate KRO
+    $CONDA activate KRO
     #NOTE: old method using 'source' will work too but not preferred
     # source activate KRO
 
