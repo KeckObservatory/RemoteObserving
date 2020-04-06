@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # If we're using conda python
-if [ "$CONDA" != "" ]; then
+if [ "$CONDA_PREFIX" != "" ]; then
     # activate conda environment
     # NOTE: The KRO environment is created with:
     #       conda env create -f environment.yaml
