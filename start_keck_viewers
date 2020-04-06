@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# If we're using conda python
+# Prefer Anaconda if it's installed
 CONDA=`which conda 2> /dev/null`
 
 if [ "$CONDA" != "" ]; then
@@ -12,6 +12,7 @@ if [ "$CONDA" != "" ]; then
     CONDA_BASE=`$CONDA info --base`
     source $CONDA_BASE/etc/profile.d/conda.sh
     $CONDA activate KRO
+
     #NOTE: old method using 'source' will work too but not preferred
     # source activate KRO
 
@@ -19,8 +20,14 @@ if [ "$CONDA" != "" ]; then
     DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
     cd $DIR
 
-    #launch
-    $CONDA_BASE/envs/KRO/bin/python3 keck_vnc_launcher.py $@
+    # Launch the script
+    if [ -e $CONDA_PREFIX/envs/KRO/bin/python3 ]; then
+        # Launch using conda KRO environment
+        $CONDA_PREFIX/envs/KRO/bin/python3 keck_vnc_launcher.py $@
+    else
+        # Try launching via conda base environment
+        $CONDA_PREFIX/bin/python3 keck_vnc_launcher.py $@
+    fi
 else
     # just try whatever is in the path and hope it works
     python3 keck_vnc_launcher.py $@
