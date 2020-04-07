@@ -38,5 +38,5 @@ def test_tigervnc_config():
             remote_resize_value  = int(RRsearch.group(1))
             kvl.log.info(f'Found RemoteResize set to {remote_resize_value}')
             if remote_resize_value !=0:
-                kvl.log.error('RemoteResize must be set to 1')
+                kvl.log.error('RemoteResize must be set to 0')
                 assert remote_resize_value == 0
