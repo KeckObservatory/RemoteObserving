@@ -1,5 +1,3 @@
-import paramiko
-import sshtunnel
 import logging
 from getpass import getpass
 from keck_vnc_launcher import create_logger, KeckVncLauncher, create_parser
@@ -14,9 +12,6 @@ kvl.log_system_info()
 kvl.args = create_parser()
 kvl.get_config()
 kvl.check_config()
-if kvl.config.get('nosshkey', False) is True:
-    vnc_account = kvl.args.account
-    kvl.vnc_password = getpass(f"\nPassword for user {vnc_account}: ")
 
 servers_and_results = [('svncserver1', 'kaalualu'),
                        ('svncserver2', 'ohaiula'),
@@ -29,31 +24,25 @@ servers_and_results = [('svncserver1', 'kaalualu'),
                        ('nirspec', 'vm-nirspec')]
 
 def test_firewall_authentication():
-    kvl.is_authenticated = False
-    if kvl.do_authenticate:
+    kvl.firewall_opened = False
+    if kvl.firewall_requested == True:
         kvl.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
-        kvl.is_authenticated = kvl.authenticate(kvl.firewall_pass)
-        assert kvl.is_authenticated is True
+        kvl.firewall_opened = kvl.open_firewall(kvl.firewall_pass)
+        assert kvl.firewall_opened is True
 
 
 def test_ssh_key():
-    if kvl.config.get('nosshkey', False) is not True:
-        kvl.validate_ssh_key()
-        assert kvl.is_ssh_key_valid is True
+    kvl.validate_ssh_key()
+    assert kvl.ssh_key_valid is True
 
 
 @pytest.mark.parametrize("server,result", servers_and_results)
 def test_connection_to_servers(server, result):
-    if kvl.is_ssh_key_valid is True:
-        vnc_account = kvl.SSH_KEY_ACCOUNT
-        vnc_password = None
-    else:
-        vnc_account = kvl.args.account
-        vnc_password = kvl.vnc_password
+    vnc_account = kvl.kvnc_account
 
     kvl.log.info(f'Testing SSH to {vnc_account}@{server}.keck.hawaii.edu')
     output = kvl.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                            vnc_account, vnc_password)
+                            vnc_account)
     assert output is not None
     assert output != ''
     assert output.strip() in [server, result]
