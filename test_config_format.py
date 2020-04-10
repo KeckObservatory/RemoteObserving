@@ -47,10 +47,8 @@ def test_ssh_pkey():
 
 def test_vncviewer():
     kvl.log.info('Testing config file: vncviewer')
-    vncviewer = kvl.config.get('vncviewer', None)
-    if vncviewer in [None, '', 'vncviewer']:
-        # the line below will throw and error if which fails
-        vncviewer = subprocess.check_output(['which', 'vncviewer'])
-    if vncviewer != 'open':
-        vncviewer = Path(vncviewer).expanduser()
-        assert vncviewer.exists()
+    vncviewer_from_config = kvl.config.get('vncviewer', None)
+    # the line below will throw and error if which fails
+    output_of_which = subprocess.check_output(['which', vncviewer_from_config])
+    vncviewer = Path(output_of_which.decode().strip('\n'))
+    assert vncviewer.exists()
