@@ -17,7 +17,7 @@ kvl.check_config()
 
 
 def test_firewall_address():
-    log.info('Testing config file: firewall_address')
+    kvl.log.info('Testing config file: firewall_address')
     firewall_address = kvl.config.get('firewall_address', None)
     assert firewall_address is not None
     # the line below will throw an error if the IP address is not valid
@@ -25,20 +25,20 @@ def test_firewall_address():
 
 
 def test_firewall_port():
-    log.info('Testing config file: firewall_port')
+    kvl.log.info('Testing config file: firewall_port')
     firewall_port = kvl.config.get('firewall_port', None)
     assert firewall_port is not None
     assert isinstance(int(firewall_port), int)
 
 
 def test_firewall_user():
-    log.info('Testing config file: firewall_user')
+    kvl.log.info('Testing config file: firewall_user')
     firewall_user = kvl.config.get('firewall_user', None)
     assert firewall_user is not None
 
 
 def test_ssh_pkey():
-    log.info('Testing config file: ssh_pkey')
+    kvl.log.info('Testing config file: ssh_pkey')
     ssh_pkey = kvl.config.get('ssh_pkey', '~/.ssh/id_rsa')
     ssh_pkey = Path(ssh_pkey)
     assert ssh_pkey.expanduser().exists()
@@ -46,7 +46,7 @@ def test_ssh_pkey():
 
 
 def test_vncviewer():
-    log.info('Testing config file: vncviewer')
+    kvl.log.info('Testing config file: vncviewer')
     vncviewer = kvl.config.get('vncviewer', None)
     if vncviewer in [None, '', 'vncviewer']:
         # the line below will throw and error if which fails
