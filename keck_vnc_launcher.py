@@ -67,6 +67,7 @@ class KeckVncLauncher(object):
         self.ssh_key_valid = False
         self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
         self.exit = False
+        self.geometry = list()
 
         self.log = logging.getLogger('KRO')
 
@@ -1093,9 +1094,13 @@ class KeckVncLauncher(object):
 
         #get screen dimensions
         #alternate command: xrandr |grep \* | awk '{print $1}'
+        self.geometry = list()
         cmd = "xdpyinfo | grep dimensions | awk '{print $2}' | awk -Fx '{print $1, $2}'"
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         out = p1.communicate()[0].decode('utf-8')
+        if not out:
+            self.log.debug('Could not calc window geometry')
+            return
         screen_width, screen_height = [int(x) for x in out.split()]
         self.log.debug(f"Screen size: {screen_width}x{screen_height}")
 
@@ -1118,7 +1123,6 @@ class KeckVncLauncher(object):
             wh = window_size[1]
 
         #get x/y coords (assume two rows)
-        self.geometry = list()
         for row in range(0, rows):
             for col in range(0, cols):
                 x = round(col * screen_width/cols)
