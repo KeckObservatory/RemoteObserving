@@ -1458,7 +1458,14 @@ def create_parser():
         help="Path to local configuration file.")
 
     #parse
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    ## If authonly is set, also set nosound because if the user doesn't want
+    ## VNCs, they likely don't want sound as well.
+    if args.authonly is True:
+        args.nosound = True
+
+    return args
 
 ##-------------------------------------------------------------------------
 ## Create logger
