@@ -6,3 +6,4 @@ dependencies:
   - yaml
   - pyyaml=5.1.2
   - requests
+  - pytest
