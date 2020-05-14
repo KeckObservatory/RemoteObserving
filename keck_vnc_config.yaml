@@ -33,14 +33,14 @@ vncargs: '-Shared -FullColor -PreferredEncoding=ZRLE -AutoSelect=0'
 #vncargs: '-Shared -FullColor'
 ##
 ##   Example: RealVNC (macOS)
-# vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer'
-# vncprefix: ''
-# vncargs: '-Shared'
+#vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer'
+#vncprefix: ''
+#vncargs: '-Shared'
 ##
 ##   Example: Built in Screen Sharing app in macOS:
-# vncviewer: 'open'
-# vncprefix: 'vnc://'
-# vncargs: ''
+#vncviewer: 'open'
+#vncprefix: 'vnc://'
+#vncargs: ''
 
 
 ## Soundplay Configuration:
@@ -62,8 +62,8 @@ aplay: '/usr/bin/aplay'
 ##   changing the value after -v to something between 1 and 100.  To lower it,
 ##   put in a small value (e.g. 1).  The %v value means it will use the volume
 ##   slider on eventsounds.
-# soundplayer: 'soundplay.darwin.x86_64'
-# aplay: '/usr/bin/afplay -v %v %s'
+#soundplayer: 'soundplay.darwin.x86_64'
+#aplay: '/usr/bin/afplay -v %v %s'
 
 
 ## Default sessions ito start if not specified on command line.
@@ -72,12 +72,12 @@ default_sessions: ['control0', 'control1', 'control2', 'telstatus']
 
 ## For ssh tunnelling, a starting local port number is used and incremented for
 ## each port as needed.  Default is 5901.
-# local_port_start: 5901
+#local_port_start: 5901
 
 
 ## Window size and positioning configs. Overrides calculated values.
-# window_size: [1280, 800]
-# window_positions: [[0, 0], [1280, 0], [0, 1280], [1280, 0]]
+#window_size: [1280, 800]
+#window_positions: [[0, 0], [1280, 0], [0, 1280], [1280, 0]]
 
 
 ## If the firewall authentication has been performed, should the script
