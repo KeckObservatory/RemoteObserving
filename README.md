@@ -109,7 +109,7 @@ The software has been tested for CentOS/RedHat 7.6, Ubuntu, and macOS.
 
 ## Configure Keck VNC software
 
-Edit the configuration file as appropriate.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading `#`) from lines you want to customize.
+Edit the `local_config.yaml` file you created above.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading `#`) from lines you want to customize.
 
 - **Configure Firewall:** If you are connecting outside of the Keck network, enter the firewall address, port and user info.  You'll need to get this information from someone at Keck.
 
