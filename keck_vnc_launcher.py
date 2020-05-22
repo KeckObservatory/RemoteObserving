@@ -1285,7 +1285,7 @@ class KeckVncLauncher(object):
                 return
             if remote_version == local_version:
                 self.log.info(f'Your software is up to date (v{__version__})')
-            elif remote_version > local_version:
+            elif remote_version < local_version:
                 self.log.info(f'Your software (v{__version__}) is ahead of the released version')
             else:
                 self.log.warning(f'Your local software (v{__version__}) is behind '
