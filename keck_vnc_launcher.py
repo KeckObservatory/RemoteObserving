@@ -1249,6 +1249,10 @@ class KeckVncLauncher(object):
                     trace = traceback.format_exc()
                     self.log.debug(trace)
             elif cmd == 'l':
+                self.sessions_found = self.get_vnc_sessions(self.vncserver,
+                                                            self.instrument,
+                                                            self.kvnc_account,
+                                                            self.args.account)
                 self.print_sessions_found()
             elif cmd == 't':
                 self.list_tunnels()
