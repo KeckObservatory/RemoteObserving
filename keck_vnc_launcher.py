@@ -1483,29 +1483,31 @@ def create_logger():
     try:
         ## Create logger object
         log = logging.getLogger('KRO')
-        log.setLevel(logging.DEBUG)
 
-        #create log file and log dir if not exist
-        ymd = datetime.utcnow().date().strftime('%Y%m%d')
-        Path('logs/').mkdir(parents=True, exist_ok=True)
+        ## Only add handlers if none already exist (eliminated duplicate lines)
+        if len(log.handlers) == 0:
+            log.setLevel(logging.DEBUG)
 
-        #file handler (full debug logging)
-        logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
-        logFileHandler = logging.FileHandler(logFile)
-        logFileHandler.setLevel(logging.DEBUG)
-        logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
-        logFormat.converter = time.gmtime
-        logFileHandler.setFormatter(logFormat)
-        log.addHandler(logFileHandler)
+            #create log file and log dir if not exist
+            ymd = datetime.utcnow().date().strftime('%Y%m%d')
+            Path('logs/').mkdir(parents=True, exist_ok=True)
 
-        #stream/console handler (info+ only)
-        logConsoleHandler = logging.StreamHandler()
-        logConsoleHandler.setLevel(logging.INFO)
-        logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
-        logFormat.converter = time.gmtime
-        logConsoleHandler.setFormatter(logFormat)
+            #file handler (full debug logging)
+            logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
+            logFileHandler = logging.FileHandler(logFile)
+            logFileHandler.setLevel(logging.DEBUG)
+            logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
+            logFormat.converter = time.gmtime
+            logFileHandler.setFormatter(logFormat)
+            log.addHandler(logFileHandler)
 
-        log.addHandler(logConsoleHandler)
+            #stream/console handler (info+ only)
+            logConsoleHandler = logging.StreamHandler()
+            logConsoleHandler.setLevel(logging.INFO)
+            logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+            logFormat.converter = time.gmtime
+            logConsoleHandler.setFormatter(logFormat)
+            log.addHandler(logConsoleHandler)
 
     except Exception as error:
         print(str(error))
