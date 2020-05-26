@@ -2,6 +2,7 @@ import logging
 from getpass import getpass
 from keck_vnc_launcher import create_logger, KeckVncLauncher, create_parser
 import pytest
+import subprocess
 
 
 # create kvl object
@@ -41,8 +42,13 @@ def test_connection_to_servers(server, result):
     vnc_account = kvl.kvnc_account
 
     kvl.log.info(f'Testing SSH to {vnc_account}@{server}.keck.hawaii.edu')
-    output = kvl.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                            vnc_account)
+    try:
+        output = kvl.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+                                vnc_account)
+    except subprocess.TimeoutExpired as e:
+        # Just try a second time
+        output = kvl.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+                                vnc_account)
     assert output is not None
     assert output != ''
     assert output.strip() in [server, result]
