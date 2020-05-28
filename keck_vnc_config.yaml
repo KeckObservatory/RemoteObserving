@@ -59,11 +59,12 @@ aplay: '/usr/bin/aplay'
 ##   Example: macOS
 ##   If using the afplay executable on macOS, you may override the volume level
 ##   set in the eventsounds software (running on the instrument server) by
-##   changing the value after -v to something between 1 and 100.  To lower it,
-##   put in a small value (e.g. 1).  The %v value means it will use the volume
-##   slider on eventsounds.
+##   changing the value after -v to something between 0 and 1.  To lower it,
+##   put in a small value (e.g. 0.2).  Using the %v value means it will use the
+##   volume slider on eventsounds which is scales to a range of 1 to 100, so it
+##   does not scale properly on afplay used on macOS.
 #soundplayer: 'soundplay.darwin.x86_64'
-#aplay: '/usr/bin/afplay -v %v %s'
+#aplay: '/usr/bin/afplay -v 0.4 %s'
 
 
 ## Default sessions ito start if not specified on command line.
