@@ -798,12 +798,6 @@ class KeckVncLauncher(object):
             netcat = subprocess.check_output(['which', 'ncat'])
         except subprocess.CalledProcessError:
             netcat = None
-        # Check for "netcat" as well as "ncat"
-        if netcat is None:
-            try:
-                netcat = subprocess.check_output(['which', 'netcat'])
-            except subprocess.CalledProcessError:
-                pass
 
         try:
             ping = subprocess.check_output(['which', 'ping'])
