@@ -109,6 +109,9 @@ class KeckVncLauncher(object):
         self.get_config()
         self.check_config()
 
+        if self.args.test is True:
+            self.test_all()
+
         ##---------------------------------------------------------------------
         ## Log basic system info
         ##---------------------------------------------------------------------
@@ -1463,6 +1466,109 @@ class KeckVncLauncher(object):
 
         self.exit_app()
 
+    ##-------------------------------------------------------------------------
+    ## Tests
+    ##-------------------------------------------------------------------------
+    def test_config_format(self):
+        import socket
+        self.log.info('Testing config file: firewall_address')
+        firewall_address = self.config.get('firewall_address', None)
+        assert firewall_address is not None
+        # the line below will throw an error if the IP address is not valid
+        socket.inet_aton(firewall_address)
+
+        self.log.info('Testing config file: firewall_port')
+        firewall_port = self.config.get('firewall_port', None)
+        assert firewall_port is not None
+        assert isinstance(int(firewall_port), int)
+
+        self.log.info('Testing config file: firewall_user')
+        firewall_user = self.config.get('firewall_user', None)
+        assert firewall_user is not None
+
+        self.log.info('Testing config file: ssh_pkey')
+        ssh_pkey = self.config.get('ssh_pkey', '~/.ssh/id_rsa')
+        ssh_pkey = Path(ssh_pkey)
+        assert ssh_pkey.expanduser().exists()
+        assert ssh_pkey.expanduser().is_file()
+
+        self.log.info('Testing config file: vncviewer')
+        vncviewer_from_config = self.config.get('vncviewer', None)
+        # the line below will throw and error if which fails
+        output_of_which = subprocess.check_output(['which', vncviewer_from_config])
+        vncviewer = Path(output_of_which.decode().strip('\n'))
+        assert vncviewer.exists()
+
+
+    def test_tigervnc(self):
+        vncviewercmd = kvl.config.get('vncviewer', 'vncviewer')
+        cmd = [vncviewercmd, '--help']
+        self.log.info(f'Checking VNC viewer: {" ".join(cmd)}')
+        result = subprocess.run(cmd, capture_output=True)
+        output = result.stdout.decode() + '\n' + result.stderr.decode()
+        if re.search(r'TigerVNC', output):
+            self.log.info(f'We are using TigerVNC')
+        else:
+            self.log.info(f'We are NOT using TigerVNC')
+            return
+
+        tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
+        if tigervnc_config_file.exists() is False: 
+            self.log.error(f'Could not find {tigervnc_config_file}')
+        assert tigervnc_config_file.exists()
+
+        with open(tigervnc_config_file) as FO:
+            tiger_config = FO.read()
+        RRsearch = re.search(r'RemoteResize=(\d)', tiger_config)
+        if RRsearch is None:
+            kvl.log.error('Could not find RemoteResize setting')
+            assert RRsearch is not None
+        else:
+            remote_resize_value  = int(RRsearch.group(1))
+            kvl.log.info(f'Found RemoteResize set to {remote_resize_value}')
+            if remote_resize_value !=0:
+                kvl.log.error('RemoteResize must be set to 0')
+                assert remote_resize_value == 0
+
+    def test_firewall_authentication(self):
+        self.firewall_opened = False
+        if self.firewall_requested == True:
+            self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
+            self.firewall_opened = self.open_firewall(self.firewall_pass)
+            assert self.firewall_opened is True
+
+    def test_ssh_key(self):
+        self.validate_ssh_key()
+        assert self.ssh_key_valid is True
+
+    def test_basic_connectivity(self):
+        servers_and_results = [('svncserver1', 'kaalualu'),
+                               ('svncserver2', 'ohaiula'),
+                               ('mosfire', 'vm-mosfire'),
+                               ('hires', 'vm-hires'),
+                               ('lris', 'vm-lris'),
+                               ('kcwi', 'vm-kcwi'),
+                               ('nirc2', 'vm-nirc2'),
+                               ('nires', 'vm-nires'),
+                               ('nirspec', 'vm-nirspec')]
+        for server, result in servers_and_results:
+            kvl.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
+            output = kvl.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+                                    self.kvnc_account)
+            assert output is not None
+            assert output != ''
+            assert output.strip() in [server, result]
+            self.log.info(f' Passed')
+
+    def test_all(self):
+        self.test_config_format()
+        self.test_tigervnc()
+        self.test_firewall_authentication()
+        self.test_ssh_key()
+        self.test_basic_connectivity()
+        self.log.info('--> All tests PASSED <--')
+        self.exit_app()
+
 
 ##-------------------------------------------------------------------------
 ## Create argument parser
@@ -1484,6 +1590,9 @@ def create_parser():
     parser.add_argument("--nosound", dest="nosound",
         default=False, action="store_true",
         help="Skip start of soundplay application.")
+    parser.add_argument("-t", "--test", dest="test",
+        default=False, action="store_true",
+        help="Test system rather than connect to VNC sessions.")
     parser.add_argument("--viewonly", dest="viewonly",
         default=False, action="store_true",
         help="Open VNC sessions in View Only mode (only for TigerVnC viewer)")
