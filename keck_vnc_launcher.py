@@ -848,8 +848,10 @@ class KeckVncLauncher(object):
         return_code = proc.wait()
 
         if return_code == 0:
+            self.log.debug('firewall is open')
             return True
 
+        self.log.debug('firewall is closed')
         return False
 
 
