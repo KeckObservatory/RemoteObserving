@@ -32,6 +32,9 @@ SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
                  'telanalys', 'telstatus', 'status')
 
+class KROException(Exception):
+    pass
+
 
 class VNCSession(object):
     '''An object to contain information about a VNC session.
@@ -713,14 +716,40 @@ class KeckVncLauncher(object):
         self.log.info(f' {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
 
         tn = Telnet(self.firewall_address, int(self.firewall_port))
-        tn.read_until(b"User: ", timeout=5)
-        tn.write(f'{self.firewall_user}\n'.encode('ascii'))
-        tn.read_until(b"password: ", timeout=5)
-        tn.write(f'{authpass}\n'.encode('ascii'))
-        tn.read_until(b"Enter your choice: ", timeout=5)
-        tn.write('1\n'.encode('ascii'))
-        result = tn.read_all().decode('ascii')
 
+        # Find Username Prompt
+        user_prompt = tn.read_until(b"User: ", timeout=5).decode('ascii')
+        self.log.debug(f"{user_prompt}")
+        if user_prompt[-6:] != 'User: ':
+            self.log.error('Got unexpected response from firewall:')
+            self.log.error(user_prompt)
+            raise KROException('Got unexpected response from firewall')
+        tn.write(f'{self.firewall_user}\n'.encode('ascii'))
+
+        # Find Username Prompt
+        password_prompt = tn.read_until(b"password: ", timeout=5).decode('ascii')
+        self.log.debug(f"{password_prompt}")
+        if password_prompt[-10:] != 'password: ':
+            self.log.error('Got unexpected response from firewall:')
+            self.log.error(password_prompt)
+            raise KROException('Got unexpected response from firewall')
+        tn.write(f'{authpass}\n'.encode('ascii'))
+
+        # Is Password Accepted?
+        password_response = tn.read_until(b"Enter your choice: ", timeout=5).decode('ascii')
+        self.log.debug(f"{password_response}")
+        if re.search('Access denied - wrong user name or password', password_response):
+            self.log.error('Incorrect password entered.')
+            return False
+
+        # If Password is Correct, continue with authentication process
+        if password_response[-19:] != 'Enter your choice: ':
+            self.log.error('Got unexpected response from firewall:')
+            self.log.error(password_response)
+            raise KROException('Got unexpected response from firewall')
+        tn.write('1\n'.encode('ascii'))
+
+        result = tn.read_all().decode('ascii')
         if re.search('User authorized for standard services', result):
             self.log.info('User authorized for standard services')
             return True
