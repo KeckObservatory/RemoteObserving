@@ -26,7 +26,7 @@ import yaml
 import soundplay
 
 
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
