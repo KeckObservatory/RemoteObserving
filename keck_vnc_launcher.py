@@ -53,6 +53,7 @@ class KeckVncLauncher(object):
 
     def __init__(self):
         #init vars we need to shutdown app properly
+        self.supportEmail = 'mainland_observing@keck.hawaii.edu'
         self.config = None
         self.log = None
         self.sound = None
@@ -1409,11 +1410,10 @@ class KeckVncLauncher(object):
     def handle_fatal_error(self, error):
 
         #helpful user error message
-        supportEmail = 'mainland_observing@keck.hawaii.edu'
         print("\n****** PROGRAM ERROR ******\n")
         print("Error message: " + str(error) + "\n")
         print("If you need troubleshooting assistance:")
-        print(f"* Email {supportEmail}\n")
+        print(f"* Email {self.supportEmail}\n")
         #todo: call number, website?
 
         #Log error if we have a log object (otherwise dump error to stdout)
