@@ -156,11 +156,10 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
 
 Only after your SSH key is successfully installed at Keck, you can test your system.
 
-From the directory where the Keck VNC software is installed (e.g. `~/RemoteObserving/`), run pytest:
+From the directory where the Keck VNC software is installed (e.g. `~/RemoteObserving/`), run:
 
 ```
-conda activate KRO
-pytest
+./start_keck_viewers --test
 ```
 
 This may query you for passwords, depending on your local configuration. It should print out a report which indicates that all tests passed. Make sure there are no test failures.
