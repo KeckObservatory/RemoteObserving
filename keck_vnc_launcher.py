@@ -1454,8 +1454,9 @@ class KeckVncLauncher(object):
         if self.log is None:
             print(msg)
         else:
-            logfile = self.log.handlers[0].baseFilename
-            print(f"* Attach log file at: {logfile}\n")
+            logfiles = [h.baseFilename for h in self.log.handlers if isinstance(h, logging.FileHandler)]
+            if len(logfiles) > 0:
+                print(f"* Attach log file at: {logfiles[0]}\n")
             self.log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
 
         self.exit_app()
