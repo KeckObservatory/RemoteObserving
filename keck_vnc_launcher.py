@@ -1517,39 +1517,40 @@ def create_parser():
 ##-------------------------------------------------------------------------
 def create_logger():
 
+    ## Create logger object
+    log = logging.getLogger('KRO')
+
+    ## Only add handlers if none already exist (eliminates duplicate lines)
+    if len(log.handlers) > 0:
+        return
+
+    #create log file and log dir if not exist
+    ymd = datetime.utcnow().strftime('%Y%m%d')
     try:
-        ## Create logger object
-        log = logging.getLogger('KRO')
-        log.setLevel(logging.DEBUG)
-
-        #create log file and log dir if not exist
-        ymd = datetime.utcnow().date().strftime('%Y%m%d')
         Path('logs/').mkdir(parents=True, exist_ok=True)
-
-        #file handler (full debug logging)
-        logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
-        logFileHandler = logging.FileHandler(logFile)
-        logFileHandler.setLevel(logging.DEBUG)
-        logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
-        logFormat.converter = time.gmtime
-        logFileHandler.setFormatter(logFormat)
-        log.addHandler(logFileHandler)
-
-        #stream/console handler (info+ only)
-        logConsoleHandler = logging.StreamHandler()
-        logConsoleHandler.setLevel(logging.INFO)
-        logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
-        logFormat.converter = time.gmtime
-        logConsoleHandler.setFormatter(logFormat)
-
-        log.addHandler(logConsoleHandler)
-
-    except Exception as error:
+    except PermissionError as error:
         print(str(error))
         print(f"ERROR: Unable to create logger at {logFile}")
         print("Make sure you have write access to this directory.\n")
         log.info("EXITING APP\n")
         sys.exit(1)
+
+    #stream/console handler (info+ only)
+    logConsoleHandler = logging.StreamHandler()
+    logConsoleHandler.setLevel(logging.INFO)
+    logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+    logFormat.converter = time.gmtime
+    logConsoleHandler.setFormatter(logFormat)
+    log.addHandler(logConsoleHandler)
+
+    #file handler (full debug logging)
+    logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
+    logFileHandler = logging.FileHandler(logFile)
+    logFileHandler.setLevel(logging.DEBUG)
+    logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
+    logFormat.converter = time.gmtime
+    logFileHandler.setFormatter(logFormat)
+    log.addHandler(logFileHandler)
 
 
 ##-------------------------------------------------------------------------
