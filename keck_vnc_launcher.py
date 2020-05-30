@@ -866,7 +866,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Utility function for opening ssh client, executing command and closing
     ##-------------------------------------------------------------------------
-    def do_ssh_cmd(self, cmd, server, account):
+    def do_ssh_cmd(self, cmd, server, account, timeout=10):
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
 
@@ -892,7 +892,7 @@ class KeckVncLauncher(object):
             raise RuntimeError('subprocess failed to execute ssh')
 
         try:
-            stdout,stderr = proc.communicate(timeout=6)
+            stdout,stderr = proc.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
             self.log.error('  Timeout')
             return
