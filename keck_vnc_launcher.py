@@ -1464,7 +1464,7 @@ class KeckVncLauncher(object):
 
 
     def test_tigervnc(self):
-        vncviewercmd = kvl.config.get('vncviewer', 'vncviewer')
+        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
         cmd = [vncviewercmd, '--help']
         self.log.info(f'Checking VNC viewer: {" ".join(cmd)}')
         result = subprocess.run(cmd, capture_output=True)
@@ -1484,13 +1484,13 @@ class KeckVncLauncher(object):
             tiger_config = FO.read()
         RRsearch = re.search(r'RemoteResize=(\d)', tiger_config)
         if RRsearch is None:
-            kvl.log.error('Could not find RemoteResize setting')
+            self.log.error('Could not find RemoteResize setting')
             assert RRsearch is not None
         else:
             remote_resize_value  = int(RRsearch.group(1))
-            kvl.log.info(f'Found RemoteResize set to {remote_resize_value}')
+            self.log.info(f'Found RemoteResize set to {remote_resize_value}')
             if remote_resize_value !=0:
-                kvl.log.error('RemoteResize must be set to 0')
+                self.log.error('RemoteResize must be set to 0')
                 assert remote_resize_value == 0
 
     def test_firewall_authentication(self):
@@ -1515,8 +1515,8 @@ class KeckVncLauncher(object):
                                ('nires', 'vm-nires'),
                                ('nirspec', 'vm-nirspec')]
         for server, result in servers_and_results:
-            kvl.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
-            output = kvl.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+            self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
+            output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
                                     self.kvnc_account)
             assert output is not None
             assert output != ''
