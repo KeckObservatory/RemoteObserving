@@ -1548,8 +1548,13 @@ class KeckVncLauncher(object):
                                ('nirspec', 'vm-nirspec')]
         for server, result in servers_and_results:
             self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
-            output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                                    self.kvnc_account)
+            try:
+                output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+                                        self.kvnc_account)
+            except subprocess.TimeoutExpired as e:
+                # Just try a second time
+                output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+                                        self.kvnc_account)
             assert output is not None
             assert output != ''
             assert output.strip() in [server, result]
