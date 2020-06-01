@@ -1466,77 +1466,110 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def test_config_format(self):
         import socket
-        self.log.info('Testing config file: firewall_address')
+        failcount = 0
+        self.log.info('Checking config file: firewall_address')
         firewall_address = self.config.get('firewall_address', None)
-        assert firewall_address is not None
-        # the line below will throw an error if the IP address is not valid
-        socket.inet_aton(firewall_address)
+        if firewall_address is None:
+            self.log.error(f"No firewall address found")
+            failcount += 1
+        try:
+            socket.inet_aton(firewall_address)
+        except OSError:
+            self.log.error(f'firewall_address: "{firewall_address}" is invalid')
+            failcount += 1
 
-        self.log.info('Testing config file: firewall_port')
+        self.log.info('Checking config file: firewall_port')
         firewall_port = self.config.get('firewall_port', None)
-        assert firewall_port is not None
-        assert isinstance(int(firewall_port), int)
+        if isinstance(int(firewall_port), int) is False:
+            self.log.error(f'firewall_port: "{firewall_port}" is invalid')
+            failcount += 1
 
-        self.log.info('Testing config file: firewall_user')
+        self.log.info('Checking config file: firewall_user')
         firewall_user = self.config.get('firewall_user', None)
-        assert firewall_user is not None
+        if firewall_user in [None, '']:
+            self.log.error(f'firewall_user must be specified if you are outside the WMKO network')
+            failcount += 1
 
-        self.log.info('Testing config file: ssh_pkey')
+        self.log.info('Checking config file: ssh_pkey')
         ssh_pkey = self.config.get('ssh_pkey', '~/.ssh/id_rsa')
         ssh_pkey = Path(ssh_pkey)
-        assert ssh_pkey.expanduser().exists()
-        assert ssh_pkey.expanduser().is_file()
+        if ssh_pkey.expanduser().exists() is False or ssh_pkey.expanduser().is_file() is False:
+            self.log.error(f'ssh_pkey: "{ssh_pkey}" not found')
+            failcount += 1
 
-        self.log.info('Testing config file: vncviewer')
+        self.log.info('Checking config file: vncviewer')
         vncviewer_from_config = self.config.get('vncviewer', None)
         # the line below will throw and error if which fails
-        output_of_which = subprocess.check_output(['which', vncviewer_from_config])
-        vncviewer = Path(output_of_which.decode().strip('\n'))
-        assert vncviewer.exists()
+        try:
+            output_of_which = subprocess.check_output(['which', vncviewer_from_config])
+        except subprocess.CalledProcessError as e:
+            self.log.error(f'Unable to locate VNC viewer "{vncviewer_from_config}"')
+            failcount += 1
+
+        if failcount > 0:
+            self.log.error(f'Found {failcount} failures in configuration file')
+        return failcount
 
 
     def test_tigervnc(self):
+        failcount = 0
         vncviewercmd = self.config.get('vncviewer', 'vncviewer')
         cmd = [vncviewercmd, '--help']
-        self.log.info(f'Checking VNC viewer: {" ".join(cmd)}')
+        self.log.debug(f'Checking VNC viewer: {" ".join(cmd)}')
         result = subprocess.run(cmd, capture_output=True)
         output = result.stdout.decode() + '\n' + result.stderr.decode()
         if re.search(r'TigerVNC', output):
-            self.log.info(f'We are using TigerVNC')
+            self.log.info(f'Checking TigerVNC defaults')
         else:
-            self.log.info(f'We are NOT using TigerVNC')
-            return
+            self.log.debug(f'We are NOT using TigerVNC')
+            return failcount
 
         tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
-        if tigervnc_config_file.exists() is False: 
+        if tigervnc_config_file.exists() is False:
             self.log.error(f'Could not find {tigervnc_config_file}')
-        assert tigervnc_config_file.exists()
+            failcount += 1
 
         with open(tigervnc_config_file) as FO:
             tiger_config = FO.read()
         RRsearch = re.search(r'RemoteResize=(\d)', tiger_config)
         if RRsearch is None:
             self.log.error('Could not find RemoteResize setting')
-            assert RRsearch is not None
+            failcount += 1
         else:
             remote_resize_value  = int(RRsearch.group(1))
-            self.log.info(f'Found RemoteResize set to {remote_resize_value}')
+            self.log.debug(f'Found RemoteResize set to {remote_resize_value}')
             if remote_resize_value !=0:
                 self.log.error('RemoteResize must be set to 0')
-                assert remote_resize_value == 0
+                failcount += 1
+
+        return failcount
+
 
     def test_firewall_authentication(self):
+        failcount = 0
         self.firewall_opened = False
         if self.firewall_requested == True:
             self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
             self.firewall_opened = self.open_firewall(self.firewall_pass)
-            assert self.firewall_opened is True
+            if self.firewall_opened is False:
+                self.log.error('Failed to open firewall')
+                failcount += 1
+
+        return failcount
+
 
     def test_ssh_key(self):
+        failcount = 0
         self.validate_ssh_key()
-        assert self.ssh_key_valid is True
+        if self.ssh_key_valid is False:
+            self.log.error('Failed to validate SSH key')
+            failcount += 1
+
+        return failcount
+
 
     def test_basic_connectivity(self):
+        failcount = 0
         servers_and_results = [('svncserver1', 'kaalualu'),
                                ('svncserver2', 'ohaiula'),
                                ('mosfire', 'vm-mosfire'),
@@ -1555,18 +1588,29 @@ class KeckVncLauncher(object):
                 # Just try a second time
                 output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
                                         self.kvnc_account)
-            assert output is not None
-            assert output != ''
-            assert output.strip() in [server, result]
-            self.log.info(f' Passed')
+            self.log.debug(f'Got hostname "{output}" from {server}')
+            if output in [None, '']:
+                self.log.error(f'Failed to connect to {server}')
+                failcount += 1
+            if output.strip() not in [server, result]:
+                self.log.error(f'Got invalid response from {server}')
+                failcount += 1
+
+        return failcount
+
 
     def test_all(self):
-        self.test_config_format()
-        self.test_tigervnc()
-        self.test_firewall_authentication()
-        self.test_ssh_key()
-        self.test_basic_connectivity()
-        self.log.info('--> All tests PASSED <--')
+        failcount = 0
+        failcount += self.test_config_format()
+        failcount += self.test_tigervnc()
+        failcount += self.test_firewall_authentication()
+        failcount += self.test_ssh_key()
+        failcount += self.test_basic_connectivity()
+
+        if failcount == 0:
+            self.log.info('--> All tests PASSED <--')
+        else:
+            self.log.error(f'--> Found {failcount} failures during tests <--')
         self.exit_app()
 
 
