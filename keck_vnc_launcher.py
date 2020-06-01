@@ -1592,9 +1592,10 @@ class KeckVncLauncher(object):
             if output in [None, '']:
                 self.log.error(f'Failed to connect to {server}')
                 failcount += 1
-            if output.strip() not in [server, result]:
-                self.log.error(f'Got invalid response from {server}')
-                failcount += 1
+            else:
+                if output.strip() not in [server, result]:
+                    self.log.error(f'Got invalid response from {server}')
+                    failcount += 1
 
         return failcount
 
