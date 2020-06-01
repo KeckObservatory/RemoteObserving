@@ -1628,15 +1628,15 @@ def create_parser():
     parser = argparse.ArgumentParser(description=description)
 
     ## add flags
+    parser.add_argument("--test", dest="test",
+        default=False, action="store_true",
+        help="Test system rather than connect to VNC sessions.")
     parser.add_argument("--authonly", dest="authonly",
         default=False, action="store_true",
         help="Authenticate through firewall, but do not start VNC sessions.")
     parser.add_argument("--nosound", dest="nosound",
         default=False, action="store_true",
         help="Skip start of soundplay application.")
-    parser.add_argument("--test", dest="test",
-        default=False, action="store_true",
-        help="Test system rather than connect to VNC sessions.")
     parser.add_argument("--viewonly", dest="viewonly",
         default=False, action="store_true",
         help="Open VNC sessions in View Only mode (only for TigerVnC viewer)")
