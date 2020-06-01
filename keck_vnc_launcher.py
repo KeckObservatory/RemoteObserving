@@ -112,6 +112,8 @@ class KeckVncLauncher(object):
 
         if self.args.test is True:
             self.test_all()
+        # Verify Tiger VNC Config every time
+        self.test_tigervnc()
 
         ##---------------------------------------------------------------------
         ## Log basic system info
