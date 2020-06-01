@@ -1583,11 +1583,11 @@ class KeckVncLauncher(object):
             self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
             try:
                 output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                                        self.kvnc_account)
+                                        self.kvnc_account, timeout=20)
             except subprocess.TimeoutExpired as e:
                 # Just try a second time
                 output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                                        self.kvnc_account)
+                                        self.kvnc_account, timeout=20)
             self.log.debug(f'Got hostname "{output}" from {server}')
             if output in [None, '']:
                 self.log.error(f'Failed to connect to {server}')
