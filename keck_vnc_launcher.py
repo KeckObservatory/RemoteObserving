@@ -1634,7 +1634,7 @@ def create_parser():
     parser.add_argument("--nosound", dest="nosound",
         default=False, action="store_true",
         help="Skip start of soundplay application.")
-    parser.add_argument("-t", "--test", dest="test",
+    parser.add_argument("--test", dest="test",
         default=False, action="store_true",
         help="Test system rather than connect to VNC sessions.")
     parser.add_argument("--viewonly", dest="viewonly",
