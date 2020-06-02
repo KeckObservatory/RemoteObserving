@@ -26,11 +26,14 @@ import yaml
 import soundplay
 
 
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
                  'telanalys', 'telstatus', 'status')
+
+class KROException(Exception):
+    pass
 
 
 class VNCSession(object):
@@ -53,6 +56,7 @@ class KeckVncLauncher(object):
 
     def __init__(self):
         #init vars we need to shutdown app properly
+        self.supportEmail = 'mainland_observing@keck.hawaii.edu'
         self.config = None
         self.log = None
         self.sound = None
@@ -105,6 +109,11 @@ class KeckVncLauncher(object):
         self.get_args()
         self.get_config()
         self.check_config()
+
+        if self.args.test is True:
+            self.test_all()
+        # Verify Tiger VNC Config every time
+        self.test_tigervnc()
 
         ##---------------------------------------------------------------------
         ## Log basic system info
@@ -713,14 +722,40 @@ class KeckVncLauncher(object):
         self.log.info(f' {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
 
         tn = Telnet(self.firewall_address, int(self.firewall_port))
-        tn.read_until(b"User: ", timeout=5)
-        tn.write(f'{self.firewall_user}\n'.encode('ascii'))
-        tn.read_until(b"password: ", timeout=5)
-        tn.write(f'{authpass}\n'.encode('ascii'))
-        tn.read_until(b"Enter your choice: ", timeout=5)
-        tn.write('1\n'.encode('ascii'))
-        result = tn.read_all().decode('ascii')
 
+        # Find Username Prompt
+        user_prompt = tn.read_until(b"User: ", timeout=5).decode('ascii')
+        self.log.debug(f"{user_prompt}")
+        if user_prompt[-6:] != 'User: ':
+            self.log.error('Got unexpected response from firewall:')
+            self.log.error(user_prompt)
+            raise KROException('Got unexpected response from firewall')
+        tn.write(f'{self.firewall_user}\n'.encode('ascii'))
+
+        # Find Username Prompt
+        password_prompt = tn.read_until(b"password: ", timeout=5).decode('ascii')
+        self.log.debug(f"{password_prompt}")
+        if password_prompt[-10:] != 'password: ':
+            self.log.error('Got unexpected response from firewall:')
+            self.log.error(password_prompt)
+            raise KROException('Got unexpected response from firewall')
+        tn.write(f'{authpass}\n'.encode('ascii'))
+
+        # Is Password Accepted?
+        password_response = tn.read_until(b"Enter your choice: ", timeout=5).decode('ascii')
+        self.log.debug(f"{password_response}")
+        if re.search('Access denied - wrong user name or password', password_response):
+            self.log.error('Incorrect password entered.')
+            return False
+
+        # If Password is Correct, continue with authentication process
+        if password_response[-19:] != 'Enter your choice: ':
+            self.log.error('Got unexpected response from firewall:')
+            self.log.error(password_response)
+            raise KROException('Got unexpected response from firewall')
+        tn.write('1\n'.encode('ascii'))
+
+        result = tn.read_all().decode('ascii')
         if re.search('User authorized for standard services', result):
             self.log.info('User authorized for standard services')
             return True
@@ -813,8 +848,10 @@ class KeckVncLauncher(object):
         return_code = proc.wait()
 
         if return_code == 0:
+            self.log.debug('firewall is open')
             return True
 
+        self.log.debug('firewall is closed')
         return False
 
 
@@ -866,7 +903,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Utility function for opening ssh client, executing command and closing
     ##-------------------------------------------------------------------------
-    def do_ssh_cmd(self, cmd, server, account):
+    def do_ssh_cmd(self, cmd, server, account, timeout=10):
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
 
@@ -892,7 +929,7 @@ class KeckVncLauncher(object):
             raise RuntimeError('subprocess failed to execute ssh')
 
         try:
-            stdout,stderr = proc.communicate(timeout=6)
+            stdout,stderr = proc.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
             self.log.error('  Timeout')
             return
@@ -1406,11 +1443,10 @@ class KeckVncLauncher(object):
     def handle_fatal_error(self, error):
 
         #helpful user error message
-        supportEmail = 'mainland_observing@keck.hawaii.edu'
         print("\n****** PROGRAM ERROR ******\n")
         print("Error message: " + str(error) + "\n")
         print("If you need troubleshooting assistance:")
-        print(f"* Email {supportEmail}\n")
+        print(f"* Email {self.supportEmail}\n")
         #todo: call number, website?
 
         #Log error if we have a log object (otherwise dump error to stdout)
@@ -1420,10 +1456,164 @@ class KeckVncLauncher(object):
         if self.log is None:
             print(msg)
         else:
-            logfile = self.log.handlers[0].baseFilename
-            print(f"* Attach log file at: {logfile}\n")
+            logfiles = [h.baseFilename for h in self.log.handlers if isinstance(h, logging.FileHandler)]
+            if len(logfiles) > 0:
+                print(f"* Attach log file at: {logfiles[0]}\n")
             self.log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
 
+        self.exit_app()
+
+    ##-------------------------------------------------------------------------
+    ## Tests
+    ##-------------------------------------------------------------------------
+    def test_config_format(self):
+        import socket
+        failcount = 0
+        self.log.info('Checking config file: firewall_address')
+        firewall_address = self.config.get('firewall_address', None)
+        if firewall_address is None:
+            self.log.error(f"No firewall address found")
+            failcount += 1
+        try:
+            socket.inet_aton(firewall_address)
+        except OSError:
+            self.log.error(f'firewall_address: "{firewall_address}" is invalid')
+            failcount += 1
+
+        self.log.info('Checking config file: firewall_port')
+        firewall_port = self.config.get('firewall_port', None)
+        if isinstance(int(firewall_port), int) is False:
+            self.log.error(f'firewall_port: "{firewall_port}" is invalid')
+            failcount += 1
+
+        self.log.info('Checking config file: firewall_user')
+        firewall_user = self.config.get('firewall_user', None)
+        if firewall_user in [None, '']:
+            self.log.error(f'firewall_user must be specified if you are outside the WMKO network')
+            failcount += 1
+
+        self.log.info('Checking config file: ssh_pkey')
+        ssh_pkey = self.config.get('ssh_pkey', '~/.ssh/id_rsa')
+        ssh_pkey = Path(ssh_pkey)
+        if ssh_pkey.expanduser().exists() is False or ssh_pkey.expanduser().is_file() is False:
+            self.log.error(f'ssh_pkey: "{ssh_pkey}" not found')
+            failcount += 1
+
+        self.log.info('Checking config file: vncviewer')
+        vncviewer_from_config = self.config.get('vncviewer', None)
+        # the line below will throw and error if which fails
+        try:
+            output_of_which = subprocess.check_output(['which', vncviewer_from_config])
+        except subprocess.CalledProcessError as e:
+            self.log.error(f'Unable to locate VNC viewer "{vncviewer_from_config}"')
+            failcount += 1
+
+        if failcount > 0:
+            self.log.error(f'Found {failcount} failures in configuration file')
+        return failcount
+
+
+    def test_tigervnc(self):
+        failcount = 0
+        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
+        cmd = [vncviewercmd, '--help']
+        self.log.debug(f'Checking VNC viewer: {" ".join(cmd)}')
+        result = subprocess.run(cmd, capture_output=True)
+        output = result.stdout.decode() + '\n' + result.stderr.decode()
+        if re.search(r'TigerVNC', output):
+            self.log.info(f'Checking TigerVNC defaults')
+        else:
+            self.log.debug(f'We are NOT using TigerVNC')
+            return failcount
+
+        tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
+        if tigervnc_config_file.exists() is False:
+            self.log.error(f'Could not find {tigervnc_config_file}')
+            failcount += 1
+
+        with open(tigervnc_config_file) as FO:
+            tiger_config = FO.read()
+        RRsearch = re.search(r'RemoteResize=(\d)', tiger_config)
+        if RRsearch is None:
+            self.log.error('Could not find RemoteResize setting')
+            failcount += 1
+        else:
+            remote_resize_value  = int(RRsearch.group(1))
+            self.log.debug(f'Found RemoteResize set to {remote_resize_value}')
+            if remote_resize_value !=0:
+                self.log.error('RemoteResize must be set to 0')
+                failcount += 1
+
+        return failcount
+
+
+    def test_firewall_authentication(self):
+        failcount = 0
+        self.firewall_opened = False
+        if self.firewall_requested == True:
+            self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
+            self.firewall_opened = self.open_firewall(self.firewall_pass)
+            if self.firewall_opened is False:
+                self.log.error('Failed to open firewall')
+                failcount += 1
+
+        return failcount
+
+
+    def test_ssh_key(self):
+        failcount = 0
+        self.validate_ssh_key()
+        if self.ssh_key_valid is False:
+            self.log.error('Failed to validate SSH key')
+            failcount += 1
+
+        return failcount
+
+
+    def test_basic_connectivity(self):
+        failcount = 0
+        servers_and_results = [('svncserver1', 'kaalualu'),
+                               ('svncserver2', 'ohaiula'),
+                               ('mosfire', 'vm-mosfire'),
+                               ('hires', 'vm-hires'),
+                               ('lris', 'vm-lris'),
+                               ('kcwi', 'vm-kcwi'),
+                               ('nirc2', 'vm-nirc2'),
+                               ('nires', 'vm-nires'),
+                               ('nirspec', 'vm-nirspec')]
+        for server, result in servers_and_results:
+            self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
+            try:
+                output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+                                        self.kvnc_account, timeout=20)
+            except subprocess.TimeoutExpired as e:
+                # Just try a second time
+                output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+                                        self.kvnc_account, timeout=20)
+            self.log.debug(f'Got hostname "{output}" from {server}')
+            if output in [None, '']:
+                self.log.error(f'Failed to connect to {server}')
+                failcount += 1
+            else:
+                if output.strip() not in [server, result]:
+                    self.log.error(f'Got invalid response from {server}')
+                    failcount += 1
+
+        return failcount
+
+
+    def test_all(self):
+        failcount = 0
+        failcount += self.test_config_format()
+        failcount += self.test_tigervnc()
+        failcount += self.test_firewall_authentication()
+        failcount += self.test_ssh_key()
+        failcount += self.test_basic_connectivity()
+
+        if failcount == 0:
+            self.log.info('--> All tests PASSED <--')
+        else:
+            self.log.error(f'--> Found {failcount} failures during tests <--')
         self.exit_app()
 
 
@@ -1441,6 +1631,9 @@ def create_parser():
     parser = argparse.ArgumentParser(description=description)
 
     ## add flags
+    parser.add_argument("--test", dest="test",
+        default=False, action="store_true",
+        help="Test system rather than connect to VNC sessions.")
     parser.add_argument("--authonly", dest="authonly",
         default=False, action="store_true",
         help="Authenticate through firewall, but do not start VNC sessions.")
@@ -1480,39 +1673,40 @@ def create_parser():
 ##-------------------------------------------------------------------------
 def create_logger():
 
+    ## Create logger object
+    log = logging.getLogger('KRO')
+
+    ## Only add handlers if none already exist (eliminates duplicate lines)
+    if len(log.handlers) > 0:
+        return
+
+    #create log file and log dir if not exist
+    ymd = datetime.utcnow().strftime('%Y%m%d')
     try:
-        ## Create logger object
-        log = logging.getLogger('KRO')
-        log.setLevel(logging.DEBUG)
-
-        #create log file and log dir if not exist
-        ymd = datetime.utcnow().date().strftime('%Y%m%d')
         Path('logs/').mkdir(parents=True, exist_ok=True)
-
-        #file handler (full debug logging)
-        logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
-        logFileHandler = logging.FileHandler(logFile)
-        logFileHandler.setLevel(logging.DEBUG)
-        logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
-        logFormat.converter = time.gmtime
-        logFileHandler.setFormatter(logFormat)
-        log.addHandler(logFileHandler)
-
-        #stream/console handler (info+ only)
-        logConsoleHandler = logging.StreamHandler()
-        logConsoleHandler.setLevel(logging.INFO)
-        logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
-        logFormat.converter = time.gmtime
-        logConsoleHandler.setFormatter(logFormat)
-
-        log.addHandler(logConsoleHandler)
-
-    except Exception as error:
+    except PermissionError as error:
         print(str(error))
         print(f"ERROR: Unable to create logger at {logFile}")
         print("Make sure you have write access to this directory.\n")
         log.info("EXITING APP\n")
         sys.exit(1)
+
+    #stream/console handler (info+ only)
+    logConsoleHandler = logging.StreamHandler()
+    logConsoleHandler.setLevel(logging.INFO)
+    logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+    logFormat.converter = time.gmtime
+    logConsoleHandler.setFormatter(logFormat)
+    log.addHandler(logConsoleHandler)
+
+    #file handler (full debug logging)
+    logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
+    logFileHandler = logging.FileHandler(logFile)
+    logFileHandler.setLevel(logging.DEBUG)
+    logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
+    logFormat.converter = time.gmtime
+    logFileHandler.setFormatter(logFormat)
+    log.addHandler(logFileHandler)
 
 
 ##-------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import logging
 import platform
 
 log = logging.getLogger('KRO')
+log.setLevel(logging.DEBUG)
 
 
 class soundplay(object):
@@ -125,30 +126,6 @@ def full_path(player=None):
             raise ValueError('invalid soundplay binary name: ' + player)
 
     return sound_path
-
-
-
-##-------------------------------------------------------------------------
-## Create logger
-##-------------------------------------------------------------------------
-def create_logger():
-
-    try:
-        ## Create logger object
-        log = logging.getLogger('KRO')
-        log.setLevel(logging.DEBUG)
-
-        #stream/console handler (info+ only)
-        logConsoleHandler = logging.StreamHandler()
-        logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
-        logFormat.converter = time.gmtime
-        logConsoleHandler.setFormatter(logFormat)
-
-        log.addHandler(logConsoleHandler)
-
-    except Exception as error:
-        print (f"ERROR: Unable to create logger")
-        print (str(error))
 
 
 ##-------------------------------------------------------------------------
