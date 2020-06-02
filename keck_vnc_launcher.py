@@ -110,16 +110,19 @@ class KeckVncLauncher(object):
         self.get_config()
         self.check_config()
 
-        if self.args.test is True:
-            self.test_all()
-        # Verify Tiger VNC Config every time
-        self.test_tigervnc()
-
         ##---------------------------------------------------------------------
         ## Log basic system info
         ##---------------------------------------------------------------------
         self.log_system_info()
         self.check_version()
+
+        ##---------------------------------------------------------------------
+        ## Run tests
+        ##---------------------------------------------------------------------
+        if self.args.test is True:
+            self.test_all()
+        # Verify Tiger VNC Config every time
+        self.test_tigervnc()
 
         ##---------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
