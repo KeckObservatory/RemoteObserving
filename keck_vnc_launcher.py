@@ -897,7 +897,7 @@ class KeckVncLauncher(object):
                      'nirc2':   2,
                      'nirspec': 2,
                      'kcwi':    2,
-                     'k2ao':    1,
+                     'k2ao':    2,
                     }
 
         for instrument in accounts.keys():
