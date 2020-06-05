@@ -121,8 +121,9 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         if self.args.test is True:
             self.test_all()
-        # Verify Tiger VNC Config every time
-        self.test_tigervnc()
+        # Verify Tiger VNC Config
+        if self.args.authonly is False:
+            self.test_tigervnc()
 
         ##---------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
@@ -163,71 +164,72 @@ class KeckVncLauncher(object):
                 self.exit_app('Authentication failure!')
 
 
-        ##---------------------------------------------------------------------
-        ## Determine sessions to open
-        ##---------------------------------------------------------------------
-        self.sessions_requested = self.get_sessions_requested(self.args)
+        if self.args.authonly is False:
+            ##---------------------------------------------------------------------
+            ## Determine sessions to open
+            ##---------------------------------------------------------------------
+            self.sessions_requested = self.get_sessions_requested(self.args)
 
 
-        ##---------------------------------------------------------------------
-        ## Determine instrument
-        ##---------------------------------------------------------------------
-        self.instrument, self.tel = self.determine_instrument(self.args.account)
-        if self.instrument is None:
-            self.exit_app(f'Invalid instrument account: "{self.args.account}"')
+            ##---------------------------------------------------------------------
+            ## Determine instrument
+            ##---------------------------------------------------------------------
+            self.instrument, self.tel = self.determine_instrument(self.args.account)
+            if self.instrument is None:
+                self.exit_app(f'Invalid instrument account: "{self.args.account}"')
 
 
-        ##---------------------------------------------------------------------
-        ## Validate ssh key
-        ##---------------------------------------------------------------------
-        self.validate_ssh_key()
-        if self.ssh_key_valid == False:
-            self.log.error("\n\n\tCould not validate SSH key.\n\t"\
-                      "Contact mainland_observing@keck.hawaii.edu "\
-                      "for other options to connect remotely.\n")
-            self.exit_app()
+            ##---------------------------------------------------------------------
+            ## Validate ssh key
+            ##---------------------------------------------------------------------
+            self.validate_ssh_key()
+            if self.ssh_key_valid == False:
+                self.log.error("\n\n\tCould not validate SSH key.\n\t"\
+                          "Contact mainland_observing@keck.hawaii.edu "\
+                          "for other options to connect remotely.\n")
+                self.exit_app()
 
 
-        ##---------------------------------------------------------------------
-        ## Determine VNC server
-        ##---------------------------------------------------------------------
-        self.vncserver = self.get_vnc_server(self.kvnc_account,
-                                             self.instrument)
+            ##---------------------------------------------------------------------
+            ## Determine VNC server
+            ##---------------------------------------------------------------------
+            self.vncserver = self.get_vnc_server(self.kvnc_account,
+                                                 self.instrument)
 
-        if self.vncserver is None:
-            self.exit_app("Could not determine VNC server.")
-
-
-        ##---------------------------------------------------------------------
-        ## Determine VNC Sessions
-        ##---------------------------------------------------------------------
-        self.sessions_found = self.get_vnc_sessions(self.vncserver,
-                                                    self.instrument,
-                                                    self.kvnc_account,
-                                                    self.args.account)
-
-        if self.args.authonly is False and\
-                (not self.sessions_found or len(self.sessions_found) == 0):
-            self.exit_app('No VNC sessions found')
+            if self.vncserver is None:
+                self.exit_app("Could not determine VNC server.")
 
 
-        ##---------------------------------------------------------------------
-        ## Open requested sessions
-        ##---------------------------------------------------------------------
-        self.calc_window_geometry()
-        self.ports_in_use = dict()
-        self.vnc_threads = list()
-        self.vnc_processes = list()
-        for session_name in self.sessions_requested:
-            self.start_vnc_session(session_name)
+            ##---------------------------------------------------------------------
+            ## Determine VNC Sessions
+            ##---------------------------------------------------------------------
+            self.sessions_found = self.get_vnc_sessions(self.vncserver,
+                                                        self.instrument,
+                                                        self.kvnc_account,
+                                                        self.args.account)
+
+            if self.args.authonly is False and\
+                    (not self.sessions_found or len(self.sessions_found) == 0):
+                self.exit_app('No VNC sessions found')
 
 
-        ##---------------------------------------------------------------------
-        ## Open Soundplay
-        ##---------------------------------------------------------------------
-        sound = None
-        if self.args.nosound is False and self.config.get('nosound', False) != True:
-            self.start_soundplay()
+            ##---------------------------------------------------------------------
+            ## Open requested sessions
+            ##---------------------------------------------------------------------
+            self.calc_window_geometry()
+            self.ports_in_use = dict()
+            self.vnc_threads = list()
+            self.vnc_processes = list()
+            for session_name in self.sessions_requested:
+                self.start_vnc_session(session_name)
+
+
+            ##---------------------------------------------------------------------
+            ## Open Soundplay
+            ##---------------------------------------------------------------------
+            sound = None
+            if self.args.nosound is False and self.config.get('nosound', False) != True:
+                self.start_soundplay()
 
 
         ##---------------------------------------------------------------------
