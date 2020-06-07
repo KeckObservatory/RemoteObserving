@@ -671,7 +671,8 @@ class KeckVncLauncher(object):
                 try:
                     sound_port = self.open_ssh_tunnel(self.vncserver, account,
                                                       self.ssh_pkey,
-                                                      sound_port, None)
+                                                      sound_port,
+                                                      session_name='soundplay')
                 except:
                     self.log.error(f"Failed to open SSH tunnel for "
                               f"{account}@{self.vncserver}:{sound_port}")
