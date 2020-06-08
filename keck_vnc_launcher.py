@@ -72,6 +72,7 @@ class KeckVncLauncher(object):
         self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
         self.exit = False
         self.geometry = list()
+        self.get_ping_cmd()
 
         self.log = logging.getLogger('KRO')
 
@@ -797,6 +798,52 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Check to see whether the firewall hole is already open.
     ##-------------------------------------------------------------------------
+    def get_ping_cmd(self):
+        '''Assemble the local ping command.
+        '''
+        # Figure out local ping command
+        try:
+            ping = subprocess.check_output(['which', 'ping'])
+            ping = ping.decode()
+            ping = ping.strip()
+            self.ping_cmd = [ping]
+        except subprocess.CalledProcessError:
+            self.log.error("Ping command not available")
+            return None
+
+        os = platform.system()
+        os = os.lower()
+        # Ping once, wait up to five seconds for a response.
+        if os == 'linux':
+            self.ping_cmd.extend(['-c', '1', '-w', '5'])
+        elif os == 'darwin':
+            self.ping_cmd.extend(['-c', '1', '-W', '5000'])
+        else:
+            # Don't understand how ping works on this platform.
+            self.ping_cmd = None
+
+
+    def ping(self, address):
+        '''Wrap logic around the ping command.
+        '''
+        if self.ping_cmd is None:
+            return False
+        # Run ping
+        output = subprocess.run(self.ping_cmd + [address],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        if output.returncode != 0:
+            self.log.debug("Ping command failed")
+            self.log.debug(f"STDOUT: {output.stdout.decode()}")
+            self.log.debug(f"STDERR: {output.stderr.decode()}")
+            return False
+        else:
+            self.log.debug("Ping command succeeded")
+            self.log.debug(f"STDOUT: {output.stdout.decode()}")
+            self.log.debug(f"STDERR: {output.stderr.decode()}")
+            return True
+
+
     def test_firewall(self):
         ''' Return True if the sshuser firewall hole is open; otherwise
             return False. Also return False if the test cannot be performed.
@@ -806,12 +853,6 @@ class KeckVncLauncher(object):
             netcat = subprocess.check_output(['which', 'ncat'])
         except subprocess.CalledProcessError:
             netcat = None
-
-        try:
-            ping = subprocess.check_output(['which', 'ping'])
-        except subprocess.CalledProcessError:
-            ping = None
-
 
         # The netcat test is more rigorous, in that it attempts to contact
         # an ssh daemon that should be available to us after opening the
@@ -824,41 +865,30 @@ class KeckVncLauncher(object):
             netcat = netcat.strip()
             command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w', '2']
 
-        elif ping is not None:
-            ping = ping.decode()
-            ping = ping.strip()
-            command = [ping,]
-
-            os = platform.system()
-            os = os.lower()
-
-            # Ping once, wait up to five seconds for a response.
-            if os == 'linux':
-                command.extend(['-c', '1', '-w', '5'])
-            elif os == 'darwin':
-                command.extend(['-c', '1', '-W', '5000'])
+            self.log.debug('firewall test: ' + ' '.join (command))
+            null = subprocess.DEVNULL
+            proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
+            return_code = proc.wait()
+            if return_code == 0:
+                self.log.debug('firewall is open')
+                return True
             else:
-                # Don't understand how ping works on this platform.
+                self.log.debug('firewall is closed')
                 return False
 
-            command.append('128.171.95.100')
+        elif self.ping_cmd is not None:
+            if self.ping('128.171.95.100') is True:
+                self.log.debug('firewall is open')
+                return True
+            else:
+                self.log.debug('firewall is closed')
+                return False
 
         else:
             # No way to check the firewall status. Assume it is closed,
             # authentication will be required.
             return False
 
-        self.log.debug('firewall test: ' + ' '.join (command))
-        null = subprocess.DEVNULL
-        proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
-        return_code = proc.wait()
-
-        if return_code == 0:
-            self.log.debug('firewall is open')
-            return True
-
-        self.log.debug('firewall is closed')
-        return False
 
 
     ##-------------------------------------------------------------------------
@@ -1557,8 +1587,22 @@ class KeckVncLauncher(object):
         return failcount
 
 
+    def test_localhost(self):
+        '''The localhost needs to be defined (e.g. 127.0.0.1)
+        '''
+        failcount = 0
+        self.log.info('Checking localhost')
+        if self.ping('localhost') is False:
+            self.log.error(f"localhost appears not to be configured")
+            self.log.error(f"Your /etc/hosts file may need to be updated")
+            failcount += 1
+
+        return failcount
+
+
     def test_firewall_authentication(self):
         failcount = 0
+        self.log.info('Testing firewall authentication')
         self.firewall_opened = False
         if self.firewall_requested == True:
             self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
@@ -1616,6 +1660,7 @@ class KeckVncLauncher(object):
         failcount = 0
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
+        failcount += self.test_localhost()
         failcount += self.test_firewall_authentication()
         failcount += self.test_ssh_key()
         failcount += self.test_basic_connectivity()
