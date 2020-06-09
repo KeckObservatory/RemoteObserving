@@ -1600,6 +1600,29 @@ class KeckVncLauncher(object):
         return failcount
 
 
+    def test_ssh_key_format(self):
+        '''The SSH key must be RSA and must not use a passphrase
+        '''
+        failcount = 0
+        self.log.info('Checking SSH private key format')
+        with open(self.ssh_pkey, 'r') as f:
+            contents = f.read()
+
+        # Check if this is an RSA key
+        foundrsa = re.search('BEGIN RSA PRIVATE KEY', contents)
+        if not foundrsa:
+            self.log.error(f"Your private key does not appear to be an RSA key")
+            failcount += 1
+
+        # Check that there is no passphrase
+        foundencrypt = re.search('Proc-Type: \d,ENCRYPTED', contents)
+        if foundencrypt:
+            self.log.error(f"Your private key appears to require a passphrase.  This is not supported.")
+            failcount += 1
+        
+        return failcount
+
+
     def test_firewall_authentication(self):
         failcount = 0
         self.log.info('Testing firewall authentication')
@@ -1661,6 +1684,7 @@ class KeckVncLauncher(object):
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
         failcount += self.test_localhost()
+        failcount += self.test_ssh_key_format()
         failcount += self.test_firewall_authentication()
         failcount += self.test_ssh_key()
         failcount += self.test_basic_connectivity()
