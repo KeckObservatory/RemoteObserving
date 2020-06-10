@@ -7,7 +7,7 @@ Before embarking on setting up a Keck Remote Observing station, we recommend rea
 ## Notify Keck of your intent to connect remotely
 Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
 
-- Email `mainland_observing@keck.hawaii.edu` with the following info about your remote site:
+- Email `remote-observing@keck.hawaii.edu` with the following info about your remote site:
     - Institution
     - City, State
     - Room Name/#
@@ -100,7 +100,7 @@ The software has been tested for CentOS/RedHat 7.6, Ubuntu, and macOS.
         ```
         ssh-keygen -t rsa -b 4096 -m PEM
         ```
-    - Email the **public** key file (i.e. `id_rsa.pub`) to `mainland_observing@keck.hawaii.edu`
+    - Email the **public** key file (i.e. `id_rsa.pub`) to `remote-observing@keck.hawaii.edu`
 
 - (optional) Add VNC start script to path:
     ```
@@ -135,7 +135,7 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
             vncargs: '-passwd=/home/observer/.vnc/passwd'
             ```
 
-- **Soundplay Configuration:** For compatible systems, uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact `mainland_observing@keck.hawaii.edu` for help configuring this value if needed.  Also, if your local machine's path to the aplay executable is non-standard, specify that in the aplay value.
+- **Soundplay Configuration:** For compatible systems, uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact `remote-observing@keck.hawaii.edu` for help configuring this value if needed.  Also, if your local machine's path to the aplay executable is non-standard, specify that in the aplay value.
     - At the moment, the default Linux executable seems to work for CentOS and Ubuntu Linux.
     - For macOS, use the settings as described in the `keck_vnc_config.yaml` section which specify a specific soundplay executable and a specific aplay calling format:
         ```
@@ -164,7 +164,7 @@ From the directory where the Keck VNC software is installed (e.g. `~/RemoteObser
 
 This may query you for passwords, depending on your local configuration. It should print out a report which indicates that all tests passed. Make sure there are no test failures.
 
-If there are test failures, email your logfile to `mainland_observing@keck.hawaii.edu`.  Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
+If there are test failures, email your logfile to `remote-observing@keck.hawaii.edu`.  Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
 
 # Run the VNC launch script
@@ -187,5 +187,5 @@ To get help on available command line options:
 
 Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
-If you need assistance, please email `mainland_observing@keck.hawaii.edu` and attach the most recent log file from the logs folder.
+If you need assistance, please email `remote-observing@keck.hawaii.edu` and attach the most recent log file from the logs folder.
 

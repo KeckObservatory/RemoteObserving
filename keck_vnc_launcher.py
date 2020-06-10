@@ -56,7 +56,7 @@ class KeckVncLauncher(object):
 
     def __init__(self):
         #init vars we need to shutdown app properly
-        self.supportEmail = 'mainland_observing@keck.hawaii.edu'
+        self.supportEmail = 'remote-observing@keck.hawaii.edu'
         self.config = None
         self.log = None
         self.sound = None
@@ -185,9 +185,9 @@ class KeckVncLauncher(object):
             ##---------------------------------------------------------------------
             self.validate_ssh_key()
             if self.ssh_key_valid == False:
-                self.log.error("\n\n\tCould not validate SSH key.\n\t"\
-                          "Contact mainland_observing@keck.hawaii.edu "\
-                          "for other options to connect remotely.\n")
+                self.log.error(f"\n\n\tCould not validate SSH key.\n\t"\
+                               f"Contact {self.supportEmail} "\
+                               f"for other options to connect remotely.\n")
                 self.exit_app()
 
 
@@ -1706,7 +1706,7 @@ def create_parser():
                    f"sessions for the specified instrument account. For "
                    f"help or information on how to configure the code, please "
                    f"see the included README.md file or email "
-                   f"mainland_observing@keck.hawaii.edu")
+                   f"{self.supportEmail}")
     parser = argparse.ArgumentParser(description=description)
 
     ## add flags
