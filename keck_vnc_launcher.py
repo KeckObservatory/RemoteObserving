@@ -27,6 +27,7 @@ import soundplay
 
 
 __version__ = '1.1.0'
+supportEmail = 'remote-observing@keck.hawaii.edu'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
@@ -56,7 +57,6 @@ class KeckVncLauncher(object):
 
     def __init__(self):
         #init vars we need to shutdown app properly
-        self.supportEmail = 'remote-observing@keck.hawaii.edu'
         self.config = None
         self.log = None
         self.sound = None
@@ -186,7 +186,7 @@ class KeckVncLauncher(object):
             self.validate_ssh_key()
             if self.ssh_key_valid == False:
                 self.log.error(f"\n\n\tCould not validate SSH key.\n\t"\
-                               f"Contact {self.supportEmail} "\
+                               f"Contact {supportEmail} "\
                                f"for other options to connect remotely.\n")
                 self.exit_app()
 
@@ -1486,7 +1486,7 @@ class KeckVncLauncher(object):
         print("\n****** PROGRAM ERROR ******\n")
         print("Error message: " + str(error) + "\n")
         print("If you need troubleshooting assistance:")
-        print(f"* Email {self.supportEmail}\n")
+        print(f"* Email {supportEmail}\n")
         #todo: call number, website?
 
         #Log error if we have a log object (otherwise dump error to stdout)
@@ -1706,7 +1706,7 @@ def create_parser():
                    f"sessions for the specified instrument account. For "
                    f"help or information on how to configure the code, please "
                    f"see the included README.md file or email "
-                   f"{self.supportEmail}")
+                   f"{supportEmail}")
     parser = argparse.ArgumentParser(description=description)
 
     ## add flags
