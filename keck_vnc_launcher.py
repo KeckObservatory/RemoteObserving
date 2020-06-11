@@ -1269,19 +1269,23 @@ class KeckVncLauncher(object):
         lines = [f"-"*(line_length),
                  f"          Keck Remote Observing (v{__version__})",
                  f"                        MENU",
-                 f"-"*(line_length),
-                 f"  l               List sessions available",
-                 f"  [session name]  Open VNC session by name",
-                 f"  w               Position VNC windows",
-                 f"  s               Soundplayer restart",
-                 f"  u               Upload log to Keck",
-                 f"  p               Play a local test sound",
-                 f"  t               List local ports in use",
-                 f"  c [port]        Close ssh tunnel on local port",
-                 f"  v               Check if software is up to date",
-                 f"  q               Quit (or Control-C)",
-                 f"-"*(line_length),
-                 ]
+                 f"-"*(line_length)]
+
+        morelines = [f"  l               List sessions available",
+                     f"  [session name]  Open VNC session by name",
+                     f"  w               Position VNC windows",
+                     f"  s               Soundplayer restart",
+                     f"  u               Upload log to Keck",
+                     f"  p               Play a local test sound",
+                     f"  t               List local ports in use",
+                     f"  c [port]        Close ssh tunnel on local port",
+                     ]
+        if self.args.authonly is False:
+            lines.extend(morelines)
+        lines.extend([f"  v               Check if software is up to date",
+                      f"  q               Quit (or Control-C)",
+                      f"-"*(line_length),
+                      ])
 
         boxed = list()
         for line in lines:
