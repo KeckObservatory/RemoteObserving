@@ -139,7 +139,7 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
     - At the moment, the default Linux executable seems to work for CentOS and Ubuntu Linux.
     - For macOS, use the settings as described in the `keck_vnc_config.yaml` section which specify a specific soundplay executable and a specific aplay calling format:
         ```
-        soundplayer: 'soundplay-107050-8.6.3-macosx10.5-ix86+x86_64'
+        soundplayer: 'soundplay.darwin.x86_64'
         aplay: '/usr/bin/afplay -v %v %s'
         ```
         As described in the comments in that file, replace `%v` with a value from 0 to 100 if you want to override the volume control in eventsounds.  Many users find the macOS sounds too loud, so replacing `%v` with `1` can help.
