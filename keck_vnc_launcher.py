@@ -1372,8 +1372,15 @@ class KeckVncLauncher(object):
                 self.log.warning(f'Your local software (v{__version__}) is behind '
                                  f'the currently available version '
                                  f'(v{remote_version})')
-        except:
+        except ModuleNotFoundError as e:
             self.log.warning("Unable to verify remote version")
+            self.log.debug(e)
+        except requests.ConnectionError as e:
+            self.log.warning("Unable to verify remote version")
+            self.log.debug(e)
+        except Exception as e:
+            self.log.warning("Unable to verify remote version")
+            self.log.debug(e)
 
     ##-------------------------------------------------------------------------
     ## Upload log file to Keck
