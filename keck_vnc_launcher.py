@@ -907,6 +907,8 @@ class KeckVncLauncher(object):
                     'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
                     'k1ao':     ['k1obsao'],
                     'k2ao':     ['k2obsao'],
+                    'k1inst':   ['k1insttech'],
+                    'k2inst':   ['k2insttech'],
                    }
         accounts['mosfire'].append('moseng')
         accounts['hires'].append('hireseng')
@@ -924,6 +926,7 @@ class KeckVncLauncher(object):
                      'osiris':  1,
                      'lris':    1,
                      'k1ao':    1,
+                     'k1inst':  1,
                      'nires':   2,
                      'deimos':  2,
                      'esi':     2,
@@ -931,6 +934,7 @@ class KeckVncLauncher(object):
                      'nirspec': 2,
                      'kcwi':    2,
                      'k2ao':    2,
+                     'k2inst':  2,
                     }
 
         for instrument in accounts.keys():
