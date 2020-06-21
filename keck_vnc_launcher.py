@@ -711,11 +711,12 @@ class KeckVncLauncher(object):
             command.append('-px')
             command.append(aplay)
 
-
-        self.log.info('Calling: ' + ' '.join (command))
+        self.log.info('Playing test sound')
+        self.log.debug('Calling: ' + ' '.join (command))
         test_sound_STDOUT = subprocess.check_output(command)
         for line in test_sound_STDOUT.decode().split('\n'):
             self.log.debug(f'  {line}')
+        self.log.info('  You should have heard a sound through your local system')
 
 
     ##-------------------------------------------------------------------------
@@ -1718,6 +1719,9 @@ class KeckVncLauncher(object):
             self.log.info('--> All tests PASSED <--')
         else:
             self.log.error(f'--> Found {failcount} failures during tests <--')
+
+        self.play_test_sound()
+
         self.exit_app()
 
 
