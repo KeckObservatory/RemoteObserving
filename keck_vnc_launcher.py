@@ -1105,35 +1105,6 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Get engv account for instrument
-    ##-------------------------------------------------------------------------
-    def get_engv_account(self, instrument):
-        self.log.info(f"Getting engv account for instrument {instrument} ...")
-
-        cmd = f'setenv INSTRUMENT {instrument}; kvncinfo -engineering'
-        server = self.initial_server
-        account = self.kvnc_account
-        try:
-            data = self.do_ssh_cmd(cmd, server, account)
-        except Exception as e:
-            self.log.error('  Failed: ' + str(e))
-            trace = traceback.format_exc()
-            self.log.debug(trace)
-            data = None
-
-        engv = None
-        if data is not None and ' ' not in data:
-            engv = data
-
-        if engv is not None:
-            self.log.debug("engv account is: '{}'")
-        else:
-            self.log.error("Could not get engv account info.")
-
-        return engv
-
-
-    ##-------------------------------------------------------------------------
     ## Determine VNC Server
     ##-------------------------------------------------------------------------
     def get_vnc_server(self, account, instrument):
