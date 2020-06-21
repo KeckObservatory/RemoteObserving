@@ -732,7 +732,9 @@ class KeckVncLauncher(object):
 
         # Find Username Prompt
         user_prompt = tn.read_until(b"User: ", timeout=5).decode('ascii')
-        self.log.debug(f"{user_prompt}")
+        for line in user_prompt.split('\n'):
+            line = line.strip().strip('\n')
+            self.log.debug(f"Firewall says: {line}")
         if user_prompt[-6:] != 'User: ':
             self.log.error('Got unexpected response from firewall:')
             self.log.error(user_prompt)
@@ -741,7 +743,9 @@ class KeckVncLauncher(object):
 
         # Find Username Prompt
         password_prompt = tn.read_until(b"password: ", timeout=5).decode('ascii')
-        self.log.debug(f"{password_prompt}")
+        for line in password_prompt.split('\n'):
+            line = line.strip().strip('\n')
+            self.log.debug(f"Firewall says: {line}")
         if password_prompt[-10:] != 'password: ':
             self.log.error('Got unexpected response from firewall:')
             self.log.error(password_prompt)
@@ -750,7 +754,9 @@ class KeckVncLauncher(object):
 
         # Is Password Accepted?
         password_response = tn.read_until(b"Enter your choice: ", timeout=5).decode('ascii')
-        self.log.debug(f"{password_response}")
+        for line in password_response.split('\n'):
+            line = line.strip().strip('\n')
+            self.log.debug(f"Firewall says: {line}")
         if re.search('Access denied - wrong user name or password', password_response):
             self.log.error('Incorrect password entered.')
             return False
@@ -763,6 +769,9 @@ class KeckVncLauncher(object):
         tn.write('1\n'.encode('ascii'))
 
         result = tn.read_all().decode('ascii')
+        for line in result.split('\n'):
+            line = line.strip().strip('\n')
+            self.log.debug(f"Firewall says: {line}")
         if re.search('User authorized for standard services', result):
             self.log.info('User authorized for standard services')
             return True
