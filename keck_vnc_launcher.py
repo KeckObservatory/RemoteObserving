@@ -121,6 +121,8 @@ class KeckVncLauncher(object):
         ## Run tests
         ##---------------------------------------------------------------------
         if self.args.test is True:
+            # On test, always cleanup firewall
+            self.config['firewall_cleanup'] = True
             self.test_all()
         # Verify Tiger VNC Config
         if self.args.authonly is False:
@@ -722,13 +724,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Open the firewall hole for ssh traffic
     ##-------------------------------------------------------------------------
-    def open_firewall(self, authpass):
-
-        #todo: shorten timeout for mistyped password
-
-        self.log.info(f'Authenticating through firewall as:')
-        self.log.info(f' {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
-
+    def do_firewall_command(self, authpass, selection):
         tn = Telnet(self.firewall_address, int(self.firewall_port))
 
         # Find Username Prompt
@@ -740,9 +736,10 @@ class KeckVncLauncher(object):
             self.log.error('Got unexpected response from firewall:')
             self.log.error(user_prompt)
             raise KROException('Got unexpected response from firewall')
+        self.log.debug(f'Sending response: {self.firewall_user}')
         tn.write(f'{self.firewall_user}\n'.encode('ascii'))
 
-        # Find Username Prompt
+        # Find Password Prompt
         password_prompt = tn.read_until(b"password: ", timeout=5).decode('ascii')
         for line in password_prompt.split('\n'):
             line = line.strip().strip('\n')
@@ -751,6 +748,7 @@ class KeckVncLauncher(object):
             self.log.error('Got unexpected response from firewall:')
             self.log.error(password_prompt)
             raise KROException('Got unexpected response from firewall')
+        self.log.debug(f'Sending response: (value hidden from log)')
         tn.write(f'{authpass}\n'.encode('ascii'))
 
         # Is Password Accepted?
@@ -767,12 +765,25 @@ class KeckVncLauncher(object):
             self.log.error('Got unexpected response from firewall:')
             self.log.error(password_response)
             raise KROException('Got unexpected response from firewall')
-        tn.write('1\n'.encode('ascii'))
+
+        self.log.debug(f'Sending response: {selection}')
+        tn.write(f'{selection}\n'.encode('ascii'))
 
         result = tn.read_all().decode('ascii')
         for line in result.split('\n'):
             line = line.strip().strip('\n')
             self.log.debug(f"Firewall says: {line}")
+
+        return result
+
+
+
+    def open_firewall(self, authpass):
+        self.log.info(f'Authenticating through firewall as:')
+        self.log.info(f' {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
+
+        result = self.do_firewall_command(authpass, 1)
+
         if re.search('User authorized for standard services', result):
             self.log.info('User authorized for standard services')
             return True
@@ -790,19 +801,15 @@ class KeckVncLauncher(object):
             return
 
         self.log.info('Closing firewall hole')
-        tn = Telnet(self.firewall_address, int(self.firewall_port))
-        tn.read_until(b"User: ", timeout=5)
-        tn.write(f'{self.firewall_user}\n'.encode('ascii'))
-        tn.read_until(b"password: ", timeout=5)
-        tn.write(f'{authpass}\n'.encode('ascii'))
-        tn.read_until(b"Enter your choice: ", timeout=5)
-        tn.write('2\n'.encode('ascii'))
-        result = tn.read_all().decode('ascii')
+
+        result = self.do_firewall_command(authpass, 2)
 
         if re.search('User was signed off from all services', result):
             self.log.info('User was signed off from all services')
+            return True
         else:
             self.log.error(result)
+            return False
 
 
     ##-------------------------------------------------------------------------
