@@ -859,6 +859,7 @@ class KeckVncLauncher(object):
         ''' Return True if the sshuser firewall hole is open; otherwise
         return False. Also return False if the test cannot be performed.
         '''
+        self.log.debug('Checking whether firewall is open')
 #         try:
 #             netcat = subprocess.check_output(['which', 'ncat'],
 #                                              stderr=subprocess.STDOUT)
