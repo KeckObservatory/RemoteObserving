@@ -859,11 +859,11 @@ class KeckVncLauncher(object):
         ''' Return True if the sshuser firewall hole is open; otherwise
         return False. Also return False if the test cannot be performed.
         '''
-        try:
-            netcat = subprocess.check_output(['which', 'ncat'],
-                                             stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError:
-            netcat = None
+#         try:
+#             netcat = subprocess.check_output(['which', 'ncat'],
+#                                              stderr=subprocess.STDOUT)
+#         except subprocess.CalledProcessError:
+#             netcat = None
 
         # The netcat test is more rigorous, in that it attempts to contact
         # an ssh daemon that should be available to us after opening the
@@ -871,23 +871,23 @@ class KeckVncLauncher(object):
         # the traditional way the old mainland observing script would confirm
         # the firewall status.
 
-        if netcat is not None:
-            netcat = netcat.decode()
-            netcat = netcat.strip()
-            command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w', '2']
+#         if netcat is not None:
+#             netcat = netcat.decode()
+#             netcat = netcat.strip()
+#             command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w', '2']
+# 
+#             self.log.debug('firewall test: ' + ' '.join (command))
+#             null = subprocess.DEVNULL
+#             proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
+#             return_code = proc.wait()
+#             if return_code == 0:
+#                 self.log.debug('firewall is open')
+#                 return True
+#             else:
+#                 self.log.debug('firewall is closed')
+#                 return False
 
-            self.log.debug('firewall test: ' + ' '.join (command))
-            null = subprocess.DEVNULL
-            proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
-            return_code = proc.wait()
-            if return_code == 0:
-                self.log.debug('firewall is open')
-                return True
-            else:
-                self.log.debug('firewall is closed')
-                return False
-
-        elif self.ping_cmd is not None:
+        if self.ping_cmd is not None:
             if self.ping('128.171.95.100') is True:
                 self.log.debug('firewall is open')
                 return True
