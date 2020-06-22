@@ -72,7 +72,6 @@ class KeckVncLauncher(object):
         self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
         self.exit = False
         self.geometry = list()
-        self.get_ping_cmd()
 
         self.log = logging.getLogger('KRO')
 
@@ -116,6 +115,7 @@ class KeckVncLauncher(object):
         ## Log basic system info
         self.log_system_info()
         self.check_version()
+        self.get_ping_cmd()
 
         ## Run tests
         if self.args.test is True:
@@ -821,23 +821,27 @@ class KeckVncLauncher(object):
 
         os = platform.system()
         os = os.lower()
-        # Ping once, wait up to five seconds for a response.
+        # Ping once, wait up to 2 seconds for a response.
         if os == 'linux':
-            self.ping_cmd.extend(['-c', '1', '-w', '5'])
+            self.ping_cmd.extend(['-c', '1', '-w', 'wait'])
         elif os == 'darwin':
-            self.ping_cmd.extend(['-c', '1', '-W', '5000'])
+            self.ping_cmd.extend(['-c', '1', '-W', 'wait000'])
         else:
             # Don't understand how ping works on this platform.
             self.ping_cmd = None
+        self.log.debug(f'Got ping command: {self.ping_cmd[:-1]}')
 
-
-    def ping(self, address):
+    def ping(self, address, wait=5):
         '''Ping a server to determine if it is accessible.
         '''
         if self.ping_cmd is None:
-            return False
+            self.log.warning('No ping command defined')
+            return None
         # Run ping
-        output = subprocess.run(self.ping_cmd + [address],
+        ping_cmd = [x.replace('wait', f'{int(wait)}') for x in self.ping_cmd]
+        ping_cmd.append(address)
+        self.log.debug(' '.join(ping_cmd))
+        output = subprocess.run(ping_cmd,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         if output.returncode != 0:
