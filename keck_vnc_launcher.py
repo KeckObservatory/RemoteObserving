@@ -860,7 +860,8 @@ class KeckVncLauncher(object):
         return False. Also return False if the test cannot be performed.
         '''
         try:
-            netcat = subprocess.check_output(['which', 'ncat'])
+            netcat = subprocess.check_output(['which', 'ncat'],
+                                             stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError:
             netcat = None
 
