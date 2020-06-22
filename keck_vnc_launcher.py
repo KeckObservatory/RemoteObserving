@@ -894,7 +894,7 @@ class KeckVncLauncher(object):
             # No way to check the firewall status. Assume it is closed,
             # authentication will be required.
             self.log.info('firewall is unknown')
-            return False
+            return None
 
 
     ##-------------------------------------------------------------------------
@@ -1731,6 +1731,9 @@ class KeckVncLauncher(object):
         failcount += self.test_tigervnc()
         failcount += self.test_localhost()
         failcount += self.test_ssh_key_format()
+        if self.test_firewall() is None:
+            self.log.error('Could not determine if firewall is open')
+            failcount += 1
         failcount += self.test_firewall_authentication()
         failcount += self.test_ssh_key()
         failcount += self.test_basic_connectivity()
