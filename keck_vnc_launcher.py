@@ -26,7 +26,7 @@ import yaml
 import soundplay
 
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -102,34 +102,31 @@ class KeckVncLauncher(object):
     ## Start point (main)
     ##-------------------------------------------------------------------------
     def start(self):
+        '''Start the main program control loop.
+        
+        This contains the basic sequence of events for running the program.
+        '''
 
-        ##---------------------------------------------------------------------
         ## Parse command line args and get config
-        ##---------------------------------------------------------------------
         self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
         self.get_args()
         self.get_config()
         self.check_config()
 
-        ##---------------------------------------------------------------------
         ## Log basic system info
-        ##---------------------------------------------------------------------
         self.log_system_info()
         self.check_version()
 
-        ##---------------------------------------------------------------------
         ## Run tests
-        ##---------------------------------------------------------------------
         if self.args.test is True:
+            # On test, always cleanup firewall
+            self.config['firewall_cleanup'] = True
             self.test_all()
         # Verify Tiger VNC Config
         if self.args.authonly is False:
             self.test_tigervnc()
 
-        ##---------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
-        ##---------------------------------------------------------------------
-
         if self.firewall_requested == True:
             self.firewall_opened = self.test_firewall()
         else:
@@ -166,23 +163,15 @@ class KeckVncLauncher(object):
 
 
         if self.args.authonly is False:
-            ##---------------------------------------------------------------------
             ## Determine sessions to open
-            ##---------------------------------------------------------------------
             self.sessions_requested = self.get_sessions_requested(self.args)
 
-
-            ##---------------------------------------------------------------------
             ## Determine instrument
-            ##---------------------------------------------------------------------
             self.instrument, self.tel = self.determine_instrument(self.args.account)
             if self.instrument is None:
                 self.exit_app(f'Invalid instrument account: "{self.args.account}"')
 
-
-            ##---------------------------------------------------------------------
             ## Validate ssh key
-            ##---------------------------------------------------------------------
             self.validate_ssh_key()
             if self.ssh_key_valid == False:
                 self.log.error(f"\n\n\tCould not validate SSH key.\n\t"\
@@ -190,20 +179,14 @@ class KeckVncLauncher(object):
                                f"for other options to connect remotely.\n")
                 self.exit_app()
 
-
-            ##---------------------------------------------------------------------
             ## Determine VNC server
-            ##---------------------------------------------------------------------
             self.vncserver = self.get_vnc_server(self.kvnc_account,
                                                  self.instrument)
 
             if self.vncserver is None:
                 self.exit_app("Could not determine VNC server.")
 
-
-            ##---------------------------------------------------------------------
             ## Determine VNC Sessions
-            ##---------------------------------------------------------------------
             self.sessions_found = self.get_vnc_sessions(self.vncserver,
                                                         self.instrument,
                                                         self.kvnc_account,
@@ -213,10 +196,7 @@ class KeckVncLauncher(object):
                     (not self.sessions_found or len(self.sessions_found) == 0):
                 self.exit_app('No VNC sessions found')
 
-
-            ##---------------------------------------------------------------------
             ## Open requested sessions
-            ##---------------------------------------------------------------------
             self.calc_window_geometry()
             self.ports_in_use = dict()
             self.vnc_threads = list()
@@ -224,33 +204,25 @@ class KeckVncLauncher(object):
             for session_name in self.sessions_requested:
                 self.start_vnc_session(session_name)
 
-
-            ##---------------------------------------------------------------------
             ## Open Soundplay
-            ##---------------------------------------------------------------------
             sound = None
             if self.args.nosound is False and self.config.get('nosound', False) != True:
                 self.start_soundplay()
 
-
-        ##---------------------------------------------------------------------
         ## Wait for quit signal, then all done
-        ##---------------------------------------------------------------------
         atexit.register(self.exit_app, msg="App exit")
         self.prompt_menu()
         self.exit_app()
-        #todo: Do we need to call exit here explicitly?  App was not exiting on
-        # MacOs but does on linux.
 
 
     ##-------------------------------------------------------------------------
     ## Start VNC session
     ##-------------------------------------------------------------------------
     def start_vnc_session(self, session_name):
-
+        '''Open VNC viewer program for a given session.
+        '''
         self.log.info(f"Opening VNCviewer for '{session_name}'")
 
-#         try:
         #get session data by name
         session = None
         for s in self.sessions_found:
@@ -336,6 +308,8 @@ class KeckVncLauncher(object):
     ## Get command line args
     ##-------------------------------------------------------------------------
     def get_args(self):
+        '''Retrieve the command line arguments.
+        '''
         self.args = create_parser()
 
 
@@ -343,7 +317,8 @@ class KeckVncLauncher(object):
     ## Get Configuration
     ##-------------------------------------------------------------------------
     def get_config(self):
-
+        '''Read the configuration file.
+        '''
         #define files to try loading in order of pref
         filenames=['local_config.yaml', 'keck_vnc_config.yaml']
 
@@ -393,7 +368,8 @@ class KeckVncLauncher(object):
     ## Check Configuration
     ##-------------------------------------------------------------------------
     def check_config(self):
-
+        '''Do some basic checks on the configuration.
+        '''
         #check for vncviewer
         #NOTE: Ok if not specified, we will tell them to open vncviewer manually
         #todo: check if valid cmd path?
@@ -452,11 +428,13 @@ class KeckVncLauncher(object):
     ## Log basic system info
     ##-------------------------------------------------------------------------
     def log_system_info(self):
-        #todo: gethostbyname stopped working after I updated mac. need better method
+        '''Add info about the local system to the log for debugging
+        '''
         try:
             self.log.debug(f'System Info: {os.uname()}')
             hostname = socket.gethostname()
             self.log.debug(f'System hostname: {hostname}')
+            #todo: gethostbyname stopped working after I updated mac. need better method
             # ip = socket.gethostbyname(hostname)
             # self.log.debug(f'System IP Address: {ip}')
             self.log.info(f'Remote Observing Software Version = {__version__}')
@@ -470,8 +448,8 @@ class KeckVncLauncher(object):
     ## Get sessions to open
     ##-------------------------------------------------------------------------
     def get_sessions_requested(self, args):
-
-        #get sessions to open
+        '''Determine which sessions to open based on command line arguments
+        '''
         sessions = list()
         for session in SESSION_NAMES:
             try:
@@ -494,7 +472,8 @@ class KeckVncLauncher(object):
     ## Print sessions found for instrument
     ##-------------------------------------------------------------------------
     def print_sessions_found(self):
-
+        '''Print the VNC sessions found on the VNC server for this account
+        '''
         print(f"\nSessions found for account '{self.args.account}':")
         for s in self.sessions_found:
             print(s)
@@ -504,7 +483,8 @@ class KeckVncLauncher(object):
     ## List Open Tunnels
     ##-------------------------------------------------------------------------
     def list_tunnels(self):
-
+        '''Print the SSH tunnels that the program has opened
+        '''
         if len(self.ports_in_use) == 0:
             print(f"No SSH tunnels opened by this program")
         else:
@@ -521,9 +501,10 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def open_ssh_tunnel(self, server, username, ssh_pkey, remote_port,
                         local_port=None, session_name='unknown'):
-
-        # If the local port is not specified attempt to find one dynamically.
-
+        '''Open an SSH tunnel.
+        
+        If the local port is not specified attempt to find one dynamically.
+        '''
         if local_port is None:
             for i in range(0,100):
                 if self.is_local_port_in_use(self.local_port):
@@ -540,11 +521,9 @@ class KeckVncLauncher(object):
             self.local_port = self.LOCAL_PORT_START
             return False
 
-
         address_and_port = f"{username}@{server}:{remote_port}"
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
-
 
         # We now know everything we need to know in order to establish the
         # tunnel. Build the command line options and start the child process.
@@ -567,7 +546,6 @@ class KeckVncLauncher(object):
         self.log.debug('ssh command: ' + ' '.join (command))
         null = subprocess.DEVNULL
         proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
-
 
         # Having started the process let's make sure it's actually running.
         # First try polling,  then confirm the requested local port is in use.
@@ -597,10 +575,12 @@ class KeckVncLauncher(object):
         return local_port
 
 
-
     ##-------------------------------------------------------------------------
+    ## Is the local port un use?
     ##-------------------------------------------------------------------------
     def is_local_port_in_use(self, port):
+        '''Determine if the specified local port is in use.
+        '''
         cmd = f'lsof -i -P -n | grep LISTEN | grep ":{port} (LISTEN)" | grep -v grep'
         self.log.debug(f'Checking for port {port} in use: ' + cmd)
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
@@ -618,7 +598,8 @@ class KeckVncLauncher(object):
     ## Launch vncviewer
     ##-------------------------------------------------------------------------
     def launch_vncviewer(self, vncserver, port, geometry=None):
-
+        '''Open local VNC viewer program given a server and port.
+        '''
         vncviewercmd = self.config.get('vncviewer', 'vncviewer')
         vncprefix = self.config.get('vncprefix', '')
         vncargs = self.config.get('vncargs', None)
@@ -654,7 +635,8 @@ class KeckVncLauncher(object):
     ## Start soundplay
     ##-------------------------------------------------------------------------
     def start_soundplay(self):
-
+        '''Start the soundplay process.
+        '''
         try:
             #check for existing first and shutdown
             if self.sound is not None:
@@ -695,9 +677,17 @@ class KeckVncLauncher(object):
             self.log.debug(trace)
 
 
+    ##-------------------------------------------------------------------------
+    ## Play a test sound
+    ##-------------------------------------------------------------------------
     def play_test_sound(self):
+        '''Play a test sound.
+        
+        This sound will be a local file, so is a good test of the local system
+        hardware and software setup.
+        '''
         if self.config.get('nosound', False) is True:
-            self.log.warning('Sounds are not enabled on this install.  See config file.')
+            self.log.warning('Sounds are not enabled.  See config file.')
             return
 
         # Build the soundplay test command.
@@ -711,46 +701,54 @@ class KeckVncLauncher(object):
             command.append('-px')
             command.append(aplay)
 
-
-        self.log.info('Calling: ' + ' '.join (command))
+        self.log.info('Playing test sound')
+        self.log.debug('Calling: ' + ' '.join (command))
         test_sound_STDOUT = subprocess.check_output(command)
         for line in test_sound_STDOUT.decode().split('\n'):
             self.log.debug(f'  {line}')
+        self.log.info('  You should have heard a sound through your local system')
 
 
     ##-------------------------------------------------------------------------
-    ## Open the firewall hole for ssh traffic
+    ## Communicate with the firewall
     ##-------------------------------------------------------------------------
-    def open_firewall(self, authpass):
-
-        #todo: shorten timeout for mistyped password
-
-        self.log.info(f'Authenticating through firewall as:')
-        self.log.info(f' {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
-
+    def do_firewall_command(self, authpass, selection):
+        '''Interact with the firewall to authenticate or deauthenticate.
+        
+        The selection value is the response to the firewall's query after
+        authenticating past the username and password steps.
+        '''
         tn = Telnet(self.firewall_address, int(self.firewall_port))
 
         # Find Username Prompt
         user_prompt = tn.read_until(b"User: ", timeout=5).decode('ascii')
-        self.log.debug(f"{user_prompt}")
+        for line in user_prompt.split('\n'):
+            line = line.strip().strip('\n')
+            self.log.debug(f"Firewall says: {line}")
         if user_prompt[-6:] != 'User: ':
             self.log.error('Got unexpected response from firewall:')
             self.log.error(user_prompt)
             raise KROException('Got unexpected response from firewall')
+        self.log.debug(f'Sending response: {self.firewall_user}')
         tn.write(f'{self.firewall_user}\n'.encode('ascii'))
 
-        # Find Username Prompt
+        # Find Password Prompt
         password_prompt = tn.read_until(b"password: ", timeout=5).decode('ascii')
-        self.log.debug(f"{password_prompt}")
+        for line in password_prompt.split('\n'):
+            line = line.strip().strip('\n')
+            self.log.debug(f"Firewall says: {line}")
         if password_prompt[-10:] != 'password: ':
             self.log.error('Got unexpected response from firewall:')
             self.log.error(password_prompt)
             raise KROException('Got unexpected response from firewall')
+        self.log.debug(f'Sending response: (value hidden from log)')
         tn.write(f'{authpass}\n'.encode('ascii'))
 
         # Is Password Accepted?
         password_response = tn.read_until(b"Enter your choice: ", timeout=5).decode('ascii')
-        self.log.debug(f"{password_response}")
+        for line in password_response.split('\n'):
+            line = line.strip().strip('\n')
+            self.log.debug(f"Firewall says: {line}")
         if re.search('Access denied - wrong user name or password', password_response):
             self.log.error('Incorrect password entered.')
             return False
@@ -760,9 +758,26 @@ class KeckVncLauncher(object):
             self.log.error('Got unexpected response from firewall:')
             self.log.error(password_response)
             raise KROException('Got unexpected response from firewall')
-        tn.write('1\n'.encode('ascii'))
+
+        self.log.debug(f'Sending response: {selection}')
+        tn.write(f'{selection}\n'.encode('ascii'))
 
         result = tn.read_all().decode('ascii')
+        for line in result.split('\n'):
+            line = line.strip().strip('\n')
+            self.log.debug(f"Firewall says: {line}")
+
+        return result
+
+
+    def open_firewall(self, authpass):
+        '''Simple wrapper to open firewall.
+        '''
+        self.log.info(f'Authenticating through firewall as:')
+        self.log.info(f' {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
+
+        result = self.do_firewall_command(authpass, 1)
+
         if re.search('User authorized for standard services', result):
             self.log.info('User authorized for standard services')
             return True
@@ -771,32 +786,25 @@ class KeckVncLauncher(object):
             return False
 
 
-    ##-------------------------------------------------------------------------
-    ## Close the firewall hole for ssh traffic
-    ##-------------------------------------------------------------------------
     def close_firewall(self, authpass):
-
+        '''Simple wrapper to close firewall.
+        '''
         if self.firewall_opened == False:
             return
-
         self.log.info('Closing firewall hole')
-        tn = Telnet(self.firewall_address, int(self.firewall_port))
-        tn.read_until(b"User: ", timeout=5)
-        tn.write(f'{self.firewall_user}\n'.encode('ascii'))
-        tn.read_until(b"password: ", timeout=5)
-        tn.write(f'{authpass}\n'.encode('ascii'))
-        tn.read_until(b"Enter your choice: ", timeout=5)
-        tn.write('2\n'.encode('ascii'))
-        result = tn.read_all().decode('ascii')
+
+        result = self.do_firewall_command(authpass, 2)
 
         if re.search('User was signed off from all services', result):
             self.log.info('User was signed off from all services')
+            return True
         else:
             self.log.error(result)
+            return False
 
 
     ##-------------------------------------------------------------------------
-    ## Check to see whether the firewall hole is already open.
+    ## Ping
     ##-------------------------------------------------------------------------
     def get_ping_cmd(self):
         '''Assemble the local ping command.
@@ -824,7 +832,7 @@ class KeckVncLauncher(object):
 
 
     def ping(self, address):
-        '''Wrap logic around the ping command.
+        '''Ping a server to determine if it is accessible.
         '''
         if self.ping_cmd is None:
             return False
@@ -844,11 +852,13 @@ class KeckVncLauncher(object):
             return True
 
 
+    ##-------------------------------------------------------------------------
+    ## Check to see whether the firewall hole is already open.
+    ##-------------------------------------------------------------------------
     def test_firewall(self):
         ''' Return True if the sshuser firewall hole is open; otherwise
-            return False. Also return False if the test cannot be performed.
+        return False. Also return False if the test cannot be performed.
         '''
-
         try:
             netcat = subprocess.check_output(['which', 'ncat'])
         except subprocess.CalledProcessError:
@@ -890,11 +900,12 @@ class KeckVncLauncher(object):
             return False
 
 
-
     ##-------------------------------------------------------------------------
     ## Determine Instrument
     ##-------------------------------------------------------------------------
     def determine_instrument(self, account):
+        '''Given an account name, determine the instrument and telescope.
+        '''
         accounts = {'mosfire':  [f'mosfire{i}' for i in range(1,10)],
                     'hires':    [f'hires{i}'   for i in range(1,10)],
                     'osiris':   [f'osiris{i}'  for i in range(1,10)],
@@ -907,6 +918,8 @@ class KeckVncLauncher(object):
                     'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
                     'k1ao':     ['k1obsao'],
                     'k2ao':     ['k2obsao'],
+                    'k1inst':   ['k1insttech'],
+                    'k2inst':   ['k2insttech'],
                    }
         accounts['mosfire'].append('moseng')
         accounts['hires'].append('hireseng')
@@ -924,6 +937,7 @@ class KeckVncLauncher(object):
                      'osiris':  1,
                      'lris':    1,
                      'k1ao':    1,
+                     'k1inst':  1,
                      'nires':   2,
                      'deimos':  2,
                      'esi':     2,
@@ -931,6 +945,7 @@ class KeckVncLauncher(object):
                      'nirspec': 2,
                      'kcwi':    2,
                      'k2ao':    2,
+                     'k2inst':  2,
                     }
 
         for instrument in accounts.keys():
@@ -941,9 +956,12 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Utility function for opening ssh client, executing command and closing
+    ## SSH Command
     ##-------------------------------------------------------------------------
     def do_ssh_cmd(self, cmd, server, account, timeout=10):
+        '''Utility function for opening ssh client, executing command and
+        closing.
+        '''
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
 
@@ -1020,6 +1038,9 @@ class KeckVncLauncher(object):
     ## Validate ssh key on remote vnc server
     ##-------------------------------------------------------------------------
     def validate_ssh_key(self):
+        '''Issue a simple command and check response as a check to see if the
+        SSH key is valid.
+        '''
         if self.ssh_key_valid == True:
             return
 
@@ -1046,38 +1067,11 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Get engv account for instrument
-    ##-------------------------------------------------------------------------
-    def get_engv_account(self, instrument):
-        self.log.info(f"Getting engv account for instrument {instrument} ...")
-
-        cmd = f'setenv INSTRUMENT {instrument}; kvncinfo -engineering'
-        server = self.initial_server
-        account = self.kvnc_account
-        try:
-            data = self.do_ssh_cmd(cmd, server, account)
-        except Exception as e:
-            self.log.error('  Failed: ' + str(e))
-            trace = traceback.format_exc()
-            self.log.debug(trace)
-            data = None
-
-        engv = None
-        if data is not None and ' ' not in data:
-            engv = data
-
-        if engv is not None:
-            self.log.debug("engv account is: '{}'")
-        else:
-            self.log.error("Could not get engv account info.")
-
-        return engv
-
-
-    ##-------------------------------------------------------------------------
     ## Determine VNC Server
     ##-------------------------------------------------------------------------
     def get_vnc_server(self, account, instrument):
+        '''Determine the VNC server to connect to given the instrument
+        '''
         self.log.info(f"Determining VNC server for '{account}'...")
         vncserver = None
         for server in self.servers_to_try:
@@ -1111,6 +1105,8 @@ class KeckVncLauncher(object):
     ## Determine VNC Sessions
     ##-------------------------------------------------------------------------
     def get_vnc_sessions(self, vncserver, instrument, account, instr_account):
+        '''Determine the VNC sessions running for the given account.
+        '''
         self.log.info(f"Connecting to {account}@{vncserver} to get VNC sessions list")
 
         sessions = list()
@@ -1147,6 +1143,8 @@ class KeckVncLauncher(object):
     ## Close ssh threads
     ##-------------------------------------------------------------------------
     def close_ssh_thread(self, p):
+        '''Close an SSH thread.
+        '''
         try:
             remote_connection, desktop, process = self.ports_in_use.pop(p, None)
         except KeyError:
@@ -1158,6 +1156,8 @@ class KeckVncLauncher(object):
 
 
     def close_ssh_threads(self):
+        '''Close all SSH threads.
+        '''
         for p in list(self.ports_in_use.keys()):
             self.close_ssh_thread(p)
 
@@ -1166,7 +1166,8 @@ class KeckVncLauncher(object):
     ## Calculate vnc windows size and position
     ##-------------------------------------------------------------------------
     def calc_window_geometry(self):
-
+        '''From the screen dimensions, guess at the best layout of VNC screens.
+        '''
         self.log.debug(f"Calculating VNC window geometry...")
 
         #get screen dimensions
@@ -1217,7 +1218,8 @@ class KeckVncLauncher(object):
     ## Position vncviewers
     ##-------------------------------------------------------------------------
     def position_vnc_windows(self):
-
+        '''Reposition the VNC windows to the preferred positions
+        '''
         self.log.info(f"Positioning VNC windows...")
 
         #get all x-window processes
@@ -1264,7 +1266,8 @@ class KeckVncLauncher(object):
     ## Prompt command line menu and wait for quit signal
     ##-------------------------------------------------------------------------
     def prompt_menu(self):
-
+        '''Print the user menu to the screen
+        '''
         line_length = 50
         lines = [f"-"*(line_length),
                  f"          Keck Remote Observing (v{__version__})",
@@ -1351,6 +1354,9 @@ class KeckVncLauncher(object):
     ## Check for latest version number on GitHub
     ##-------------------------------------------------------------------------
     def check_version(self):
+        '''Compare the version of the local software against that available on
+        GitHub.
+        '''
         url = ('https://raw.githubusercontent.com/KeckObservatory/'
                'RemoteObserving/master/keck_vnc_launcher.py')
         try:
@@ -1382,11 +1388,15 @@ class KeckVncLauncher(object):
             self.log.warning("Unable to verify remote version")
             self.log.debug(e)
 
+
     ##-------------------------------------------------------------------------
     ## Upload log file to Keck
     ##-------------------------------------------------------------------------
     def upload_log(self):
-
+        '''Upload the current log file to the VNC server at Keck.
+        
+        The file will ens up in the ~kvnc directory for the VNC server.
+        '''
         account = self.kvnc_account
 
         logfile_handlers = [lh for lh in self.log.handlers if
@@ -1435,7 +1445,8 @@ class KeckVncLauncher(object):
     ## Terminate all vnc processes
     ##-------------------------------------------------------------------------
     def kill_vnc_processes(self, msg=None):
-
+        '''Terminate all VNC sessions
+        '''
         self.log.info('Terminating all VNC sessions.')
         try:
             #NOTE: poll() value of None means it still exists.
@@ -1455,7 +1466,8 @@ class KeckVncLauncher(object):
     ## Common app exit point
     ##-------------------------------------------------------------------------
     def exit_app(self, msg=None):
-
+        '''Exit the app
+        '''
         #hack for preventing this function from being called twice
         #todo: need to figure out how to use atexit with threads properly
         if self.exit == True:
@@ -1492,7 +1504,8 @@ class KeckVncLauncher(object):
     ## Handle fatal error
     ##-------------------------------------------------------------------------
     def handle_fatal_error(self, error):
-
+        '''Wrapper to handle uncaught errors
+        '''
         #helpful user error message
         print("\n****** PROGRAM ERROR ******\n")
         print("Error message: " + str(error) + "\n")
@@ -1518,6 +1531,13 @@ class KeckVncLauncher(object):
     ## Tests
     ##-------------------------------------------------------------------------
     def test_config_format(self):
+        '''Test:
+        - The config file has a valid firewall_address specified
+        - The config file has a valid firewall_port specified
+        - The config file has a valid firewall_user specified
+        - The config file has a valid ssh_pkey path specified
+        - The config file has a valid vncviewer executable path specified
+        '''
         import socket
         failcount = 0
         self.log.info('Checking config file: firewall_address')
@@ -1565,6 +1585,11 @@ class KeckVncLauncher(object):
 
 
     def test_tigervnc(self):
+        '''Test (only executes test in the vncviewer is TigerVNC):
+        - Check that ~/.vnc/default.tigervnc exists
+        - Check that ~/.vnc/default.tigervnc has a RemoteResize entry
+        - Check that the RemoteResize entry is set to 0
+        '''
         failcount = 0
         vncviewercmd = self.config.get('vncviewer', 'vncviewer')
         cmd = [vncviewercmd, '--help']
@@ -1635,6 +1660,9 @@ class KeckVncLauncher(object):
 
 
     def test_firewall_authentication(self):
+        '''Test:
+        - Must authenticate through the firewall successfully.
+        '''
         failcount = 0
         self.log.info('Testing firewall authentication')
         self.firewall_opened = False
@@ -1649,6 +1677,9 @@ class KeckVncLauncher(object):
 
 
     def test_ssh_key(self):
+        '''Test:
+        - Must succeed in validating the SSH key.
+        '''
         failcount = 0
         self.validate_ssh_key()
         if self.ssh_key_valid is False:
@@ -1659,6 +1690,10 @@ class KeckVncLauncher(object):
 
 
     def test_basic_connectivity(self):
+        '''Test:
+        - Successfully connect to the listed servers at Keck and get a valid
+        response from an SSH command.
+        '''
         failcount = 0
         servers_and_results = [('svncserver1', 'kaalualu'),
                                ('svncserver2', 'ohaiula'),
@@ -1692,6 +1727,8 @@ class KeckVncLauncher(object):
 
 
     def test_all(self):
+        '''Run all of the tests.
+        '''
         failcount = 0
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
@@ -1705,6 +1742,9 @@ class KeckVncLauncher(object):
             self.log.info('--> All tests PASSED <--')
         else:
             self.log.error(f'--> Found {failcount} failures during tests <--')
+
+        self.play_test_sound()
+
         self.exit_app()
 
 

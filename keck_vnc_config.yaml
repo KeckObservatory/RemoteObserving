@@ -35,7 +35,7 @@ vncargs: '-Shared -FullColor -PreferredEncoding=ZRLE -AutoSelect=0'
 ##   Example: RealVNC (macOS)
 #vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer'
 #vncprefix: ''
-#vncargs: '-Shared'
+#vncargs: '-Shared -FullColor'
 ##
 ##   Example: Built in Screen Sharing app in macOS:
 #vncviewer: 'open'
