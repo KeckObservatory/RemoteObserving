@@ -888,12 +888,13 @@ class KeckVncLauncher(object):
 
         # Use ping if no netcat is specified
         if self.ping_cmd is not None:
-            if self.ping('128.171.95.100') is True:
-                self.log.info('firewall is open')
-                return True
-            else:
-                self.log.info('firewall is closed')
-                return False
+            for server in self.servers_to_try:
+                up = self.ping(f'{server}.keck.hawaii.edu', wait=2)
+                if up is True:
+                    self.log.info('firewall is open')
+                    return True
+            self.log.info('firewall is closed')
+            return False
         else:
             # No way to check the firewall status. Assume it is closed,
             # authentication will be required.
