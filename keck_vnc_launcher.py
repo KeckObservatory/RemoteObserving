@@ -1194,6 +1194,8 @@ class KeckVncLauncher(object):
 
 
     def calc_window_geometry(self):
+        '''If window positions are not set in config file, make a guess.
+        '''
         window_positions = self.config.get('window_positions', None)
         if window_positions is not None:
             self.geometry = window_positions
@@ -1202,7 +1204,6 @@ class KeckVncLauncher(object):
             num_win = len(self.sessions_requested)
             cols = 2
             rows = 2
-
             self.get_display_info()
             screen = self.screens[0]
             #get x/y coords (assume two rows)
@@ -1215,7 +1216,6 @@ class KeckVncLauncher(object):
                         x = window_positions[index][0]
                         y = window_positions[index][1]
                     self.geometry.append([-1, -1, x, y])
-
         self.log.debug('geometry: ' + str(self.geometry))
 
 
@@ -1231,7 +1231,7 @@ class KeckVncLauncher(object):
         #NOTE: using wmctrl (does not work for Mac)
         #alternate option: xdotool?
         cmd = ['wmctrl', '-l']
-        wmctrl_l = subprocess.run(cmd, stdout=subprocess.PIPE)
+        wmctrl_l = subprocess.run(cmd, stdout=subprocess.PIPE, timeout=5)
         if wmctrl_l.returncode != 0:
             return None
         stdout = wmctrl_l.stdout.decode()
@@ -1254,7 +1254,7 @@ class KeckVncLauncher(object):
                 cmd = ['wmctrl', '-i', '-r', win_id, '-e',
                        f'0,{geom[0]},{geom[1]},-1,-1']
                 self.log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
-                wmctrl = subprocess.run(cmd, stdout=subprocess.PIPE)
+                wmctrl = subprocess.run(cmd, stdout=subprocess.PIPE, timeout=5)
                 if wmctrl.returncode != 0:
                     return None
                 stdout = wmctrl.stdout.decode()
