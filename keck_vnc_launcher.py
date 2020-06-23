@@ -1174,11 +1174,15 @@ class KeckVncLauncher(object):
         self.geometry = list()
         xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE, timeout=5)
-        if xpdyinfo.returncode != 0:
-            return None
         stdout = xpdyinfo.stdout.decode()
-#         for line in stdout.split('\n'):
-#             self.log.debug(f"xdpyinfo: {line}")
+        stderr = xpdyinfo.stderr.decode()
+        if xpdyinfo.returncode != 0:
+            self.log.debug(f'xpdyinfo failed')
+            for line in stdout.split('\n'):
+                self.log.debug(f"xdpyinfo: {line}")
+            for line in stderr.split('\n'):
+                self.log.debug(f"xdpyinfo: {line}")
+            return None
         find_nscreens = re.search('number of screens:\s+(\d+)', stdout)
         nscreens = int(find_nscreens.group(1)) if find_nscreens is not None else 1
         self.log.debug(f'Number of screens = {nscreens}')
@@ -1232,13 +1236,18 @@ class KeckVncLauncher(object):
         #alternate option: xdotool?
         cmd = ['wmctrl', '-l']
         wmctrl_l = subprocess.run(cmd, stdout=subprocess.PIPE, timeout=5)
-        if wmctrl_l.returncode != 0:
-            return None
         stdout = wmctrl_l.stdout.decode()
+        stderr = wmctrl_l.stderr.decode()
+        if wmctrl_l.returncode != 0:
+            self.log.debug(f'wmctrl failed')
+            for line in stdout.split('\n'):
+                self.log.debug(f'wmctrl line: {line}')
+            for line in stderr.split('\n'):
+                self.log.debug(f'wmctrl line: {line}')
+            return None
         win_ids = dict([x for x in zip(self.sessions_requested,
                                 [None for entry in self.sessions_requested])])
         for line in stdout.split('\n'):
-#             self.log.debug(f'wmctrl line: {line}')
             for session in self.sessions_requested:
                 if session in line:
                     self.log.debug(f"Found {session} in {line}")
