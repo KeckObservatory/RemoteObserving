@@ -81,8 +81,22 @@ default_sessions: ['control0', 'control1', 'control2', 'telstatus']
 #window_positions: [[0, 0], [1280, 0], [0, 1280], [1280, 0]]
 
 
-## If the firewall authentication has been performed, should the script
-## de-authenticate when it exits? This is generally not required; the firewall
-## authorization will automatically expire after 24 hours. Set this option to
-## True to close the firewall hole when the script exits.
+## Firewall Cleanup
+##   If the firewall authentication has been performed, should the script
+##   de-authenticate when it exits? This is generally not required; the
+##   firewall authorization will automatically expire after 24 hours. Set this
+##    option to True to close the firewall hole when the script exits.
 firewall_cleanup: False
+
+
+## Firewall check
+##   This is done using ping by default.  However, the netcat test is more
+##   rigorous, in that it attempts to contact an ssh daemon that should be
+##   available to us after opening the firewall hole.  If you would like to use
+##   netcat, set the command and arguments below.
+##
+##   Example: linux
+#netcat: 'ncat -w 2'
+##
+##   Example: macOS (netcat v 0.7.1 installed via brew)
+#netcat: 'ncat -z -w 2'
