@@ -72,7 +72,6 @@ class KeckVncLauncher(object):
         self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
         self.exit = False
         self.geometry = list()
-        self.get_ping_cmd()
         self.tigervnc = None
         self.vncviewer_has_geometry = None
 
@@ -113,6 +112,7 @@ class KeckVncLauncher(object):
         self.get_args()
         self.get_config()
         self.check_config()
+        self.get_ping_cmd()
 
         ## Log basic system info
         self.log_system_info()
