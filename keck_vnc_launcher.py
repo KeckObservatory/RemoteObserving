@@ -285,12 +285,9 @@ class KeckVncLauncher(object):
         #NOTE: This doesn't work for mac so only trying for linux
         geometry = ''
         if 'linux' in platform.system().lower():
-            self.log.debug('Setting geometry for vncviewer command')
-            self.log.debug(f'{self.vnc_threads}')
-            self.log.debug(f'{self.geometry}')
-
             i = len(self.vnc_threads) % len(self.geometry)
             xpos, ypos = self.geometry[i]
+            self.log.debug(f'Geometry for vncviewer command: +{xpos}+{ypos}')
             if xpos is not None and ypos is not None:
                 geometry += f'+{xpos}+{ypos}'
 
@@ -1175,11 +1172,11 @@ class KeckVncLauncher(object):
         xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE, timeout=5)
         stdout = xpdyinfo.stdout.decode()
-        stderr = xpdyinfo.stderr.decode()
         if xpdyinfo.returncode != 0:
             self.log.debug(f'xpdyinfo failed')
             for line in stdout.split('\n'):
                 self.log.debug(f"xdpyinfo: {line}")
+            stderr = xpdyinfo.stderr.decode()
             for line in stderr.split('\n'):
                 self.log.debug(f"xdpyinfo: {line}")
             return None
@@ -1237,11 +1234,13 @@ class KeckVncLauncher(object):
         cmd = ['wmctrl', '-l']
         wmctrl_l = subprocess.run(cmd, stdout=subprocess.PIPE, timeout=5)
         stdout = wmctrl_l.stdout.decode()
-        stderr = wmctrl_l.stderr.decode()
+        for line in stdout.split('\n'):
+            self.log.debug(f'wmctrl line: {line}')
         if wmctrl_l.returncode != 0:
             self.log.debug(f'wmctrl failed')
             for line in stdout.split('\n'):
                 self.log.debug(f'wmctrl line: {line}')
+            stderr = wmctrl_l.stderr.decode()
             for line in stderr.split('\n'):
                 self.log.debug(f'wmctrl line: {line}')
             return None
@@ -1253,6 +1252,7 @@ class KeckVncLauncher(object):
                     self.log.debug(f"Found {session} in {line}")
                     win_id = line.split()[0]
                     win_ids[session] = line.split()[0]
+                    self.log.debug(f'{session}: {win_ids[session]}')
 
         for i,session in enumerate(self.sessions_requested):
             if win_ids.get(session, None) is not None:
