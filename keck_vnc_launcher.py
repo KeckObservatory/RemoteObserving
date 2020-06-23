@@ -73,9 +73,9 @@ class KeckVncLauncher(object):
         self.exit = False
         self.geometry = list()
         self.get_ping_cmd()
+        self.tigervnc = None
 
         self.log = logging.getLogger('KRO')
-
 
         #default start sessions
         self.default_sessions = [
@@ -116,6 +116,7 @@ class KeckVncLauncher(object):
         ## Log basic system info
         self.log_system_info()
         self.check_version()
+        self.are_we_using_tigerVNC()
 
         ## Run tests
         if self.args.test is True:
@@ -284,7 +285,7 @@ class KeckVncLauncher(object):
         #determine geometry
         #NOTE: This doesn't work for mac so only trying for linux
         geometry = ''
-        if 'linux' in platform.system().lower():
+        if 'linux' in platform.system().lower() or self.tigervnc is True:
             i = len(self.vnc_threads) % len(self.geometry)
             xpos, ypos = self.geometry[i]
             self.log.debug(f'Geometry for vncviewer command: +{xpos}+{ypos}')
@@ -437,6 +438,22 @@ class KeckVncLauncher(object):
             self.log.error("Unable to log system info.")
             trace = traceback.format_exc()
             self.log.debug(trace)
+
+
+    def are_we_using_tigerVNC(self):
+        '''Determine whether we are using TigerVNC
+        '''
+        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
+        cmd = [vncviewercmd, '--help']
+        self.log.debug(f'Checking VNC viewer: {" ".join(cmd)}')
+        result = subprocess.run(cmd, capture_output=True)
+        output = result.stdout.decode() + '\n' + result.stderr.decode()
+        if re.search(r'TigerVNC', output):
+            self.log.info(f'We ARE using TigerVNC')
+            self.tigervnc = True
+        else:
+            self.log.debug(f'We ARE NOT using TigerVNC')
+            self.tigervnc = False
 
 
     ##-------------------------------------------------------------------------
@@ -1598,17 +1615,12 @@ class KeckVncLauncher(object):
         - Check that the RemoteResize entry is set to 0
         '''
         failcount = 0
-        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
-        cmd = [vncviewercmd, '--help']
-        self.log.debug(f'Checking VNC viewer: {" ".join(cmd)}')
-        result = subprocess.run(cmd, capture_output=True)
-        output = result.stdout.decode() + '\n' + result.stderr.decode()
-        if re.search(r'TigerVNC', output):
-            self.log.info(f'Checking TigerVNC defaults')
-        else:
-            self.log.debug(f'We are NOT using TigerVNC')
+        if self.tigervnc is None:
+            self.are_we_using_tigerVNC()
+        if self.tigervnc is False:
             return failcount
-
+        
+        self.log.info(f'Checking TigerVNC defaults')
         tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
         if tigervnc_config_file.exists() is False:
             self.log.error(f'Could not find {tigervnc_config_file}')
