@@ -293,7 +293,7 @@ class KeckVncLauncher(object):
 
         ## Open vncviewer as separate thread
         args = (vncserver, local_port, geometry)
-        vnc_thread = Thread(target=self.launch_vncviewer, args=args)
+        vnc_thread = Thread(target=self.launch_vncviewer, args=args, name=session_name)
         vnc_thread.start()
         self.vnc_threads.append(vnc_thread)
         time.sleep(0.05)
@@ -1247,18 +1247,19 @@ class KeckVncLauncher(object):
         win_ids = dict([x for x in zip(self.sessions_requested,
                                 [None for entry in self.sessions_requested])])
         for line in stdout.split('\n'):
-            for session in self.sessions_requested:
+            for thread in self.vnc_threads:
+                session = thread.name
                 if session in line:
                     self.log.debug(f"Found {session} in {line}")
                     win_id = line.split()[0]
                     win_ids[session] = line.split()[0]
-                    self.log.debug(f'{session}: {win_ids[session]}')
 
-        for i,session in enumerate(self.sessions_requested):
+        for i,thread in enumerate(self.vnc_threads):
+            session = thread.name
             if win_ids.get(session, None) is not None:
                 index = i % len(self.geometry)
                 geom = self.geometry[index]
-                self.log.debug(f'{session}: {geom}')
+                self.log.debug(f'{session} has geometry: {geom}')
 
                 cmd = ['wmctrl', '-i', '-r', win_ids[session], '-e',
                        f'0,{geom[0]},{geom[1]},-1,-1']
