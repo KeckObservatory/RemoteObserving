@@ -289,13 +289,10 @@ class KeckVncLauncher(object):
             self.get_vncviewer_properties()
         if self.vncviewer_has_geometry is True:
             i = len(self.vnc_threads) % len(self.geometry)
-            xpos, ypos = self.geometry[i]
-            self.log.debug(f'Geometry for vncviewer command: +{xpos}+{ypos}')
-            if xpos is not None and ypos is not None:
-                geometry += f'+{xpos}+{ypos}'
+            geom = self.geometry[i]
 
         ## Open vncviewer as separate thread
-        args = (vncserver, local_port, geometry)
+        args = (vncserver, local_port, geom)
         vnc_thread = Thread(target=self.launch_vncviewer, args=args, name=session_name)
         vnc_thread.start()
         self.vnc_threads.append(vnc_thread)
@@ -624,16 +621,26 @@ class KeckVncLauncher(object):
         vncviewercmd = self.config.get('vncviewer', 'vncviewer')
         vncprefix = self.config.get('vncprefix', '')
         vncargs = self.config.get('vncargs', None)
+        cmd = list()
 
-        cmd = [vncviewercmd]
+        if geometry[0] is not None and geometry[1] is not None:
+            geometry_str = f'+{geometry[0]}+{geometry[1]}'
+            self.log.debug(f'Geometry for vncviewer command: {geometry_str}')
+        if len(geometry) == 3:
+            display = geometry[2]
+            # setenv DISPLAY ${xhostnam}:${xdispnum}.$screen
+            self.log.debug(f'Display number for vncviewer command: {display}')
+            cmd.extend(['setenv', 'DISPLAY', f':{display}.0'])
+
+        cmd.append(vncviewercmd)
         if vncargs is not None:
             vncargs = vncargs.split()
-            cmd = cmd + vncargs
+            cmd.extend(vncargs)
         if self.args.viewonly == True:
             cmd.append('-ViewOnly')
-        #todo: make this config on/off so it doesn't break things
-        if geometry is not None and geometry != '':
-            cmd.append(f'-geometry={geometry}')
+
+        if geometry is not None and geometry != '' and geometry_str is not None:
+            cmd.append(f'-geometry={geometry_str}')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         self.log.debug(f"VNC viewer command: {cmd}")
