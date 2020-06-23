@@ -1748,7 +1748,8 @@ class KeckVncLauncher(object):
         else:
             self.log.error(f'--> Found {failcount} failures during tests <--')
 
-        self.play_test_sound()
+        if self.config.get('vncviewer', False) is not True:
+            self.play_test_sound()
 
         self.exit_app()
 
