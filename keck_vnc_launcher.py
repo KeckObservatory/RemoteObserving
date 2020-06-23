@@ -1216,7 +1216,7 @@ class KeckVncLauncher(object):
                         index = len(self.geometry) % len(window_positions)
                         x = window_positions[index][0]
                         y = window_positions[index][1]
-                    self.geometry.append([-1, -1, x, y])
+                    self.geometry.append([x, y])
         self.log.debug('geometry: ' + str(self.geometry))
 
 
@@ -1260,7 +1260,7 @@ class KeckVncLauncher(object):
                 geom = self.geometry[index]
                 self.log.debug(f'{session}: {geom}')
 
-                cmd = ['wmctrl', '-i', '-r', win_id, '-e',
+                cmd = ['wmctrl', '-i', '-r', win_ids[session], '-e',
                        f'0,{geom[0]},{geom[1]},-1,-1']
                 self.log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
                 wmctrl = subprocess.run(cmd, stdout=subprocess.PIPE, timeout=5)
@@ -1326,12 +1326,7 @@ class KeckVncLauncher(object):
             if cmd == 'q':
                 quit = True
             elif cmd == 'w':
-                try:
-                    self.position_vnc_windows()
-                except:
-                    self.log.error("Failed to reposition windows.  See log for details.")
-                    trace = traceback.format_exc()
-                    self.log.debug(trace)
+                self.position_vnc_windows()
             elif cmd == 'p':
                 self.play_test_sound()
             elif cmd == 's':
