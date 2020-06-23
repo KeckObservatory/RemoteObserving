@@ -829,7 +829,7 @@ class KeckVncLauncher(object):
         else:
             # Don't understand how ping works on this platform.
             self.ping_cmd = None
-        self.log.debug(f'Got ping command: {self.ping_cmd[:-1]}')
+        self.log.debug(f'Got ping command: {self.ping_cmd[:-2]}')
 
     def ping(self, address, wait=5):
         '''Ping a server to determine if it is accessible.
