@@ -99,4 +99,4 @@ firewall_cleanup: False
 #netcat: 'ncat -w 2'
 ##
 ##   Example: macOS (netcat v 0.7.1 installed via brew)
-#netcat: 'ncat -z -w 2'
+#netcat: 'netcat -z -w 2'
