@@ -850,23 +850,27 @@ class KeckVncLauncher(object):
 
         os = platform.system()
         os = os.lower()
-        # Ping once, wait up to five seconds for a response.
+        # Ping once, wait up to 2 seconds for a response.
         if os == 'linux':
-            self.ping_cmd.extend(['-c', '1', '-w', '5'])
+            self.ping_cmd.extend(['-c', '1', '-w', 'wait'])
         elif os == 'darwin':
-            self.ping_cmd.extend(['-c', '1', '-W', '5000'])
+            self.ping_cmd.extend(['-c', '1', '-W', 'wait000'])
         else:
             # Don't understand how ping works on this platform.
             self.ping_cmd = None
+        self.log.debug(f'Got ping command: {self.ping_cmd[:-2]}')
 
-
-    def ping(self, address):
+    def ping(self, address, wait=5):
         '''Ping a server to determine if it is accessible.
         '''
         if self.ping_cmd is None:
-            return False
+            self.log.warning('No ping command defined')
+            return None
         # Run ping
-        output = subprocess.run(self.ping_cmd + [address],
+        ping_cmd = [x.replace('wait', f'{int(wait)}') for x in self.ping_cmd]
+        ping_cmd.append(address)
+        self.log.debug(' '.join(ping_cmd))
+        output = subprocess.run(ping_cmd,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         if output.returncode != 0:
@@ -888,47 +892,43 @@ class KeckVncLauncher(object):
         ''' Return True if the sshuser firewall hole is open; otherwise
         return False. Also return False if the test cannot be performed.
         '''
-        self.log.debug('Checking whether firewall is open')
-#         try:
-#             netcat = subprocess.check_output(['which', 'ncat'],
-#                                              stderr=subprocess.STDOUT)
-#         except subprocess.CalledProcessError:
-#             netcat = None
+        self.log.info('Checking whether firewall is open')
 
+        # Use netcat if specified:
         # The netcat test is more rigorous, in that it attempts to contact
         # an ssh daemon that should be available to us after opening the
         # firewall hole. The ping check is a reasonable fallback and was
         # the traditional way the old mainland observing script would confirm
         # the firewall status.
-
-#         if netcat is not None:
-#             netcat = netcat.decode()
-#             netcat = netcat.strip()
-#             command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w', '2']
-# 
-#             self.log.debug('firewall test: ' + ' '.join (command))
-#             null = subprocess.DEVNULL
-#             proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
-#             return_code = proc.wait()
-#             if return_code == 0:
-#                 self.log.debug('firewall is open')
-#                 return True
-#             else:
-#                 self.log.debug('firewall is closed')
-#                 return False
-
-        if self.ping_cmd is not None:
-            if self.ping('128.171.95.100') is True:
-                self.log.debug('firewall is open')
+        netcat = self.config.get('netcat', None)
+        if netcat is not None:
+            cmd = netcat.split()
+            cmd.extend(['sshserver1.keck.hawaii.edu', '22'])
+            self.log.debug(f'firewall test: {" ".join (cmd)}')
+            netcat_result = subprocess.run(cmd, timeout=5,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+            if netcat_result.returncode == 0:
+                self.log.info('firewall is open')
                 return True
             else:
-                self.log.debug('firewall is closed')
+                self.log.info('firewall is closed')
                 return False
 
+        # Use ping if no netcat is specified
+        if self.ping_cmd is not None:
+            for server in self.servers_to_try:
+                up = self.ping(f'{server}.keck.hawaii.edu', wait=2)
+                if up is True:
+                    self.log.info('firewall is open')
+                    return True
+            self.log.info('firewall is closed')
+            return False
         else:
             # No way to check the firewall status. Assume it is closed,
             # authentication will be required.
-            return False
+            self.log.info('firewall is unknown')
+            return None
 
 
     ##-------------------------------------------------------------------------
@@ -1770,6 +1770,9 @@ class KeckVncLauncher(object):
         failcount += self.test_tigervnc()
         failcount += self.test_localhost()
         failcount += self.test_ssh_key_format()
+        if self.test_firewall() is None:
+            self.log.error('Could not determine if firewall is open')
+            failcount += 1
         failcount += self.test_firewall_authentication()
         failcount += self.test_ssh_key()
         failcount += self.test_basic_connectivity()
@@ -1779,7 +1782,8 @@ class KeckVncLauncher(object):
         else:
             self.log.error(f'--> Found {failcount} failures during tests <--')
 
-        self.play_test_sound()
+        if self.config.get('vncviewer', False) is not True:
+            self.play_test_sound()
 
         self.exit_app()
 
