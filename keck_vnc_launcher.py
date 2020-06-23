@@ -284,7 +284,6 @@ class KeckVncLauncher(object):
             return
 
         #determine geometry
-        #NOTE: This doesn't work for mac so only trying for linux
         geometry = ''
         if self.vncviewer_has_geometry is None:
             self.get_vncviewer_properties()
