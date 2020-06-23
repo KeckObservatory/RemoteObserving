@@ -74,6 +74,7 @@ class KeckVncLauncher(object):
         self.geometry = list()
         self.get_ping_cmd()
         self.tigervnc = None
+        self.vncviewer_has_geometry = None
 
         self.log = logging.getLogger('KRO')
 
@@ -116,7 +117,7 @@ class KeckVncLauncher(object):
         ## Log basic system info
         self.log_system_info()
         self.check_version()
-        self.are_we_using_tigerVNC()
+        self.get_vncviewer_properties()
 
         ## Run tests
         if self.args.test is True:
@@ -285,7 +286,9 @@ class KeckVncLauncher(object):
         #determine geometry
         #NOTE: This doesn't work for mac so only trying for linux
         geometry = ''
-        if 'linux' in platform.system().lower() or self.tigervnc is True:
+        if self.vncviewer_has_geometry is None:
+            self.get_vncviewer_properties()
+        if self.vncviewer_has_geometry is True:
             i = len(self.vnc_threads) % len(self.geometry)
             xpos, ypos = self.geometry[i]
             self.log.debug(f'Geometry for vncviewer command: +{xpos}+{ypos}')
@@ -440,7 +443,7 @@ class KeckVncLauncher(object):
             self.log.debug(trace)
 
 
-    def are_we_using_tigerVNC(self):
+    def get_vncviewer_properties(self):
         '''Determine whether we are using TigerVNC
         '''
         vncviewercmd = self.config.get('vncviewer', 'vncviewer')
@@ -454,6 +457,14 @@ class KeckVncLauncher(object):
         else:
             self.log.debug(f'We ARE NOT using TigerVNC')
             self.tigervnc = False
+
+        if re.search(r'[Gg]eometry', output):
+            self.log.info(f'Found geometry argument')
+            self.vncviewer_has_geometry = True
+        else:
+            self.log.debug(f'Could not find geometry argument')
+            self.vncviewer_has_geometry = False
+
 
 
     ##-------------------------------------------------------------------------
@@ -1616,7 +1627,7 @@ class KeckVncLauncher(object):
         '''
         failcount = 0
         if self.tigervnc is None:
-            self.are_we_using_tigerVNC()
+            self.get_vncviewer_properties()
         if self.tigervnc is False:
             return failcount
         
