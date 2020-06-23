@@ -117,7 +117,8 @@ class KeckVncLauncher(object):
         ## Log basic system info
         self.log_system_info()
         self.check_version()
-        self.get_vncviewer_properties()
+        if self.args.authonly is False:
+            self.get_vncviewer_properties()
 
         ## Run tests
         if self.args.test is True:
