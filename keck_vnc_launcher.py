@@ -1204,8 +1204,14 @@ class KeckVncLauncher(object):
         #alternate command: xrandr |grep \* | awk '{print $1}'
         self.log.debug('Determining display info')
         self.geometry = list()
-        xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE, timeout=5)
+        try:
+            xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE, timeout=5)
+        except subprocess.TimeoutError as e:
+            # If xpdyinfo fails just log and keep going
+            self.log.debug('xpdyinfo failed')
+            self.log.debug(e)
+            return
         stdout = xpdyinfo.stdout.decode()
         if xpdyinfo.returncode != 0:
             self.log.debug(f'xpdyinfo failed')
