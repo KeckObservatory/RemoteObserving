@@ -626,14 +626,15 @@ class KeckVncLauncher(object):
         vncargs = self.config.get('vncargs', None)
         cmd = list()
 
-        if geometry[0] is not None and geometry[1] is not None:
-            geometry_str = f'+{geometry[0]}+{geometry[1]}'
-            self.log.debug(f'Geometry for vncviewer command: {geometry_str}')
-        if len(geometry) == 3:
-            display = geometry[2]
-            # setenv DISPLAY ${xhostnam}:${xdispnum}.$screen
-            self.log.debug(f'Display number for vncviewer command: {display}')
-            cmd.extend(['setenv', 'DISPLAY', f':{display}.0'])
+        if isinstance(geometry, list) is True:
+            if geometry[0] is not None and geometry[1] is not None:
+                geometry_str = f'+{geometry[0]}+{geometry[1]}'
+                self.log.debug(f'Geometry for vncviewer command: {geometry_str}')
+            if len(geometry) == 3:
+                display = geometry[2]
+                # setenv DISPLAY ${xhostnam}:${xdispnum}.$screen
+                self.log.debug(f'Display number for vncviewer command: {display}')
+                cmd.extend(['setenv', 'DISPLAY', f':{display}.0'])
 
         cmd.append(vncviewercmd)
         if vncargs is not None:
