@@ -76,9 +76,18 @@ default_sessions: ['control0', 'control1', 'control2', 'telstatus']
 #local_port_start: 5901
 
 
-## Window size and positioning configs. Overrides calculated values.
-#window_size: [1280, 800]
+## Window size and positioning configs. Overrides calculated values. This is a
+## list of lists where each entry has 2 (or 3, see below) values.  The first
+## value is the x position, the second value is the y position.  In the example
+## line below, the first window will be in the upper right of the screen (0,0),
+## the second will be 1280 pix to the right, but also at the top, and so on.
 #window_positions: [[0, 0], [1280, 0], [0, 1280], [1280, 0]]
+## If your system uses a multiple display environment where you can not drag
+## windows from one display in to another (this was common in older remote
+## rooms), then you have to specify which numbered DISPLAY value each window
+## should go to as a third element.  For example, to put windows in the upper
+## right of four independent displays:
+#window_positions: [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]]
 
 
 ## Firewall Cleanup
