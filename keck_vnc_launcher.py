@@ -437,6 +437,7 @@ class KeckVncLauncher(object):
             #todo: gethostbyname stopped working after I updated mac. need better method
             # ip = socket.gethostbyname(hostname)
             # self.log.debug(f'System IP Address: {ip}')
+            self.log.info(f'Python: {sys.version}')
             self.log.info(f'Remote Observing Software Version = {__version__}')
         except:
             self.log.error("Unable to log system info.")
@@ -1670,7 +1671,22 @@ class KeckVncLauncher(object):
         self.firewall_opened = False
         if self.firewall_requested == True:
             self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
-            self.firewall_opened = self.open_firewall(self.firewall_pass)
+            try:
+                self.firewall_opened = self.open_firewall(self.firewall_pass)
+            except ConnectionRefusedError as e:
+                self.log.error(f'Connection Refused')
+                self.log.debug(e)
+                self.log.error('Unable to communicate with WMKO firewall on the standard port')
+                self.log.info('Testing http authentication')
+                import requests
+                r = requests.get(f'http://{self.firewall_address}:900')
+                got_auth_page = re.match('<html><head><title>Authentication Form</title></head>', r.text)
+                if got_auth_page is not None:
+                    self.log.info('You may be able to authenticate via http. Go to:')
+                    self.log.info(f'http://{self.firewall_address}:900')
+                    self.log.info('in a browser to authenticate.  Then run this script again.')
+                else:
+                    self.log.error('The http authentication route is also inaccessible')
             if self.firewall_opened is False:
                 self.log.error('Failed to open firewall')
                 failcount += 1
