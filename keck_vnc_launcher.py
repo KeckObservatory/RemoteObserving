@@ -290,10 +290,10 @@ class KeckVncLauncher(object):
             self.get_vncviewer_properties()
         if self.vncviewer_has_geometry is True:
             i = len(self.vnc_threads) % len(self.geometry)
-            geom = self.geometry[i]
+            geometry = self.geometry[i]
 
         ## Open vncviewer as separate thread
-        args = (vncserver, local_port, geom)
+        args = (vncserver, local_port, geometry)
         vnc_thread = Thread(target=self.launch_vncviewer, args=args, name=session_name)
         vnc_thread.start()
         self.vnc_threads.append(vnc_thread)
