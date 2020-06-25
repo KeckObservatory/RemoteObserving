@@ -37,9 +37,9 @@ The following hardware configuration has been tested at Keck HQ:
 
 ## Install Software Dependencies
 
-NOTE: Examples below assuming sudo/root installation for all users and were originally written for Linux (CentOS).  Modify as appropriate for your local OS.
+The software has been tested under recent macOS versions and various linux distributions.  This software will not work under Microsoft Windows as distributed here.  The software has been tested on CentOS/RedHat 7.6, Ubuntu, Raspbian, and macOS.
 
-The software has been tested for CentOS/RedHat 7.6, Ubuntu, and macOS.
+Note: The examples below assuming sudo/root installation for all users and were originally written for Linux (CentOS).  Modify as appropriate for your local OS.
 
 - Install Anaconda python3
     - Download and run the latest installer: https://www.anaconda.com/distribution/
@@ -47,6 +47,7 @@ The software has been tested for CentOS/RedHat 7.6, Ubuntu, and macOS.
     ```
     export PATH=/usr/local/anaconda3-7/bin:$PATH
     ```
+    - Other python distributions work (python 3.7+), but the user may have to manually install the python dependencies described in the `environment.yaml` file in addition to packages which are included with anaconda.
 - Install VNC viewer client
     - **For Linux**
         - **On Linux:** TigerVNC is recommended as the VNC client.  RealVNC has been tested as well.
@@ -63,9 +64,10 @@ The software has been tested for CentOS/RedHat 7.6, Ubuntu, and macOS.
             sudo yum install epel-release
             sudo yum install wmctrl
             ```
-    - **For macOS**
-        - **On macOS**: Real VNC's [VNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) is recommended (note, this is the free software, you do not need VNC Viewer Plus).
-        - **On macOS**: It is also possible to use the built in VNC viewer on macOS, but we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen.
+    - **For macOS**: Install a VNC viewer application if needed.
+        - [Tiger VNC](https://tigervnc.org) is recommended as it supports automatic window positioning.
+        - Real VNC's [VNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) also works, but without automatic window positioning (note, this is the free software, you do not need VNC Viewer Plus).
+        - It is also possible to use the built in VNC viewer on macOS, but we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen.
 
 
 ## Download and Install Keck VNC software
