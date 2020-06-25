@@ -76,17 +76,20 @@ default_sessions: ['control0', 'control1', 'control2', 'telstatus']
 #local_port_start: 5901
 
 
-## Window size and positioning configs. Overrides calculated values. This is a
-## list of lists where each entry has 2 (or 3, see below) values.  The first
-## value is the x position, the second value is the y position.  In the example
-## line below, the first window will be in the upper right of the screen (0,0),
-## the second will be 1280 pix to the right, but also at the top, and so on.
+## Window Positioning
+##   The window_positions value is a list of lists where each entry has 2 (or
+##   3, see below) values.  The first value is the x position, the second value
+##   is the y position.  In the example line below, the first window will be in
+##   the upper right of the screen (0,0), the second will be 1280 pix to the
+##   right, but also at the top, and so on.
 #window_positions: [[0, 0], [1280, 0], [0, 1280], [1280, 0]]
-## If your system uses a multiple display environment where you can not drag
-## windows from one display in to another (this was common in older remote
-## rooms), then you have to specify which numbered DISPLAY value each window
-## should go to as a third element.  For example, to put windows in the upper
-## right of four independent displays:
+##
+## Window Positioning on Multiple Independent Displays
+##   If your system uses a multiple display environment where you can not drag
+##   windows from one display in to another (this was common in older remote
+##   rooms), then you have to specify which numbered DISPLAY value each window
+##   should go to as a third element.  For example, to put windows in the upper
+##   right of four independent displays:
 #window_positions: [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]]
 
 
@@ -94,7 +97,7 @@ default_sessions: ['control0', 'control1', 'control2', 'telstatus']
 ##   If the firewall authentication has been performed, should the script
 ##   de-authenticate when it exits? This is generally not required; the
 ##   firewall authorization will automatically expire after 24 hours. Set this
-##    option to True to close the firewall hole when the script exits.
+##   option to True to close the firewall hole when the script exits.
 firewall_cleanup: False
 
 
@@ -104,7 +107,7 @@ firewall_cleanup: False
 ##   available to us after opening the firewall hole.  If you would like to use
 ##   netcat, set the command and arguments below.
 ##
-##   Example: linux
+##   Example: linux (Ncat 7.70 installed via apt-get install netcat)
 #netcat: 'ncat -w 2'
 ##
 ##   Example: macOS (netcat v 0.7.1 installed via brew)
