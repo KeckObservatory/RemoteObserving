@@ -119,6 +119,7 @@ class KeckVncLauncher(object):
         self.check_version()
         if self.args.authonly is False:
             self.get_vncviewer_properties()
+            self.get_display_info()
 
         ## Run tests
         if self.args.test is True:
@@ -1249,7 +1250,6 @@ class KeckVncLauncher(object):
             num_win = len(self.sessions_requested)
             cols = 2
             rows = 2
-            self.get_display_info()
             screen = self.screens[0]
             #get x/y coords (assume two rows)
             for row in range(0, rows):
