@@ -906,17 +906,18 @@ class KeckVncLauncher(object):
         netcat = self.config.get('netcat', None)
         if netcat is not None:
             cmd = netcat.split()
-            cmd.extend(['sshserver1.keck.hawaii.edu', '22'])
-            self.log.debug(f'firewall test: {" ".join (cmd)}')
-            netcat_result = subprocess.run(cmd, timeout=5,
-                                           stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
-            if netcat_result.returncode == 0:
-                self.log.info('firewall is open')
-                return True
-            else:
-                self.log.info('firewall is closed')
-                return False
+            for server in self.servers_to_try:
+                server_and_port = [server, '22']
+                self.log.debug(f'firewall test: {" ".join (cmd+server_and_port)}')
+                netcat_result = subprocess.run(cmd, timeout=5,
+                                               stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE)
+                up = (netcat_result.returncode == 0)
+                if up is True:
+                    self.log.info('firewall is open')
+                    return True
+            self.log.info('firewall is closed')
+            return False
 
         # Use ping if no netcat is specified
         if self.ping_cmd is not None:
