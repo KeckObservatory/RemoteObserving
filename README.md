@@ -7,7 +7,7 @@ Before embarking on setting up a Keck Remote Observing station, we recommend rea
 ## Notify Keck of your intent to connect remotely
 Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
 
-- Email `remote-observing@keck.hawaii.edu` with the following info about your remote site:
+- Email [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) with the following info about your remote site:
     - Institution
     - City, State
     - Room Name/#
@@ -16,6 +16,7 @@ Before you can connect to Keck remotely, we need to provide you with the firewal
     - Site manager/admin names, emails and phone #s
 
 Once we receive your request, we will respond with instructions on obtaining the firewall info, firewall password, and VNC session password.
+
 
 # Hardware Setup
 
@@ -27,39 +28,45 @@ We have also tried a 43 inch 4k resolution TV screen (which works out to about 1
 
 ## Computer Recommendations
 
-The following hardware configuration has been tested at Keck HQ:
+A number of computer hardware configurations have been tested.  Various intel-based computers running linux, numerous mac laptops and desktops, and even a Raspberry Pi 4.
 
-- Computer: [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html)
-    - CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core)
-    - RAM: 16GB
+This hardware configuration has been tested at Keck HQ and found to work well: 
+
+- [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html), CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core), RAM: 16GB
+
 
 # Software Installation
 
 ## Install Software Dependencies
 
-The software has been tested under recent macOS versions and various linux distributions.  This software will not work under Microsoft Windows as distributed here.  The software has been tested on CentOS/RedHat 7.6, Ubuntu, Raspbian, and macOS.
+The software has been tested on CentOS/RedHat 7.6, Ubuntu, Raspbian, and macOS.  This software will **not** work under Microsoft Windows as distributed here.
 
 Note: The examples below assuming sudo/root installation for all users and were originally written for Linux (CentOS).  Modify as appropriate for your local OS.
 
 - Install Anaconda python3
-    - Download and run the latest installer: https://www.anaconda.com/distribution/
-    - Add python3 to user path (example below for ~/.bashrc with typical python install path):
+    - Download and run the latest [anaconda installer](https://www.anaconda.com/distribution/)
+    - Add python3 to user path (example below for `~/.bashrc` with typical python install path):
     ```
     export PATH=/usr/local/anaconda3-7/bin:$PATH
     ```
-    - Other python distributions work (python 3.7+), but the user may have to manually install the python dependencies described in the `environment.yaml` file in addition to packages which are included with anaconda.
+    - Other python distributions should work (using python 3.7+), but the user may have to manually install the python dependencies described in the `environment.yaml` file in addition to other python packages included with anaconda.
 - Install VNC viewer client
     - **For Linux**
-        - **On Linux:** TigerVNC is recommended as the VNC client.  RealVNC has been tested as well.
-        ```
-        sudo yum install tigervnc-x86_64
-        ```
-        - **Important!** If you are using TigerVNC, in the $HOME/.vnc directory, create a file `default.tigervnc` with these two lines:
-        ```
-        TigerVNC Configuration file Version 1.0
-        RemoteResize=0
-        ```
-        - **On Linux:** (optional) Install wmctrl (Used for auto-positioning VNC windows)
+        - TigerVNC is recommended as the VNC client.  RealVNC has been tested as well.
+            ```
+            sudo yum install tigervnc-x86_64
+            ```
+            or
+            ```
+            sudo apt-get install tigervnc-viewer
+            ```
+
+        - **Important!** If you are using TigerVNC, in the `~/.vnc` directory, create a file `default.tigervnc` with these two lines:
+            ```
+            TigerVNC Configuration file Version 1.0
+            RemoteResize=0
+            ```
+        - (optional) Install wmctrl (Used for auto-positioning VNC windows)
             ```
             sudo yum install epel-release
             sudo yum install wmctrl
@@ -70,7 +77,7 @@ Note: The examples below assuming sudo/root installation for all users and were 
         - It is also possible to use the built in VNC viewer on macOS, but we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen.
 
 
-## Download and Install Keck VNC software
+## Install the Keck Remote Observing software
 
 (NOTE: Examples below assuming a user named 'observer' and installing to home directory)
 
@@ -93,7 +100,7 @@ Note: The examples below assuming sudo/root installation for all users and were 
     ```
 
 - Setup SSH Keys:
-    - Generate ssh public/private key pair **(no passphrase)**
+    - Generate ssh public/private key pair **(do not set a passphrase)**
         ```
         cd ~/.ssh
         ssh-keygen -t rsa -b 4096
@@ -102,7 +109,7 @@ Note: The examples below assuming sudo/root installation for all users and were 
         ```
         ssh-keygen -t rsa -b 4096 -m PEM
         ```
-    - Email the **public** key file (i.e. `id_rsa.pub`) to `remote-observing@keck.hawaii.edu`
+    - Email the **public** key file (i.e. `id_rsa.pub`) to [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu)
 
 - (optional) Add VNC start script to path:
     ```
@@ -111,7 +118,7 @@ Note: The examples below assuming sudo/root installation for all users and were 
 
 ## Configure Keck VNC software
 
-Edit the `local_config.yaml` file you created above.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading `#`) from lines you want to customize.
+Edit the `local_config.yaml` file you created above.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading `#`) lines you want to customize.
 
 - **Configure Firewall:** If you are connecting outside of the Keck network, enter the firewall address, port and user info.  You'll need to get this information from someone at Keck.
 
@@ -127,7 +134,7 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
     ssh_pkey: '~/.ssh/id_rsa'
     ```
 
-- **Configure Local VNC Viewer Software:** This is where one sets `vncviewer` with the path and executable for the local VNC viewer client (we recommend TigerVNC as the most compatible with our system).  Some VNC viewers (such as the built in macOS one) may need a prefix such as `vnc://` which can be set via the `vncprefix` value.  Options which should be passed to the vncviewer application are set in the `vncargs` value (defaults should be good for Tiger VNC).
+- **Configure Local VNC Viewer Software:** This is where one sets `vncviewer` with the path and executable for the local VNC viewer client.  Some VNC viewers (such as the built in macOS one) may need a prefix such as `vnc://` which can be set via the `vncprefix` value.  Options which should be passed to the vncviewer application are set in the `vncargs` value.
     - **Important:** Make sure you have configured your client **not** to resize the sessions (see the note about TigerVNC above).
     - **On Linux:** (optional) Save VNC session password (not available on macOS):
         - NOTE: This is for the final password prompt for each VNC window.
@@ -137,7 +144,7 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
             vncargs: '-passwd=/home/observer/.vnc/passwd'
             ```
 
-- **Soundplay Configuration:** For compatible systems, uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact `remote-observing@keck.hawaii.edu` for help configuring this value if needed.  Also, if your local machine's path to the aplay executable is non-standard, specify that in the aplay value.
+- **Soundplay Configuration:** For compatible systems, uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) for help configuring this value if needed.  Also, if your local machine's path to the `aplay` executable is non-standard, specify that in the `aplay` value.
     - At the moment, the default Linux executable seems to work for CentOS and Ubuntu Linux.
     - For macOS, use the settings as described in the `keck_vnc_config.yaml` section which specify a specific soundplay executable and a specific aplay calling format:
         ```
@@ -166,12 +173,12 @@ From the directory where the Keck VNC software is installed (e.g. `~/RemoteObser
 
 This may query you for passwords, depending on your local configuration. It should print out a report which indicates that all tests passed. Make sure there are no test failures.
 
-If there are test failures, email your logfile to `remote-observing@keck.hawaii.edu`.  Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
+If there are test failures, email your logfile to [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu).  Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
 
 # Run the VNC launch script
 
-From the command line, cd into your install directory and run `start_keck_viewers` followed by the name of the instrument account assigned for your observing night (ie `nires1`, `mosfire2`).  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
+From the command line, cd into your install directory and run `start_keck_viewers` followed by the name of the instrument account assigned for your observing night (i.e. `nires1`, `mosfire2`).  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
 ```
 cd ~/RemoteObserving
 ./start_keck_viewers [instrument account]
@@ -189,5 +196,5 @@ To get help on available command line options:
 
 Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
-If you need assistance, please email `remote-observing@keck.hawaii.edu` and attach the most recent log file from the logs folder.
+If you need assistance, please email [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) and attach the most recent log file from the logs folder.
 
