@@ -26,7 +26,7 @@ import yaml
 import soundplay
 
 
-__version__ = '1.1.2'
+__version__ = '1.2.0'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -72,10 +72,10 @@ class KeckVncLauncher(object):
         self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
         self.exit = False
         self.geometry = list()
-        self.get_ping_cmd()
+        self.tigervnc = None
+        self.vncviewer_has_geometry = None
 
         self.log = logging.getLogger('KRO')
-
 
         #default start sessions
         self.default_sessions = [
@@ -112,10 +112,14 @@ class KeckVncLauncher(object):
         self.get_args()
         self.get_config()
         self.check_config()
+        self.get_ping_cmd()
 
         ## Log basic system info
         self.log_system_info()
         self.check_version()
+        if self.args.authonly is False:
+            self.get_vncviewer_properties()
+            self.get_display_info()
 
         ## Run tests
         if self.args.test is True:
@@ -282,23 +286,16 @@ class KeckVncLauncher(object):
             return
 
         #determine geometry
-        #NOTE: This doesn't work for mac so only trying for linux
         geometry = ''
-        if 'linux' in platform.system().lower():
+        if self.vncviewer_has_geometry is None:
+            self.get_vncviewer_properties()
+        if self.vncviewer_has_geometry is True:
             i = len(self.vnc_threads) % len(self.geometry)
-            geom = self.geometry[i]
-            width = geom[0]
-            height = geom[1]
-            xpos = geom[2]
-            ypos = geom[3]
-            # if width is not None and height is not None:
-            #     geometry += f'{width}x{height}'
-            if xpos is not None and ypos is not None:
-                geometry += f'+{xpos}+{ypos}'
+            geometry = self.geometry[i]
 
         ## Open vncviewer as separate thread
         args = (vncserver, local_port, geometry)
-        vnc_thread = Thread(target=self.launch_vncviewer, args=args)
+        vnc_thread = Thread(target=self.launch_vncviewer, args=args, name=session_name)
         vnc_thread.start()
         self.vnc_threads.append(vnc_thread)
         time.sleep(0.05)
@@ -437,11 +434,36 @@ class KeckVncLauncher(object):
             #todo: gethostbyname stopped working after I updated mac. need better method
             # ip = socket.gethostbyname(hostname)
             # self.log.debug(f'System IP Address: {ip}')
+            python_version_str = sys.version.replace("\n", " ")
+            self.log.info(f'Python {python_version_str}')
             self.log.info(f'Remote Observing Software Version = {__version__}')
         except:
             self.log.error("Unable to log system info.")
             trace = traceback.format_exc()
             self.log.debug(trace)
+
+
+    def get_vncviewer_properties(self):
+        '''Determine whether we are using TigerVNC
+        '''
+        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
+        cmd = [vncviewercmd, '--help']
+        self.log.debug(f'Checking VNC viewer: {" ".join(cmd)}')
+        result = subprocess.run(cmd, capture_output=True)
+        output = result.stdout.decode() + '\n' + result.stderr.decode()
+        if re.search(r'TigerVNC', output):
+            self.log.info(f'We ARE using TigerVNC')
+            self.tigervnc = True
+        else:
+            self.log.debug(f'We ARE NOT using TigerVNC')
+            self.tigervnc = False
+
+        if re.search(r'[Gg]eometry', output):
+            self.log.info(f'Found geometry argument')
+            self.vncviewer_has_geometry = True
+        else:
+            self.log.debug(f'Could not find geometry argument')
+            self.vncviewer_has_geometry = False
 
 
     ##-------------------------------------------------------------------------
@@ -603,16 +625,27 @@ class KeckVncLauncher(object):
         vncviewercmd = self.config.get('vncviewer', 'vncviewer')
         vncprefix = self.config.get('vncprefix', '')
         vncargs = self.config.get('vncargs', None)
+        cmd = list()
 
-        cmd = [vncviewercmd]
+        if isinstance(geometry, list) is True:
+            if geometry[0] is not None and geometry[1] is not None:
+                geometry_str = f'+{geometry[0]}+{geometry[1]}'
+                self.log.debug(f'Geometry for vncviewer command: {geometry_str}')
+            if len(geometry) == 3:
+                display = geometry[2]
+                # setenv DISPLAY ${xhostnam}:${xdispnum}.$screen
+                self.log.debug(f'Display number for vncviewer command: {display}')
+                cmd.extend(['setenv', 'DISPLAY', f':{display}.0'])
+
+        cmd.append(vncviewercmd)
         if vncargs is not None:
             vncargs = vncargs.split()
-            cmd = cmd + vncargs
+            cmd.extend(vncargs)
         if self.args.viewonly == True:
             cmd.append('-ViewOnly')
-        #todo: make this config on/off so it doesn't break things
-        if geometry is not None and geometry != '':
-            cmd.append(f'-geometry={geometry}')
+
+        if geometry is not None and geometry != '' and geometry_str is not None:
+            cmd.append(f'-geometry={geometry_str}')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
 
         self.log.debug(f"VNC viewer command: {cmd}")
@@ -821,23 +854,27 @@ class KeckVncLauncher(object):
 
         os = platform.system()
         os = os.lower()
-        # Ping once, wait up to five seconds for a response.
+        # Ping once, wait up to 2 seconds for a response.
         if os == 'linux':
-            self.ping_cmd.extend(['-c', '1', '-w', '5'])
+            self.ping_cmd.extend(['-c', '1', '-w', 'wait'])
         elif os == 'darwin':
-            self.ping_cmd.extend(['-c', '1', '-W', '5000'])
+            self.ping_cmd.extend(['-c', '1', '-W', 'wait000'])
         else:
             # Don't understand how ping works on this platform.
             self.ping_cmd = None
+        self.log.debug(f'Got ping command: {self.ping_cmd[:-2]}')
 
-
-    def ping(self, address):
+    def ping(self, address, wait=5):
         '''Ping a server to determine if it is accessible.
         '''
         if self.ping_cmd is None:
-            return False
+            self.log.warning('No ping command defined')
+            return None
         # Run ping
-        output = subprocess.run(self.ping_cmd + [address],
+        ping_cmd = [x.replace('wait', f'{int(wait)}') for x in self.ping_cmd]
+        ping_cmd.append(address)
+        self.log.debug(' '.join(ping_cmd))
+        output = subprocess.run(ping_cmd,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         if output.returncode != 0:
@@ -859,46 +896,44 @@ class KeckVncLauncher(object):
         ''' Return True if the sshuser firewall hole is open; otherwise
         return False. Also return False if the test cannot be performed.
         '''
-        try:
-            netcat = subprocess.check_output(['which', 'ncat'],
-                                             stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError:
-            netcat = None
+        self.log.info('Checking whether firewall is open')
 
+        # Use netcat if specified:
         # The netcat test is more rigorous, in that it attempts to contact
         # an ssh daemon that should be available to us after opening the
         # firewall hole. The ping check is a reasonable fallback and was
         # the traditional way the old mainland observing script would confirm
         # the firewall status.
-
+        netcat = self.config.get('netcat', None)
         if netcat is not None:
-            netcat = netcat.decode()
-            netcat = netcat.strip()
-            command = [netcat, 'sshserver1.keck.hawaii.edu', '22', '-w', '2']
+            cmd = netcat.split()
+            for server in self.servers_to_try:
+                server_and_port = [server, '22']
+                self.log.debug(f'firewall test: {" ".join (cmd+server_and_port)}')
+                netcat_result = subprocess.run(cmd, timeout=5,
+                                               stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE)
+                up = (netcat_result.returncode == 0)
+                if up is True:
+                    self.log.info('firewall is open')
+                    return True
+            self.log.info('firewall is closed')
+            return False
 
-            self.log.debug('firewall test: ' + ' '.join (command))
-            null = subprocess.DEVNULL
-            proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
-            return_code = proc.wait()
-            if return_code == 0:
-                self.log.debug('firewall is open')
-                return True
-            else:
-                self.log.debug('firewall is closed')
-                return False
-
-        elif self.ping_cmd is not None:
-            if self.ping('128.171.95.100') is True:
-                self.log.debug('firewall is open')
-                return True
-            else:
-                self.log.debug('firewall is closed')
-                return False
-
+        # Use ping if no netcat is specified
+        if self.ping_cmd is not None:
+            for server in self.servers_to_try:
+                up = self.ping(f'{server}.keck.hawaii.edu', wait=2)
+                if up is True:
+                    self.log.info('firewall is open')
+                    return True
+            self.log.info('firewall is closed')
+            return False
         else:
             # No way to check the firewall status. Assume it is closed,
             # authentication will be required.
-            return False
+            self.log.info('firewall is unknown')
+            return None
 
 
     ##-------------------------------------------------------------------------
@@ -1166,99 +1201,119 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Calculate vnc windows size and position
     ##-------------------------------------------------------------------------
-    def calc_window_geometry(self):
-        '''From the screen dimensions, guess at the best layout of VNC screens.
+    def get_display_info(self):
+        '''Determine the screen number and size
         '''
-        self.log.debug(f"Calculating VNC window geometry...")
-
         #get screen dimensions
         #alternate command: xrandr |grep \* | awk '{print $1}'
+        self.log.debug('Determining display info')
         self.geometry = list()
-        cmd = "xdpyinfo | grep dimensions | awk '{print $2}' | awk -Fx '{print $1, $2}'"
-        p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        out = p1.communicate()[0].decode('utf-8')
-        if not out:
-            self.log.debug('Could not calc window geometry')
+        try:
+            xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE, timeout=5)
+        except subprocess.TimeoutError as e:
+            # If xpdyinfo fails just log and keep going
+            self.log.debug('xpdyinfo failed')
+            self.log.debug(e)
             return
-        screen_width, screen_height = [int(x) for x in out.split()]
-        self.log.debug(f"Screen size: {screen_width}x{screen_height}")
+        stdout = xpdyinfo.stdout.decode()
+        if xpdyinfo.returncode != 0:
+            self.log.debug(f'xpdyinfo failed')
+            for line in stdout.split('\n'):
+                self.log.debug(f"xdpyinfo: {line}")
+            stderr = xpdyinfo.stderr.decode()
+            for line in stderr.split('\n'):
+                self.log.debug(f"xdpyinfo: {line}")
+            return None
+        find_nscreens = re.search('number of screens:\s+(\d+)', stdout)
+        nscreens = int(find_nscreens.group(1)) if find_nscreens is not None else 1
+        self.log.debug(f'Number of screens = {nscreens}')
 
-        #get num rows and cols
-        #todo: assumming 2x2 always for now; make smarter
-        num_win = len(self.sessions_requested)
-        cols = 2
-        rows = 2
+        find_dimensions = re.findall('dimensions:\s+(\d+)x(\d+)', stdout)
+        if len(find_dimensions) == 0:
+            self.log.debug(f'Could not find screen dimensions')
+            return None
+        # convert values from strings to int
+        self.screens = [[int(val) for val in line] for line in find_dimensions]
+        for screen in self.screens:
+            self.log.debug(f"Screen size: {screen[0]}x{screen[1]}")
 
-        #window coord and size config overrides
+
+    def calc_window_geometry(self):
+        '''If window positions are not set in config file, make a guess.
+        '''
         window_positions = self.config.get('window_positions', None)
-        window_size = self.config.get('window_size', None)
-
-        #get window width height
-        if window_size is None:
-            ww = round(screen_width / cols)
-            wh = round(screen_height / rows)
+        if window_positions is not None:
+            self.geometry = window_positions
         else:
-            ww = window_size[0]
-            wh = window_size[1]
-
-        #get x/y coords (assume two rows)
-        for row in range(0, rows):
-            for col in range(0, cols):
-                x = round(col * screen_width/cols)
-                y = round(row * screen_height/rows)
-                if window_positions is not None:
-                    index = len(self.geometry) % len(window_positions)
-                    x = window_positions[index][0]
-                    y = window_positions[index][1]
-                self.geometry.append([ww, wh, x, y])
-
+            self.log.debug(f"Calculating VNC window geometry...")
+            num_win = len(self.sessions_requested)
+            cols = 2
+            rows = 2
+            screen = self.screens[0]
+            #get x/y coords (assume two rows)
+            for row in range(0, rows):
+                for col in range(0, cols):
+                    x = round(col * screen[0]/cols)
+                    y = round(row * screen[1]/rows)
+                    if window_positions is not None:
+                        index = len(self.geometry) % len(window_positions)
+                        x = window_positions[index][0]
+                        y = window_positions[index][1]
+                    self.geometry.append([x, y])
         self.log.debug('geometry: ' + str(self.geometry))
 
 
-    ##-------------------------------------------------------------------------
-    ## Position vncviewers
-    ##-------------------------------------------------------------------------
     def position_vnc_windows(self):
         '''Reposition the VNC windows to the preferred positions
         '''
+        self.log.info("Re-reading config file")
+        self.get_config()
         self.log.info(f"Positioning VNC windows...")
+        self.calc_window_geometry()
 
         #get all x-window processes
         #NOTE: using wmctrl (does not work for Mac)
         #alternate option: xdotool?
-        xlines = list()
         cmd = ['wmctrl', '-l']
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        while True:
-            line = proc.stdout.readline()
-            if line is None or line == '':
-                break
-            line = line.rstrip().decode('utf-8')
+        wmctrl_l = subprocess.run(cmd, stdout=subprocess.PIPE, timeout=5)
+        stdout = wmctrl_l.stdout.decode()
+        for line in stdout.split('\n'):
             self.log.debug(f'wmctrl line: {line}')
-            xlines.append(line)
+        if wmctrl_l.returncode != 0:
+            self.log.debug(f'wmctrl failed')
+            for line in stdout.split('\n'):
+                self.log.debug(f'wmctrl line: {line}')
+            stderr = wmctrl_l.stderr.decode()
+            for line in stderr.split('\n'):
+                self.log.debug(f'wmctrl line: {line}')
+            return None
+        win_ids = dict([x for x in zip(self.sessions_requested,
+                                [None for entry in self.sessions_requested])])
+        for line in stdout.split('\n'):
+            for thread in self.vnc_threads:
+                session = thread.name
+                if session in line:
+                    self.log.debug(f"Found {session} in {line}")
+                    win_id = line.split()[0]
+                    win_ids[session] = line.split()[0]
 
-        #reposition each vnc session window
-        for i, session in enumerate(self.sessions_requested):
-            self.log.debug(f'Search xlines for "{session}"')
-            win_id = None
-            for line in xlines:
-                if session not in line:
-                    continue
-                parts = line.split()
-                win_id = parts[0]
-
-            if win_id is not None:
+        for i,thread in enumerate(self.vnc_threads):
+            session = thread.name
+            if win_ids.get(session, None) is not None:
                 index = i % len(self.geometry)
                 geom = self.geometry[index]
-                ww = geom[0]
-                wh = geom[1]
-                wx = geom[2]
-                wy = geom[3]
-                # cmd = ['wmctrl', '-i', '-r', win_id, '-e', f'0,{wx},{wy},{ww},{wh}']
-                cmd = ['wmctrl', '-i', '-r', win_id, '-e',
-                       f'0,{wx},{wy},-1,-1']
+                self.log.debug(f'{session} has geometry: {geom}')
+
+                cmd = ['wmctrl', '-i', '-r', win_ids[session], '-e',
+                       f'0,{geom[0]},{geom[1]},-1,-1']
                 self.log.debug(f"Positioning '{session}' with command: " + ' '.join(cmd))
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                wmctrl = subprocess.run(cmd, stdout=subprocess.PIPE, timeout=5)
+                if wmctrl.returncode != 0:
+                    return None
+                stdout = wmctrl.stdout.decode()
+#                 for line in stdout.split('\n'):
+#                     self.log.debug(f'wmctrl line: {line}')
             else:
                 self.log.info(f"Could not find window process for VNC session '{session}'")
 
@@ -1316,12 +1371,7 @@ class KeckVncLauncher(object):
             if cmd == 'q':
                 quit = True
             elif cmd == 'w':
-                try:
-                    self.position_vnc_windows()
-                except:
-                    self.log.error("Failed to reposition windows.  See log for details.")
-                    trace = traceback.format_exc()
-                    self.log.debug(trace)
+                self.position_vnc_windows()
             elif cmd == 'p':
                 self.play_test_sound()
             elif cmd == 's':
@@ -1592,17 +1642,12 @@ class KeckVncLauncher(object):
         - Check that the RemoteResize entry is set to 0
         '''
         failcount = 0
-        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
-        cmd = [vncviewercmd, '--help']
-        self.log.debug(f'Checking VNC viewer: {" ".join(cmd)}')
-        result = subprocess.run(cmd, capture_output=True)
-        output = result.stdout.decode() + '\n' + result.stderr.decode()
-        if re.search(r'TigerVNC', output):
-            self.log.info(f'Checking TigerVNC defaults')
-        else:
-            self.log.debug(f'We are NOT using TigerVNC')
+        if self.tigervnc is None:
+            self.get_vncviewer_properties()
+        if self.tigervnc is False:
             return failcount
-
+        
+        self.log.info(f'Checking TigerVNC defaults')
         tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
         if tigervnc_config_file.exists() is False:
             self.log.error(f'Could not find {tigervnc_config_file}')
@@ -1669,7 +1714,22 @@ class KeckVncLauncher(object):
         self.firewall_opened = False
         if self.firewall_requested == True:
             self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
-            self.firewall_opened = self.open_firewall(self.firewall_pass)
+            try:
+                self.firewall_opened = self.open_firewall(self.firewall_pass)
+            except ConnectionRefusedError as e:
+                self.log.error(f'Connection Refused')
+                self.log.debug(e)
+                self.log.error('Unable to communicate with WMKO firewall on the standard port')
+                self.log.info('Testing http authentication')
+                import requests
+                r = requests.get(f'http://{self.firewall_address}:900')
+                got_auth_page = re.match('<html><head><title>Authentication Form</title></head>', r.text)
+                if got_auth_page is not None:
+                    self.log.info('You may be able to authenticate via http. Go to:')
+                    self.log.info(f'http://{self.firewall_address}:900')
+                    self.log.info('in a browser to authenticate.  Then run this script again.')
+                else:
+                    self.log.error('The http authentication route is also inaccessible')
             if self.firewall_opened is False:
                 self.log.error('Failed to open firewall')
                 failcount += 1
@@ -1735,6 +1795,9 @@ class KeckVncLauncher(object):
         failcount += self.test_tigervnc()
         failcount += self.test_localhost()
         failcount += self.test_ssh_key_format()
+        if self.test_firewall() is None:
+            self.log.error('Could not determine if firewall is open')
+            failcount += 1
         failcount += self.test_firewall_authentication()
         failcount += self.test_ssh_key()
         failcount += self.test_basic_connectivity()
@@ -1744,7 +1807,8 @@ class KeckVncLauncher(object):
         else:
             self.log.error(f'--> Found {failcount} failures during tests <--')
 
-        self.play_test_sound()
+        if self.config.get('vncviewer', False) is not True:
+            self.play_test_sound()
 
         self.exit_app()
 
