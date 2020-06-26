@@ -128,7 +128,12 @@ class KeckVncLauncher(object):
             self.test_all()
         # Verify Tiger VNC Config
         if self.args.authonly is False:
-            self.test_tigervnc()
+            tigerfails = self.test_tigervnc()
+            if tigerfails > 0:
+                self.log.error('TigerVNC is not conifgure properly.  See instructions.')
+                self.log.error('This can have negative effects on other users.')
+                self.log.error('Exiting program.')
+                self.exit_app()
 
         ## Authenticate Through Firewall (or Disconnect)
         if self.firewall_requested == True:
