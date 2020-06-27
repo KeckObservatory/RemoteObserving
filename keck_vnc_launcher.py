@@ -26,7 +26,7 @@ import yaml
 import soundplay
 
 
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -128,7 +128,12 @@ class KeckVncLauncher(object):
             self.test_all()
         # Verify Tiger VNC Config
         if self.args.authonly is False:
-            self.test_tigervnc()
+            tigerfails = self.test_tigervnc()
+            if tigerfails > 0:
+                self.log.error('TigerVNC is not conifgure properly.  See instructions.')
+                self.log.error('This can have negative effects on other users.')
+                self.log.error('Exiting program.')
+                self.exit_app()
 
         ## Authenticate Through Firewall (or Disconnect)
         if self.firewall_requested == True:
@@ -1211,7 +1216,11 @@ class KeckVncLauncher(object):
         try:
             xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE, timeout=5)
-        except subprocess.TimeoutError as e:
+        except FileNotFoundError as e:
+            self.log.debug('xpdyinfo not found')
+            self.log.debug(e)
+            return
+        except TimeoutError as e:
             # If xpdyinfo fails just log and keep going
             self.log.debug('xpdyinfo failed')
             self.log.debug(e)
