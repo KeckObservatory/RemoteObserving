@@ -291,10 +291,10 @@ class KeckVncLauncher(object):
             return
 
         #determine geometry
-        geometry = ''
+        geometry = None
         if self.vncviewer_has_geometry is None:
             self.get_vncviewer_properties()
-        if self.vncviewer_has_geometry is True:
+        if self.vncviewer_has_geometry is True and len(self.geometry) > 0:
             i = len(self.vnc_threads) % len(self.geometry)
             geometry = self.geometry[i]
 
@@ -1212,6 +1212,7 @@ class KeckVncLauncher(object):
         #get screen dimensions
         #alternate command: xrandr |grep \* | awk '{print $1}'
         self.log.debug('Determining display info')
+        self.screens = list()
         self.geometry = list()
         try:
             xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
@@ -1254,7 +1255,7 @@ class KeckVncLauncher(object):
         window_positions = self.config.get('window_positions', None)
         if window_positions is not None:
             self.geometry = window_positions
-        else:
+        elif len(self.screens) > 0:
             self.log.debug(f"Calculating VNC window geometry...")
             num_win = len(self.sessions_requested)
             cols = 2
@@ -1270,6 +1271,8 @@ class KeckVncLauncher(object):
                         x = window_positions[index][0]
                         y = window_positions[index][1]
                     self.geometry.append([x, y])
+        else:
+            self.geometry = list()
         self.log.debug('geometry: ' + str(self.geometry))
 
 
