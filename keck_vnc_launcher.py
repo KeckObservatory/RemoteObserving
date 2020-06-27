@@ -1216,7 +1216,11 @@ class KeckVncLauncher(object):
         try:
             xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE, timeout=5)
-        except subprocess.TimeoutError as e:
+        except FileNotFoundError as e:
+            self.log.debug('xpdyinfo not found')
+            self.log.debug(e)
+            return
+        except TimeoutError as e:
             # If xpdyinfo fails just log and keep going
             self.log.debug('xpdyinfo failed')
             self.log.debug(e)
