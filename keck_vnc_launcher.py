@@ -258,14 +258,35 @@ class KeckVncLauncher(object):
 
             # determine if there is already a tunnel for this session
             local_port = None
-            for p in self.ports_in_use.keys():
-                if session_name == self.ports_in_use[p][1]:
-                    local_port = p
-                    vncserver = 'localhost'
+            ports = self.ports_in_use.keys()
+            ports = list(ports)
+            for p in ports:
+                port_in_use = self.ports_in_use[p]
+                if session_name == port_in_use[1]:
                     self.log.info(f"Found existing SSH tunnel on port {port}")
+
+                    # Check to make sure the tunnel is still working. It's not
+                    # enough to check whether the process is still running,
+                    # if the user has connection sharing set up the process
+                    # will have exited but the tunnel will still be up and
+                    # functional. Check the functional aspect first, and then
+                    # think to ask why.
+
+                    if self.is_local_port_in_use(port):
+                        local_port = p
+                        vncserver = 'localhost'
+                    else:
+                        process = port_in_use[2]
+                        status = process.poll()
+                        if status is not None:
+                            error = f"SSH tunnel on port {port} is dead ({status})"
+                        else:
+                            error = f"SSH tunnel on port {port} was closed"
+                        self.log.error(error)
+                        del(self.ports_in_use[p])
                     break
 
-            #open ssh tunnel
+            #open ssh tunnel if necessary
             if local_port is None:
                 try:
                     local_port = self.open_ssh_tunnel(vncserver, account,
@@ -590,9 +611,11 @@ class KeckVncLauncher(object):
             result = self.is_local_port_in_use(local_port)
             if result == True:
                 break
-            else:
-                checks -= 1
-                time.sleep(0.1)
+            elif proc.poll() is not None:
+                raise RuntimeError('ssh command exited unexpectedly')
+
+            checks -= 1
+            time.sleep(0.1)
 
         if checks == 0:
             raise RuntimeError('ssh tunnel failed to open after 5 seconds')
