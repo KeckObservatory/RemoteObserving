@@ -628,20 +628,37 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Is the local port un use?
     ##-------------------------------------------------------------------------
-    def is_local_port_in_use(self, port):
-        '''Determine if the specified local port is in use.
+    def is_local_port_in_use_lsof(self, port):
+        '''Determine if the specified local port is in use using the lsof
+        command line tool.
         '''
         cmd = f'lsof -i -P -n | grep LISTEN | grep ":{port} (LISTEN)" | grep -v grep'
         self.log.debug(f'Checking for port {port} in use: ' + cmd)
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         data = proc.communicate()[0]
         data = data.decode("utf-8").strip()
-
         if len(data) == 0:
             return False
         else:
             self.log.debug(f"Port {port} is in use.")
             return True
+
+
+    def is_local_port_in_use_socket(self, port):
+        '''Determine if the specified local port is in use using the python
+        socket package.
+        '''
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            inuse = s.connect_ex(('localhost', port)) == 0
+            avilable = 'unavailable' if inuse is True else 'available'
+            self.log.debug(f"Port {port} is {avilable}.")
+            return inuse
+
+
+    def is_local_port_in_use(self, port):
+        '''Determine if the specified local port is in use.
+        '''
+        return self.is_local_port_in_use_socket(port)
 
 
     ##-------------------------------------------------------------------------
