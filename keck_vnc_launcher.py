@@ -279,9 +279,9 @@ class KeckVncLauncher(object):
                         process = port_in_use[2]
                         status = process.poll()
                         if status is not None:
-                            error = f"SSH tunnel on port {port} is dead ({status})"
+                            error = f"SSH tunnel to remote port {port} is dead ({status})"
                         else:
-                            error = f"SSH tunnel on port {port} was closed"
+                            error = f"SSH tunnel to remote port {port} was closed"
                         self.log.error(error)
                         del(self.ports_in_use[p])
                     break
