@@ -454,7 +454,8 @@ class KeckVncLauncher(object):
         vncviewercmd = self.config.get('vncviewer', 'vncviewer')
         cmd = [vncviewercmd, '--help']
         self.log.debug(f'Checking VNC viewer: {" ".join(cmd)}')
-        result = subprocess.run(cmd, capture_output=True)
+        result = subprocess.run(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
         output = result.stdout.decode() + '\n' + result.stderr.decode()
         if re.search(r'TigerVNC', output):
             self.log.info(f'We ARE using TigerVNC')
