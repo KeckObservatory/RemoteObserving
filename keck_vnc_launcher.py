@@ -222,7 +222,7 @@ class KeckVncLauncher(object):
 
         ## Parse command line args and get config
         self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
-        self.get_args()
+        self.args = create_parser()
         self.get_config()
         self.check_config()
         self.get_ping_cmd()
@@ -432,15 +432,6 @@ class KeckVncLauncher(object):
         vnc_thread.start()
         self.vnc_threads.append(vnc_thread)
         time.sleep(0.05)
-
-
-    ##-------------------------------------------------------------------------
-    ## Get command line args
-    ##-------------------------------------------------------------------------
-    def get_args(self):
-        '''Retrieve the command line arguments.
-        '''
-        self.args = create_parser()
 
 
     ##-------------------------------------------------------------------------
