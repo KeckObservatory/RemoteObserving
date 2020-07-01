@@ -201,10 +201,10 @@ class KeckVncLauncher(object):
         #default servers to try at Keck
         self.servers_to_try = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
 
-        #NOTE: 'status' session on different server and always on port 1,
-        # so assign localport to constant to avoid conflict
+        #The 'status' session is potentially on a different server and is
+        # always on port 1,
         self.STATUS_PORT = ':1'
-        self.LOCAL_PORT_START = 5901
+        self.LOCAL_PORT_START = 5901 # can be overridden by config file
 
         #ssh key constants
         self.kvnc_account = 'kvnc'
