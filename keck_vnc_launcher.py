@@ -1056,7 +1056,7 @@ class KeckVncLauncher(object):
                 self.log.info(f"Got VNC server: '{vncserver}'")
                 break
 
-        # todo: Temporary hack for KCWI
+        # Temporary hack for KCWI
         if vncserver == 'vm-kcwivnc':
             vncserver = 'kcwi'
 
@@ -1337,9 +1337,6 @@ class KeckVncLauncher(object):
             self.sound = soundplay.soundplay()
             self.sound.connect(self.instrument, vncserver, sound_port,
                                aplay=aplay, player=soundplayer)
-            #todo: should we start this as a thread?
-            # sound = sound = Thread(target=launch_soundplay, args=(vncserver, 9798, instrument,))
-            # soundThread.start()
         except:
             self.log.error('Unable to start soundplay.  See log for details.')
             trace = traceback.format_exc()
@@ -1626,10 +1623,10 @@ class KeckVncLauncher(object):
         '''
         self.log.info('Terminating all VNC sessions.')
         try:
-            #NOTE: poll() value of None means it still exists.
             while self.vnc_processes:
                 proc = self.vnc_processes.pop()
                 self.log.debug('terminating VNC process: ' + str(proc.args))
+                # poll() value of None means it still exists.
                 if proc.poll() == None:
                     proc.terminate()
 
@@ -1688,7 +1685,6 @@ class KeckVncLauncher(object):
         print("Error message: " + str(error) + "\n")
         print("If you need troubleshooting assistance:")
         print(f"* Email {supportEmail}\n")
-        #todo: call number, website?
 
         #Log error if we have a log object (otherwise dump error to stdout)
         #and call exit_app function
