@@ -491,14 +491,6 @@ class KeckVncLauncher(object):
     def check_config(self):
         '''Do some basic checks on the configuration.
         '''
-        #check for vncviewer
-        #NOTE: Ok if not specified, we will tell them to open vncviewer manually
-        #todo: check if valid cmd path?
-        self.vncviewerCmd = self.config.get('vncviewer', None)
-        if self.vncviewerCmd is None:
-            self.log.warning("Config parameter 'vncviewer' undefined.")
-            self.log.warning("You will need to open your vnc viewer manually.\n")
-
         #checks local port start config
         self.local_port = self.LOCAL_PORT_START
         lps = self.config.get('local_port_start', None)
@@ -526,14 +518,6 @@ class KeckVncLauncher(object):
                 self.log.warning("firewall_user not set")
             if self.firewall_port is None:
                 self.log.warning("firewall_port not set")
-
-        #check ssh_pkeys servers_to try
-        self.ssh_pkey = self.config.get('ssh_pkey', None)
-        if self.ssh_pkey is None:
-            self.log.warning("No ssh private key file specified in config file.\n")
-        else:
-            if not Path(self.ssh_pkey).exists():
-                self.log.warning(f"SSH private key path does not exist: {self.ssh_pkey}")
 
         #check default_sessions
         ds = self.config.get('default_sessions', None)
