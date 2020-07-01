@@ -484,6 +484,11 @@ class KeckVncLauncher(object):
 
         self.config = config
 
+        # Load some values
+        self.ssh_pkey = self.config.get('ssh_pkey', None)
+        lps = self.config.get('local_port_start', None)
+        self.local_port = self.LOCAL_PORT_START if lps is None else lps
+
 
     ##-------------------------------------------------------------------------
     ## Check Configuration
@@ -491,12 +496,6 @@ class KeckVncLauncher(object):
     def check_config(self):
         '''Do some basic checks on the configuration.
         '''
-        #checks local port start config
-        self.local_port = self.LOCAL_PORT_START
-        lps = self.config.get('local_port_start', None)
-        if lps is not None:
-            self.local_port = lps
-
         #check firewall config
         self.firewall_requested = False
         self.firewall_address = self.config.get('firewall_address', None)
