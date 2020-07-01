@@ -36,7 +36,7 @@ KROException = Exception
 
 
 ##-------------------------------------------------------------------------
-## Is the local port un use?
+## Is the local port in use?
 ##-------------------------------------------------------------------------
 def is_local_port_in_use_lsof(port):
     '''Determine if the specified local port is in use using the lsof
