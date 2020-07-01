@@ -328,7 +328,7 @@ class KeckVncLauncher(object):
         if self.args.authonly is False:
             tigerfails = self.test_tigervnc()
             if tigerfails > 0:
-                self.log.error('TigerVNC is not conifgure properly.  See instructions.')
+                self.log.error('TigerVNC is not conifgured properly.  See instructions.')
                 self.log.error('This can have negative effects on other users.')
                 self.log.error('Exiting program.')
                 self.exit_app()
@@ -518,7 +518,7 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Get Configuration
+    ## Get & Check Configuration
     ##-------------------------------------------------------------------------
     def get_config(self):
         '''Read the configuration file.
@@ -573,9 +573,6 @@ class KeckVncLauncher(object):
         self.local_port = self.LOCAL_PORT_START if lps is None else lps
 
 
-    ##-------------------------------------------------------------------------
-    ## Check Configuration
-    ##-------------------------------------------------------------------------
     def check_config(self):
         '''Do some basic checks on the configuration.
         '''
@@ -603,7 +600,7 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Log basic system info
+    ## Retrieve or log basic system info
     ##-------------------------------------------------------------------------
     def log_system_info(self):
         '''Add info about the local system to the log for debugging
@@ -622,6 +619,42 @@ class KeckVncLauncher(object):
             self.log.error("Unable to log system info.")
             trace = traceback.format_exc()
             self.log.debug(trace)
+
+
+    def check_version(self):
+        '''Compare the version of the local software against that available on
+        GitHub.
+        '''
+        url = ('https://raw.githubusercontent.com/KeckObservatory/'
+               'RemoteObserving/master/keck_vnc_launcher.py')
+        try:
+            import requests
+            from packaging import version
+            r = requests.get(url)
+            findversion = re.search(r"__version__ = '(\d.+)'\n", r.text)
+            if findversion is not None:
+                remote_version = version.parse(findversion.group(1))
+                local_version = version.parse(__version__)
+            else:
+                self.log.warning(f'Unable to determine software version on GitHub')
+                return
+            if remote_version == local_version:
+                self.log.info(f'Your software is up to date (v{__version__})')
+            elif remote_version < local_version:
+                self.log.info(f'Your software (v{__version__}) is ahead of the released version')
+            else:
+                self.log.warning(f'Your local software (v{__version__}) is behind '
+                                 f'the currently available version '
+                                 f'(v{remote_version})')
+        except ModuleNotFoundError as e:
+            self.log.warning("Unable to verify remote version")
+            self.log.debug(e)
+        except requests.ConnectionError as e:
+            self.log.warning("Unable to verify remote version")
+            self.log.debug(e)
+        except Exception as e:
+            self.log.warning("Unable to verify remote version")
+            self.log.debug(e)
 
 
     def get_ping_cmd(self):
@@ -671,6 +704,49 @@ class KeckVncLauncher(object):
         else:
             self.log.debug(f'Could not find geometry argument')
             self.vncviewer_has_geometry = False
+
+
+    def get_display_info(self):
+        '''Determine the screen number and size
+        '''
+        #get screen dimensions
+        #alternate command: xrandr |grep \* | awk '{print $1}'
+        self.log.debug('Determining display info')
+        self.screens = list()
+        self.geometry = list()
+        try:
+            xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE, timeout=5)
+        except FileNotFoundError as e:
+            self.log.debug('xpdyinfo not found')
+            self.log.debug(e)
+            return
+        except TimeoutError as e:
+            # If xpdyinfo fails just log and keep going
+            self.log.debug('xpdyinfo failed')
+            self.log.debug(e)
+            return
+        stdout = xpdyinfo.stdout.decode()
+        if xpdyinfo.returncode != 0:
+            self.log.debug(f'xpdyinfo failed')
+            for line in stdout.split('\n'):
+                self.log.debug(f"xdpyinfo: {line}")
+            stderr = xpdyinfo.stderr.decode()
+            for line in stderr.split('\n'):
+                self.log.debug(f"xdpyinfo: {line}")
+            return None
+        find_nscreens = re.search('number of screens:\s+(\d+)', stdout)
+        nscreens = int(find_nscreens.group(1)) if find_nscreens is not None else 1
+        self.log.debug(f'Number of screens = {nscreens}')
+
+        find_dimensions = re.findall('dimensions:\s+(\d+)x(\d+)', stdout)
+        if len(find_dimensions) == 0:
+            self.log.debug(f'Could not find screen dimensions')
+            return None
+        # convert values from strings to int
+        self.screens = [[int(val) for val in line] for line in find_dimensions]
+        for screen in self.screens:
+            self.log.debug(f"Screen size: {screen[0]}x{screen[1]}")
 
 
     ##-------------------------------------------------------------------------
@@ -1227,49 +1303,6 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Calculate vnc windows size and position
     ##-------------------------------------------------------------------------
-    def get_display_info(self):
-        '''Determine the screen number and size
-        '''
-        #get screen dimensions
-        #alternate command: xrandr |grep \* | awk '{print $1}'
-        self.log.debug('Determining display info')
-        self.screens = list()
-        self.geometry = list()
-        try:
-            xpdyinfo = subprocess.run('xdpyinfo', stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE, timeout=5)
-        except FileNotFoundError as e:
-            self.log.debug('xpdyinfo not found')
-            self.log.debug(e)
-            return
-        except TimeoutError as e:
-            # If xpdyinfo fails just log and keep going
-            self.log.debug('xpdyinfo failed')
-            self.log.debug(e)
-            return
-        stdout = xpdyinfo.stdout.decode()
-        if xpdyinfo.returncode != 0:
-            self.log.debug(f'xpdyinfo failed')
-            for line in stdout.split('\n'):
-                self.log.debug(f"xdpyinfo: {line}")
-            stderr = xpdyinfo.stderr.decode()
-            for line in stderr.split('\n'):
-                self.log.debug(f"xdpyinfo: {line}")
-            return None
-        find_nscreens = re.search('number of screens:\s+(\d+)', stdout)
-        nscreens = int(find_nscreens.group(1)) if find_nscreens is not None else 1
-        self.log.debug(f'Number of screens = {nscreens}')
-
-        find_dimensions = re.findall('dimensions:\s+(\d+)x(\d+)', stdout)
-        if len(find_dimensions) == 0:
-            self.log.debug(f'Could not find screen dimensions')
-            return None
-        # convert values from strings to int
-        self.screens = [[int(val) for val in line] for line in find_dimensions]
-        for screen in self.screens:
-            self.log.debug(f"Screen size: {screen[0]}x{screen[1]}")
-
-
     def calc_window_geometry(self):
         '''If window positions are not set in config file, make a guess.
         '''
@@ -1432,45 +1465,6 @@ class KeckVncLauncher(object):
                 self.close_ssh_thread(int(cmatch.group(1)))
             else:
                 self.log.error('Unrecognized command: ' + repr(cmd))
-
-
-    ##-------------------------------------------------------------------------
-    ## Check for latest version number on GitHub
-    ##-------------------------------------------------------------------------
-    def check_version(self):
-        '''Compare the version of the local software against that available on
-        GitHub.
-        '''
-        url = ('https://raw.githubusercontent.com/KeckObservatory/'
-               'RemoteObserving/master/keck_vnc_launcher.py')
-        try:
-            import requests
-            from packaging import version
-            r = requests.get(url)
-            findversion = re.search(r"__version__ = '(\d.+)'\n", r.text)
-            if findversion is not None:
-                remote_version = version.parse(findversion.group(1))
-                local_version = version.parse(__version__)
-            else:
-                self.log.warning(f'Unable to determine software version on GitHub')
-                return
-            if remote_version == local_version:
-                self.log.info(f'Your software is up to date (v{__version__})')
-            elif remote_version < local_version:
-                self.log.info(f'Your software (v{__version__}) is ahead of the released version')
-            else:
-                self.log.warning(f'Your local software (v{__version__}) is behind '
-                                 f'the currently available version '
-                                 f'(v{remote_version})')
-        except ModuleNotFoundError as e:
-            self.log.warning("Unable to verify remote version")
-            self.log.debug(e)
-        except requests.ConnectionError as e:
-            self.log.warning("Unable to verify remote version")
-            self.log.debug(e)
-        except Exception as e:
-            self.log.warning("Unable to verify remote version")
-            self.log.debug(e)
 
 
     ##-------------------------------------------------------------------------
