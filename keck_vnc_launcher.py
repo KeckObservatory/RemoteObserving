@@ -36,6 +36,19 @@ KROException = Exception
 
 
 ##-------------------------------------------------------------------------
+## Main
+##-------------------------------------------------------------------------
+def main():
+    #catch all exceptions so we can exit gracefully
+    try:
+        create_logger()
+        kvl = KeckVncLauncher()
+        kvl.start()
+    except Exception as error:
+        kvl.handle_fatal_error(error)
+
+
+##-------------------------------------------------------------------------
 ## Is the local port in use?
 ##-------------------------------------------------------------------------
 def is_local_port_in_use_lsof(port):
@@ -1930,13 +1943,5 @@ def create_logger():
 ## Start from command line
 ##-------------------------------------------------------------------------
 if __name__ == '__main__':
-
-    #catch all exceptions so we can exit gracefully
-    try:
-        create_logger()
-        kvl = KeckVncLauncher()
-        kvl.start()
-    except Exception as error:
-        kvl.handle_fatal_error(error)
-
+    main()
 
