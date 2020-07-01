@@ -49,6 +49,98 @@ def main():
 
 
 ##-------------------------------------------------------------------------
+## Create argument parser
+##-------------------------------------------------------------------------
+def create_parser():
+    ## create a parser object for understanding command-line arguments
+    description = (f"Keck VNC Launcher (v{__version__}). This program is used "
+                   f"by approved Keck Remote Observing sites to launch VNC "
+                   f"sessions for the specified instrument account. For "
+                   f"help or information on how to configure the code, please "
+                   f"see the included README.md file or email "
+                   f"{supportEmail}")
+    parser = argparse.ArgumentParser(description=description)
+
+    ## add flags
+    parser.add_argument("--test", dest="test",
+        default=False, action="store_true",
+        help="Test system rather than connect to VNC sessions.")
+    parser.add_argument("--authonly", dest="authonly",
+        default=False, action="store_true",
+        help="Authenticate through firewall, but do not start VNC sessions.")
+    parser.add_argument("--nosound", dest="nosound",
+        default=False, action="store_true",
+        help="Skip start of soundplay application.")
+    parser.add_argument("--viewonly", dest="viewonly",
+        default=False, action="store_true",
+        help="Open VNC sessions in View Only mode (only for TigerVnC viewer)")
+    for name in SESSION_NAMES:
+        parser.add_argument(f"--{name}",
+            dest=name,
+            default=False,
+            action="store_true",
+            help=f"Open {name} VNC session")
+
+    ## add arguments
+    parser.add_argument("account", type=str, nargs='?', default='hires1',
+                        help="The user account.")
+
+    ## add options
+    parser.add_argument("-c", "--config", dest="config", type=str,
+        help="Path to local configuration file.")
+
+    #parse
+    args = parser.parse_args()
+
+    ## If authonly is set, also set nosound because if the user doesn't want
+    ## VNCs, they likely don't want sound as well.
+    if args.authonly is True:
+        args.nosound = True
+
+    return args
+
+##-------------------------------------------------------------------------
+## Create logger
+##-------------------------------------------------------------------------
+def create_logger():
+
+    ## Create logger object
+    log = logging.getLogger('KRO')
+
+    ## Only add handlers if none already exist (eliminates duplicate lines)
+    if len(log.handlers) > 0:
+        return
+
+    #create log file and log dir if not exist
+    ymd = datetime.utcnow().strftime('%Y%m%d')
+    try:
+        Path('logs/').mkdir(parents=True, exist_ok=True)
+    except PermissionError as error:
+        print(str(error))
+        print(f"ERROR: Unable to create logger at {logFile}")
+        print("Make sure you have write access to this directory.\n")
+        log.info("EXITING APP\n")
+        sys.exit(1)
+
+    #stream/console handler (info+ only)
+    logConsoleHandler = logging.StreamHandler()
+    logConsoleHandler.setLevel(logging.INFO)
+    logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
+    logFormat.converter = time.gmtime
+    logConsoleHandler.setFormatter(logFormat)
+    log.addHandler(logConsoleHandler)
+
+    #file handler (full debug logging)
+    logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
+    logFileHandler = logging.FileHandler(logFile)
+    logFileHandler.setLevel(logging.DEBUG)
+    logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
+    logFormat.converter = time.gmtime
+    logFileHandler.setFormatter(logFormat)
+    log.addHandler(logFileHandler)
+
+
+##-------------------------------------------------------------------------
 ## Is the local port in use?
 ##-------------------------------------------------------------------------
 def is_local_port_in_use_lsof(port):
@@ -1845,98 +1937,6 @@ class KeckVncLauncher(object):
             self.play_test_sound()
 
         self.exit_app()
-
-
-##-------------------------------------------------------------------------
-## Create argument parser
-##-------------------------------------------------------------------------
-def create_parser():
-    ## create a parser object for understanding command-line arguments
-    description = (f"Keck VNC Launcher (v{__version__}). This program is used "
-                   f"by approved Keck Remote Observing sites to launch VNC "
-                   f"sessions for the specified instrument account. For "
-                   f"help or information on how to configure the code, please "
-                   f"see the included README.md file or email "
-                   f"{supportEmail}")
-    parser = argparse.ArgumentParser(description=description)
-
-    ## add flags
-    parser.add_argument("--test", dest="test",
-        default=False, action="store_true",
-        help="Test system rather than connect to VNC sessions.")
-    parser.add_argument("--authonly", dest="authonly",
-        default=False, action="store_true",
-        help="Authenticate through firewall, but do not start VNC sessions.")
-    parser.add_argument("--nosound", dest="nosound",
-        default=False, action="store_true",
-        help="Skip start of soundplay application.")
-    parser.add_argument("--viewonly", dest="viewonly",
-        default=False, action="store_true",
-        help="Open VNC sessions in View Only mode (only for TigerVnC viewer)")
-    for name in SESSION_NAMES:
-        parser.add_argument(f"--{name}",
-            dest=name,
-            default=False,
-            action="store_true",
-            help=f"Open {name} VNC session")
-
-    ## add arguments
-    parser.add_argument("account", type=str, nargs='?', default='hires1',
-                        help="The user account.")
-
-    ## add options
-    parser.add_argument("-c", "--config", dest="config", type=str,
-        help="Path to local configuration file.")
-
-    #parse
-    args = parser.parse_args()
-
-    ## If authonly is set, also set nosound because if the user doesn't want
-    ## VNCs, they likely don't want sound as well.
-    if args.authonly is True:
-        args.nosound = True
-
-    return args
-
-##-------------------------------------------------------------------------
-## Create logger
-##-------------------------------------------------------------------------
-def create_logger():
-
-    ## Create logger object
-    log = logging.getLogger('KRO')
-
-    ## Only add handlers if none already exist (eliminates duplicate lines)
-    if len(log.handlers) > 0:
-        return
-
-    #create log file and log dir if not exist
-    ymd = datetime.utcnow().strftime('%Y%m%d')
-    try:
-        Path('logs/').mkdir(parents=True, exist_ok=True)
-    except PermissionError as error:
-        print(str(error))
-        print(f"ERROR: Unable to create logger at {logFile}")
-        print("Make sure you have write access to this directory.\n")
-        log.info("EXITING APP\n")
-        sys.exit(1)
-
-    #stream/console handler (info+ only)
-    logConsoleHandler = logging.StreamHandler()
-    logConsoleHandler.setLevel(logging.INFO)
-    logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
-    logFormat.converter = time.gmtime
-    logConsoleHandler.setFormatter(logFormat)
-    log.addHandler(logConsoleHandler)
-
-    #file handler (full debug logging)
-    logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
-    logFileHandler = logging.FileHandler(logFile)
-    logFileHandler.setLevel(logging.DEBUG)
-    logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
-    logFormat.converter = time.gmtime
-    logFileHandler.setFormatter(logFormat)
-    log.addHandler(logFileHandler)
 
 
 ##-------------------------------------------------------------------------
