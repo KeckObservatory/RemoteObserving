@@ -95,7 +95,6 @@ class KeckVncLauncher(object):
 
         #ssh key constants
         self.kvnc_account = 'kvnc'
-        self.initial_server = 'svncserver2.keck.hawaii.edu'
 
 
     ##-------------------------------------------------------------------------
@@ -1090,7 +1089,7 @@ class KeckVncLauncher(object):
 
         self.ssh_key_valid = False
         cmd = 'whoami'
-        server = self.initial_server
+        server = self.servers_to_try[0]
         account = self.kvnc_account
 
         try:
