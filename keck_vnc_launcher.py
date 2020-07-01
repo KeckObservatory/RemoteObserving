@@ -519,15 +519,6 @@ class KeckVncLauncher(object):
             if self.firewall_port is None:
                 self.log.warning("firewall_port not set")
 
-        #check default_sessions
-        ds = self.config.get('default_sessions', None)
-        self.log.debug(f'Default sessions from config file: {ds}')
-        if self.args.authonly is True:
-            self.log.debug(f'authonly is True, so default sessions set to []')
-            ds = list()
-        if ds is not None:
-            self.default_sessions = ds
-
 
     ##-------------------------------------------------------------------------
     ## Log basic system info
