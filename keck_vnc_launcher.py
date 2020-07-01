@@ -130,14 +130,14 @@ def do_firewall_command(firewall_address, firewall_port, firewall_user,
     # Check for standard exits
     if selection == 1:
         if re.search('User authorized for standard services', result):
-            self.log.info('User authorized for standard services')
+            log.info('User authorized for standard services')
         else:
-            self.log.error(result)
+            log.error(result)
     elif selection == 2:
         if re.search('User was signed off from all services', result):
-            self.log.info('User was signed off from all services')
+            log.info('User was signed off from all services')
         else:
-            self.log.error(result)
+            log.error(result)
 
     return result
 
