@@ -226,12 +226,12 @@ class KeckVncLauncher(object):
         self.args = create_parser()
         self.get_config()
         self.check_config()
-        self.get_ping_cmd()
 
         ##---------------------------------------------------------------------
         ## Log basic system info
         self.log_system_info()
         self.check_version()
+        self.get_ping_cmd()
         if self.args.authonly is False:
             self.get_vncviewer_properties()
             self.get_display_info()
@@ -540,6 +540,32 @@ class KeckVncLauncher(object):
             self.log.error("Unable to log system info.")
             trace = traceback.format_exc()
             self.log.debug(trace)
+
+
+    def get_ping_cmd(self):
+        '''Assemble the local ping command.
+        '''
+        # Figure out local ping command
+        try:
+            ping = subprocess.check_output(['which', 'ping'])
+            ping = ping.decode()
+            ping = ping.strip()
+            self.ping_cmd = [ping]
+        except subprocess.CalledProcessError:
+            self.log.error("Ping command not available")
+            return None
+
+        os = platform.system()
+        os = os.lower()
+        # Ping once, wait up to 2 seconds for a response.
+        if os == 'linux':
+            self.ping_cmd.extend(['-c', '1', '-w', 'wait'])
+        elif os == 'darwin':
+            self.ping_cmd.extend(['-c', '1', '-W', 'wait000'])
+        else:
+            # Don't understand how ping works on this platform.
+            self.ping_cmd = None
+        self.log.debug(f'Got ping command: {self.ping_cmd[:-2]}')
 
 
     def get_vncviewer_properties(self):
@@ -863,31 +889,6 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Ping
     ##-------------------------------------------------------------------------
-    def get_ping_cmd(self):
-        '''Assemble the local ping command.
-        '''
-        # Figure out local ping command
-        try:
-            ping = subprocess.check_output(['which', 'ping'])
-            ping = ping.decode()
-            ping = ping.strip()
-            self.ping_cmd = [ping]
-        except subprocess.CalledProcessError:
-            self.log.error("Ping command not available")
-            return None
-
-        os = platform.system()
-        os = os.lower()
-        # Ping once, wait up to 2 seconds for a response.
-        if os == 'linux':
-            self.ping_cmd.extend(['-c', '1', '-w', 'wait'])
-        elif os == 'darwin':
-            self.ping_cmd.extend(['-c', '1', '-W', 'wait000'])
-        else:
-            # Don't understand how ping works on this platform.
-            self.ping_cmd = None
-        self.log.debug(f'Got ping command: {self.ping_cmd[:-2]}')
-
     def ping(self, address, wait=5):
         '''Ping a server to determine if it is accessible.
         '''
