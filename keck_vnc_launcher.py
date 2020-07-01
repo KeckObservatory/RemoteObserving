@@ -61,6 +61,88 @@ is_local_port_in_use = is_local_port_in_use_socket
 
 
 ##-------------------------------------------------------------------------
+## Define Firewall Function
+##-------------------------------------------------------------------------
+def do_firewall_command(firewall_address, firewall_port, firewall_user,
+                        authpass, selection):
+    '''Interact with the firewall to authenticate or deauthenticate.
+    
+    The selection value is the response to the firewall's query after
+    authenticating past the username and password steps.
+    '''
+    log = logging.getLogger('KRO')
+
+    if selection == 1:
+        log.info(f'Authenticating through firewall as:')
+        log.info(f' {firewall_user}@{firewall_address}:{firewall_port}')
+    elif selection == 2:
+        log.info('Closing firewall hole')
+
+    tn = Telnet(firewall_address, int(firewall_port))
+
+    # Find Username Prompt
+    user_prompt = tn.read_until(b"User: ", timeout=5).decode('ascii')
+    for line in user_prompt.split('\n'):
+        line = line.strip().strip('\n')
+        log.debug(f"Firewall says: {line}")
+    if user_prompt[-6:] != 'User: ':
+        log.error('Got unexpected response from firewall:')
+        log.error(user_prompt)
+        raise KROException('Got unexpected response from firewall')
+    log.debug(f'Sending response: {firewall_user}')
+    tn.write(f'{firewall_user}\n'.encode('ascii'))
+
+    # Find Password Prompt
+    password_prompt = tn.read_until(b"password: ", timeout=5).decode('ascii')
+    for line in password_prompt.split('\n'):
+        line = line.strip().strip('\n')
+        log.debug(f"Firewall says: {line}")
+    if password_prompt[-10:] != 'password: ':
+        log.error('Got unexpected response from firewall:')
+        log.error(password_prompt)
+        raise KROException('Got unexpected response from firewall')
+    log.debug(f'Sending response: (value hidden from log)')
+    tn.write(f'{authpass}\n'.encode('ascii'))
+
+    # Is Password Accepted?
+    password_response = tn.read_until(b"Enter your choice: ", timeout=5).decode('ascii')
+    for line in password_response.split('\n'):
+        line = line.strip().strip('\n')
+        log.debug(f"Firewall says: {line}")
+    if re.search('Access denied - wrong user name or password', password_response):
+        log.error('Incorrect password entered.')
+        return False
+
+    # If Password is Correct, continue with authentication process
+    if password_response[-19:] != 'Enter your choice: ':
+        log.error('Got unexpected response from firewall:')
+        log.error(password_response)
+        raise KROException('Got unexpected response from firewall')
+
+    log.debug(f'Sending response: {selection}')
+    tn.write(f'{selection}\n'.encode('ascii'))
+
+    result = tn.read_all().decode('ascii')
+    for line in result.split('\n'):
+        line = line.strip().strip('\n')
+        log.debug(f"Firewall says: {line}")
+
+    # Check for standard exits
+    if selection == 1:
+        if re.search('User authorized for standard services', result):
+            self.log.info('User authorized for standard services')
+        else:
+            self.log.error(result)
+    elif selection == 2:
+        if re.search('User was signed off from all services', result):
+            self.log.info('User was signed off from all services')
+        else:
+            self.log.error(result)
+
+    return result
+
+
+##-------------------------------------------------------------------------
 ## Define VNC Session Object
 ##-------------------------------------------------------------------------
 class VNCSession(object):
@@ -795,95 +877,17 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Communicate with the firewall
     ##-------------------------------------------------------------------------
-    def do_firewall_command(self, authpass, selection):
-        '''Interact with the firewall to authenticate or deauthenticate.
-        
-        The selection value is the response to the firewall's query after
-        authenticating past the username and password steps.
-        '''
-        tn = Telnet(self.firewall_address, int(self.firewall_port))
-
-        # Find Username Prompt
-        user_prompt = tn.read_until(b"User: ", timeout=5).decode('ascii')
-        for line in user_prompt.split('\n'):
-            line = line.strip().strip('\n')
-            self.log.debug(f"Firewall says: {line}")
-        if user_prompt[-6:] != 'User: ':
-            self.log.error('Got unexpected response from firewall:')
-            self.log.error(user_prompt)
-            raise KROException('Got unexpected response from firewall')
-        self.log.debug(f'Sending response: {self.firewall_user}')
-        tn.write(f'{self.firewall_user}\n'.encode('ascii'))
-
-        # Find Password Prompt
-        password_prompt = tn.read_until(b"password: ", timeout=5).decode('ascii')
-        for line in password_prompt.split('\n'):
-            line = line.strip().strip('\n')
-            self.log.debug(f"Firewall says: {line}")
-        if password_prompt[-10:] != 'password: ':
-            self.log.error('Got unexpected response from firewall:')
-            self.log.error(password_prompt)
-            raise KROException('Got unexpected response from firewall')
-        self.log.debug(f'Sending response: (value hidden from log)')
-        tn.write(f'{authpass}\n'.encode('ascii'))
-
-        # Is Password Accepted?
-        password_response = tn.read_until(b"Enter your choice: ", timeout=5).decode('ascii')
-        for line in password_response.split('\n'):
-            line = line.strip().strip('\n')
-            self.log.debug(f"Firewall says: {line}")
-        if re.search('Access denied - wrong user name or password', password_response):
-            self.log.error('Incorrect password entered.')
-            return False
-
-        # If Password is Correct, continue with authentication process
-        if password_response[-19:] != 'Enter your choice: ':
-            self.log.error('Got unexpected response from firewall:')
-            self.log.error(password_response)
-            raise KROException('Got unexpected response from firewall')
-
-        self.log.debug(f'Sending response: {selection}')
-        tn.write(f'{selection}\n'.encode('ascii'))
-
-        result = tn.read_all().decode('ascii')
-        for line in result.split('\n'):
-            line = line.strip().strip('\n')
-            self.log.debug(f"Firewall says: {line}")
-
-        return result
-
-
     def open_firewall(self, authpass):
         '''Simple wrapper to open firewall.
         '''
-        self.log.info(f'Authenticating through firewall as:')
-        self.log.info(f' {self.firewall_user}@{self.firewall_address}:{self.firewall_port}')
-
-        result = self.do_firewall_command(authpass, 1)
-
-        if re.search('User authorized for standard services', result):
-            self.log.info('User authorized for standard services')
-            return True
-        else:
-            self.log.error(result)
-            return False
-
+        do_firewall_command(self.firewall_address, self.firewall_port,
+                            self.firewall_user, authpass, 1)
 
     def close_firewall(self, authpass):
         '''Simple wrapper to close firewall.
         '''
-        if self.firewall_opened == False:
-            return
-        self.log.info('Closing firewall hole')
-
-        result = self.do_firewall_command(authpass, 2)
-
-        if re.search('User was signed off from all services', result):
-            self.log.info('User was signed off from all services')
-            return True
-        else:
-            self.log.error(result)
-            return False
+        do_firewall_command(self.firewall_address, self.firewall_port,
+                            self.firewall_user, authpass, 2)
 
 
     ##-------------------------------------------------------------------------
