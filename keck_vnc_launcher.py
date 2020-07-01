@@ -220,6 +220,7 @@ class KeckVncLauncher(object):
         This contains the basic sequence of events for running the program.
         '''
 
+        ##---------------------------------------------------------------------
         ## Parse command line args and get config
         self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
         self.args = create_parser()
@@ -227,6 +228,7 @@ class KeckVncLauncher(object):
         self.check_config()
         self.get_ping_cmd()
 
+        ##---------------------------------------------------------------------
         ## Log basic system info
         self.log_system_info()
         self.check_version()
@@ -234,6 +236,7 @@ class KeckVncLauncher(object):
             self.get_vncviewer_properties()
             self.get_display_info()
 
+        ##---------------------------------------------------------------------
         ## Run tests
         if self.args.test is True:
             # On test, always cleanup firewall
@@ -248,20 +251,15 @@ class KeckVncLauncher(object):
                 self.log.error('Exiting program.')
                 self.exit_app()
 
+        ##---------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
         if self.firewall_requested == True:
             self.firewall_opened = self.test_firewall()
         else:
             self.firewall_opened = False
 
-        # Only prompt for the firewall password if it is required for opening
-        # or closing the firewall hole.
-
-        need_password = False
-        close_requested = self.config.get('firewall_cleanup', False)
-        if close_requested == True:
-            need_password = True
-
+        # Do we need to interact with the firewall?
+        need_password = self.config.get('firewall_cleanup', False)
         if self.firewall_requested == True and self.firewall_opened == False:
             need_password = True
 
@@ -285,14 +283,17 @@ class KeckVncLauncher(object):
 
 
         if self.args.authonly is False:
+            ##-----------------------------------------------------------------
             ## Determine sessions to open
             self.sessions_requested = self.get_sessions_requested(self.args)
 
+            ##-----------------------------------------------------------------
             ## Determine instrument
             self.instrument, self.tel = self.determine_instrument(self.args.account)
             if self.instrument is None:
                 self.exit_app(f'Invalid instrument account: "{self.args.account}"')
 
+            ##-----------------------------------------------------------------
             ## Validate ssh key
             self.validate_ssh_key()
             if self.ssh_key_valid == False:
@@ -301,36 +302,36 @@ class KeckVncLauncher(object):
                                f"for other options to connect remotely.\n")
                 self.exit_app()
 
+            ##-----------------------------------------------------------------
             ## Determine VNC server
             self.vncserver = self.get_vnc_server(self.kvnc_account,
                                                  self.instrument)
-
             if self.vncserver is None:
                 self.exit_app("Could not determine VNC server.")
 
+            ##-----------------------------------------------------------------
             ## Determine VNC Sessions
             self.sessions_found = self.get_vnc_sessions(self.vncserver,
                                                         self.instrument,
                                                         self.kvnc_account,
                                                         self.args.account)
 
-            if self.args.authonly is False and\
-                    (not self.sessions_found or len(self.sessions_found) == 0):
+            if (not self.sessions_found or len(self.sessions_found) == 0):
                 self.exit_app('No VNC sessions found')
 
+            ##-----------------------------------------------------------------
             ## Open requested sessions
             self.calc_window_geometry()
-            self.ssh_tunnels = dict()
-            self.vnc_threads = list()
-            self.vnc_processes = list()
             for session_name in self.sessions_requested:
                 self.start_vnc_session(session_name)
 
+            ##-----------------------------------------------------------------
             ## Open Soundplay
             sound = None
             if self.args.nosound is False and self.config.get('nosound', False) != True:
                 self.start_soundplay()
 
+        ##---------------------------------------------------------------------
         ## Wait for quit signal, then all done
         atexit.register(self.exit_app, msg="App exit")
         self.prompt_menu()
@@ -576,7 +577,6 @@ class KeckVncLauncher(object):
                 requested = getattr(args, session)
             except AttributeError:
                 continue
-
             if requested == True:
                 sessions.append (session)
 
@@ -686,14 +686,6 @@ class KeckVncLauncher(object):
 
         #append to proc list so we can terminate on app exit
         self.vnc_processes.append(proc)
-
-        #capture all output and log
-        #todo: figure out how to do this realtime as stream instead of only when proc terminates
-        # out, err = proc.communicate()
-        # out = out.decode()
-        # err = err.decode()
-        # self.log.debug('vnc comm output: ' + out)
-        # if err: self.log.debug('vnc comm err: ' + err)
 
 
     ##-------------------------------------------------------------------------
