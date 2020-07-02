@@ -955,7 +955,7 @@ class KeckVncLauncher(object):
 
         command.append('-oStrictHostKeyChecking=no')
         command.append(cmd)
-        self.log.debug('ssh command: ' + ' '.join (command))
+        self.log.debug('ssh command: ' + ' '.join(command))
 
         pipe = subprocess.PIPE
         null = subprocess.DEVNULL
@@ -1394,7 +1394,7 @@ class KeckVncLauncher(object):
 
         boxed = list()
         for line in lines:
-            boxed.append ('|' + line.ljust(line_length) + '|')
+            boxed.append('|' + line.ljust(line_length) + '|')
 
         menu = list()
         menu.append('')
@@ -1500,7 +1500,7 @@ class KeckVncLauncher(object):
             command.append(aplay)
 
         self.log.info('Playing test sound')
-        self.log.debug('Calling: ' + ' '.join (command))
+        self.log.debug('Calling: ' + ' '.join(command))
         test_sound_STDOUT = subprocess.check_output(command)
         for line in test_sound_STDOUT.decode().split('\n'):
             self.log.debug(f'  {line}')
@@ -1615,7 +1615,7 @@ class KeckVncLauncher(object):
         command.append(source)
         command.append(destination)
 
-        self.log.debug('scp command: ' + ' '.join (command))
+        self.log.debug('scp command: ' + ' '.join(command))
 
         null = subprocess.DEVNULL
 
