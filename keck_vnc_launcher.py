@@ -913,7 +913,7 @@ class KeckVncLauncher(object):
         if netcat is not None:
             cmd = netcat.split()
             for server in self.servers_to_try:
-                server_and_port = [server, '22']
+                server_and_port = [f'{server}.keck.hawaii.edu', '22']
                 self.log.debug(f'firewall test: {" ".join (cmd+server_and_port)}')
                 netcat_result = subprocess.run(cmd, timeout=5,
                                                stdout=subprocess.PIPE,
