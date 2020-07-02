@@ -387,7 +387,7 @@ class KeckVncLauncher(object):
         ]
 
         #default servers to try at Keck
-        servers = ('svncserver2', 'svncserver1', 'kcwi', 'mosfire')
+        servers = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
         domain = '.keck.hawaii.edu'
         self.servers_to_try = [f"{server}{domain}" for server in servers]
 
@@ -804,9 +804,9 @@ class KeckVncLauncher(object):
         if netcat is not None:
             cmd = netcat.split()
             for server in self.servers_to_try:
-                server_and_port = (server, '22')
-                self.log.debug(f'firewall test: {" ".join (cmd+server_and_port)}')
-                netcat_result = subprocess.run(cmd, timeout=5,
+                server_and_port = [server, '22']
+                self.log.debug(f'firewall test: {" ".join(cmd+server_and_port)}')
+                netcat_result = subprocess.run(cmd+server_and_port, timeout=5,
                                                stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE)
                 up = (netcat_result.returncode == 0)
