@@ -853,17 +853,27 @@ class KeckVncLauncher(object):
         '''Determine which sessions to open based on command line arguments
         '''
         sessions = list()
+        # First check the command line arguments
         for session in SESSION_NAMES:
             try:
                 requested = getattr(args, session)
             except AttributeError:
                 continue
             if requested == True:
-                sessions.append (session)
+                sessions.append(session)
 
-        # create default sessions list if none provided
+        if len(sessions) > 0:
+            self.log.debug(f'Got {sessions} sessions from command line args')
+
+        # Use the configuration file if no command line arguments specified
+        if len(sessions) == 0:
+            sessions = self.config.get('default_sessions', [])
+            self.log.debug(f'Got {sessions} sessions from configuration file')
+
+        # Finally use the default sessions list as a last resort
         if len(sessions) == 0:
             sessions = self.default_sessions
+            self.log.debug(f'Using default sessions: {sessions}')
 
         self.log.debug(f'Sessions to open: {sessions}')
         return sessions
