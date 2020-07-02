@@ -1039,7 +1039,15 @@ class KeckVncLauncher(object):
     ## Determine VNC Server
     ##-------------------------------------------------------------------------
     def get_vnc_server(self, account, instrument):
-        '''Determine the VNC server to connect to given the instrument
+        '''Determine the VNC server to connect to given the instrument.
+        
+        Note that while this nominally cycles through all the servers in the
+        servers_to_try list, it is only reliably correct when connecting to a
+        solaris machine such as svncserver1 or svncserver2. The kvnc.cfg file
+        that those access at Keck is shared and up to date. The kvnc.cfg file
+        accessed by the linux instrument machines is deployed via KROOT and may
+        be out of date. As of this writing (July 2, 2020), ESI is incorrect on
+        those machines, but other instruments return a correct server.
         '''
         self.log.info(f"Determining VNC server for '{account}'...")
         vncserver = None
