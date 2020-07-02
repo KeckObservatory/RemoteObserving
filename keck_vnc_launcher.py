@@ -389,8 +389,7 @@ class KeckVncLauncher(object):
         #default servers to try at Keck
         servers = ('svncserver2', 'svncserver1', 'kcwi', 'mosfire')
         domain = '.keck.hawaii.edu'
-        expanded = ["{}{}".format(server, domain) for server in servers]
-        self.servers_to_try = expanded
+        self.servers_to_try = [f"{server}{domain}" for server in servers]
 
         #The 'status' session is potentially on a different server and is
         # always on port 1,
