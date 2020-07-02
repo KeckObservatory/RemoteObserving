@@ -387,7 +387,10 @@ class KeckVncLauncher(object):
         ]
 
         #default servers to try at Keck
-        self.servers_to_try = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
+        servers = ('svncserver2', 'svncserver1', 'kcwi', 'mosfire')
+        domain = '.keck.hawaii.edu'
+        expanded = ["{}{}".format(server, domain) for server in servers]
+        self.servers_to_try = expanded
 
         #The 'status' session is potentially on a different server and is
         # always on port 1,
@@ -802,7 +805,7 @@ class KeckVncLauncher(object):
         if netcat is not None:
             cmd = netcat.split()
             for server in self.servers_to_try:
-                server_and_port = [f'{server}.keck.hawaii.edu', '22']
+                server_and_port = (server, '22')
                 self.log.debug(f'firewall test: {" ".join (cmd+server_and_port)}')
                 netcat_result = subprocess.run(cmd, timeout=5,
                                                stdout=subprocess.PIPE,
@@ -817,7 +820,7 @@ class KeckVncLauncher(object):
         # Use ping if no netcat is specified
         if self.ping_cmd is not None:
             for server in self.servers_to_try:
-                up = self.ping(f'{server}.keck.hawaii.edu', wait=2)
+                up = self.ping(server, wait=2)
                 if up is True:
                     self.log.info('firewall is open')
                     return True
@@ -1042,7 +1045,6 @@ class KeckVncLauncher(object):
         self.log.info(f"Determining VNC server for '{account}'...")
         vncserver = None
         for server in self.servers_to_try:
-            server += ".keck.hawaii.edu"
             cmd = f'kvncinfo -server -I {instrument}'
 
             try:
