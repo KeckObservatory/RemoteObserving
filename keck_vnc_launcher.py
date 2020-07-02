@@ -39,10 +39,10 @@ KROException = Exception
 ## Main
 ##-------------------------------------------------------------------------
 def main():
+    create_logger()
+    kvl = KeckVncLauncher()
     #catch all exceptions so we can exit gracefully
     try:
-        create_logger()
-        kvl = KeckVncLauncher()
         kvl.start()
     except Exception as error:
         kvl.handle_fatal_error(error)
