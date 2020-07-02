@@ -32,11 +32,37 @@ supportEmail = 'remote-observing@keck.hawaii.edu'
 SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
                  'telanalys', 'telstatus', 'status')
-
-class KROException(Exception):
-    pass
+KROException = Exception
 
 
+##-------------------------------------------------------------------------
+## Is the local port in use?
+##-------------------------------------------------------------------------
+def is_local_port_in_use_lsof(port):
+    '''Determine if the specified local port is in use using the lsof
+    command line tool.
+    '''
+    cmd = f'lsof -i -P -n | grep LISTEN | grep ":{port} (LISTEN)" | grep -v grep'
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    data = proc.communicate()[0]
+    data = data.decode("utf-8").strip()
+    return (len(data) != 0)
+
+
+def is_local_port_in_use_socket(port):
+    '''Determine if the specified local port is in use using the python
+    socket package.
+    '''
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+
+is_local_port_in_use = is_local_port_in_use_socket
+
+
+##-------------------------------------------------------------------------
+## Define VNC Session Object
+##-------------------------------------------------------------------------
 class VNCSession(object):
     '''An object to contain information about a VNC session.
     '''
@@ -53,6 +79,93 @@ class VNCSession(object):
         return f"  {self.name:12s} {self.display:5s} {self.desktop:s}"
 
 
+##-------------------------------------------------------------------------
+## Define SSH Tunnel Object
+##-------------------------------------------------------------------------
+class SSHTunnel(object):
+    '''An object to contain information about an SSH tunnel.
+    '''
+    def __init__(self, server, username, ssh_pkey, remote_port, local_port,
+                 session_name='unknown', ssh_additional_kex=None):
+        self.log = logging.getLogger('KRO')
+        self.server = server
+        self.username = username
+        self.ssh_pkey = ssh_pkey
+        self.remote_port = remote_port
+        self.local_port = local_port
+        self.session_name = session_name
+        self.remote_connection = f'{username}@{server}:{remote_port}'
+        self.ssh_additional_kex = ssh_additional_kex
+
+        address_and_port = f"{username}@{server}:{remote_port}"
+        self.log.info(f"Opening SSH tunnel for {address_and_port} "
+                 f"on local port {local_port}.")
+
+        # We now know everything we need to know in order to establish the
+        # tunnel. Build the command line options and start the child process.
+        # The -N and -T options below are somewhat exotic: they request that
+        # the login process not execute any commands and that the server does
+        # not allocate a pseudo-terminal for the established connection.
+
+        forwarding = f"{local_port}:localhost:{remote_port}"
+        cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T']
+        cmd.append('-oStrictHostKeyChecking=no')
+        cmd.append('-oCompression=yes')
+
+        if self.ssh_additional_kex is not None:
+            cmd.append('-oKexAlgorithms=' + self.ssh_additional_kex)
+
+        if ssh_pkey is not None:
+            cmd.append('-i')
+            cmd.append(ssh_pkey)
+
+        self.command = ' '.join(cmd)
+        self.log.debug(f'ssh command: {self.command}')
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                     stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL)
+
+        # Having started the process let's make sure it's actually running.
+        # First try polling,  then confirm the requested local port is in use.
+        # It's a fatal error if either check fails.
+
+        if self.proc.poll() is not None:
+            raise RuntimeError('subprocess failed to execute ssh')
+
+        # A delay is built-in here as it takes some finite amount of time for
+        # ssh to establish the tunnel. 50 checks with a 0.1 second sleep between
+        # checks is effectively a five second timeout.
+
+        checks = 50
+        while checks > 0:
+            result = is_local_port_in_use(local_port)
+            if result == True:
+                break
+            elif self.proc.poll() is not None:
+                raise RuntimeError('ssh command exited unexpectedly')
+
+            checks -= 1
+            time.sleep(0.1)
+
+        if checks == 0:
+            raise RuntimeError('ssh tunnel failed to open after 5 seconds')
+
+
+    def close(self):
+        '''Close this SSH tunnel
+        '''
+        self.log.info(f" Closing SSH tunnel for local port {self.local_port}: {self.session_name}")
+        self.proc.kill()
+
+
+    def __str__(self):
+        address_and_port = f"{self.username}@{self.server}:{self.remote_port}"
+        return f"SSH tunnel for {address_and_port} on local port {self.local_port}."
+
+
+##-------------------------------------------------------------------------
+## Define Keck VNC Launcher
+##-------------------------------------------------------------------------
 class KeckVncLauncher(object):
 
     def __init__(self):
@@ -61,7 +174,7 @@ class KeckVncLauncher(object):
         self.log = None
         self.sound = None
         self.firewall_pass = None
-        self.ports_in_use = dict()
+        self.ssh_tunnels = dict()
         self.vnc_threads = list()
         self.vnc_processes = list()
         self.firewall_requested = False
@@ -206,7 +319,7 @@ class KeckVncLauncher(object):
 
             ## Open requested sessions
             self.calc_window_geometry()
-            self.ports_in_use = dict()
+            self.ssh_tunnels = dict()
             self.vnc_threads = list()
             self.vnc_processes = list()
             for session_name in self.sessions_requested:
@@ -248,32 +361,47 @@ class KeckVncLauncher(object):
 
         #get remote port
         display = int(session.display[1:])
-        port = int(f"59{display:02d}")
+        remote_port = int(f"59{display:02d}")
 
         ## If authenticating, open SSH tunnel for appropriate ports
         if self.firewall_requested == True:
-
-            account = self.kvnc_account
-
             # determine if there is already a tunnel for this session
             local_port = None
-            for p in self.ports_in_use.keys():
-                if session_name == self.ports_in_use[p][1]:
-                    local_port = p
-                    vncserver = 'localhost'
-                    self.log.info(f"Found existing SSH tunnel on port {port}")
+            for p in self.ssh_tunnels.keys():
+                t = self.ssh_tunnels[p]
+                if t.session_name == session_name:
+                    self.log.info(f"Found existing SSH tunnel on local port {p}")
+
+                    # Check to make sure the tunnel is still working. It's not
+                    # enough to check whether the process is still running,
+                    # if the user has connection sharing set up the process
+                    # will have exited but the tunnel will still be up and
+                    # functional. Check the functional aspect first, and then
+                    # think to ask why.
+
+                    if is_local_port_in_use(p):
+                        vncserver = 'localhost'
+                        local_port = p
+                    else:
+                        status = t.proc.poll()
+                        if status is not None:
+                            error = f"SSH tunnel on local port {p} is dead ({status})"
+                        else:
+                            error = f"SSH tunnel on local port {p} was closed ({status})"
+                        self.log.error(error)
+                        del(self.ssh_tunnels[p])
                     break
 
-            #open ssh tunnel
+            #open ssh tunnel if necessary
             if local_port is None:
                 try:
-                    local_port = self.open_ssh_tunnel(vncserver, account,
+                    local_port = self.open_ssh_tunnel(vncserver, self.kvnc_account,
                                                       self.ssh_pkey,
-                                                      port, None,
+                                                      remote_port, None,
                                                       session_name=session_name)
                 except:
                     self.log.error(f"Failed to open SSH tunnel for "
-                              f"{account}@{vncserver}:{port}")
+                              f"{self.kvnc_account}@{vncserver}:{remote_port}")
                     trace = traceback.format_exc()
                     self.log.debug(trace)
                     return
@@ -512,15 +640,15 @@ class KeckVncLauncher(object):
     def list_tunnels(self):
         '''Print the SSH tunnels that the program has opened
         '''
-        if len(self.ports_in_use) == 0:
+        if len(self.ssh_tunnels.keys()) == 0:
             print(f"No SSH tunnels opened by this program")
         else:
             print(f"\nSSH tunnels:")
             print(f"  Local Port | Desktop   | Remote Connection")
-            for p in self.ports_in_use.keys():
-                desktop = self.ports_in_use[p][1]
-                remote_connection = self.ports_in_use[p][0]
-                print(f"  {p:10d} | {desktop:9s} | {remote_connection:s}")
+            
+            for p in self.ssh_tunnels.keys():
+                t = self.ssh_tunnels[p]
+                print(f"  {t.local_port:10d} | {t.session_name:9s} | {t.remote_connection:s}")
 
 
     ##-------------------------------------------------------------------------
@@ -534,7 +662,7 @@ class KeckVncLauncher(object):
         '''
         if local_port is None:
             for i in range(0,100):
-                if self.is_local_port_in_use(self.local_port):
+                if is_local_port_in_use(self.local_port):
                     self.local_port += 1
                     continue
                 else:
@@ -548,77 +676,11 @@ class KeckVncLauncher(object):
             self.local_port = self.LOCAL_PORT_START
             return False
 
-        address_and_port = f"{username}@{server}:{remote_port}"
-        self.log.info(f"Opening SSH tunnel for {address_and_port} "
-                 f"on local port {local_port}.")
-
-        # We now know everything we need to know in order to establish the
-        # tunnel. Build the command line options and start the child process.
-        # The -N and -T options below are somewhat exotic: they request that
-        # the login process not execute any commands and that the server does
-        # not allocate a pseudo-terminal for the established connection.
-
-        forwarding = f"{local_port}:localhost:{remote_port}"
-        command = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T']
-        command.append('-oStrictHostKeyChecking=no')
-        command.append('-oCompression=yes')
-
-        if self.ssh_additional_kex is not None:
-            command.append('-oKexAlgorithms=' + self.ssh_additional_kex)
-
-        if ssh_pkey is not None:
-            command.append('-i')
-            command.append(ssh_pkey)
-
-        self.log.debug('ssh command: ' + ' '.join (command))
-        null = subprocess.DEVNULL
-        proc = subprocess.Popen(command, stdin=null, stdout=null, stderr=null)
-
-        # Having started the process let's make sure it's actually running.
-        # First try polling,  then confirm the requested local port is in use.
-        # It's a fatal error if either check fails.
-
-        if proc.poll() is not None:
-            raise RuntimeError('subprocess failed to execute ssh')
-
-        # A delay is built-in here as it takes some finite amount of time for
-        # ssh to establish the tunnel. 50 checks with a 0.1 second sleep between
-        # checks is effectively a five second timeout.
-
-        checks = 50
-        while checks > 0:
-            result = self.is_local_port_in_use(local_port)
-            if result == True:
-                break
-            else:
-                checks -= 1
-                time.sleep(0.1)
-
-        if checks == 0:
-            raise RuntimeError('ssh tunnel failed to open after 5 seconds')
-
-        in_use = [address_and_port, session_name, proc]
-        self.ports_in_use[local_port] = in_use
+        t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
+                      session_name=session_name,
+                      ssh_additional_kex=self.ssh_additional_kex)
+        self.ssh_tunnels[local_port] = t
         return local_port
-
-
-    ##-------------------------------------------------------------------------
-    ## Is the local port un use?
-    ##-------------------------------------------------------------------------
-    def is_local_port_in_use(self, port):
-        '''Determine if the specified local port is in use.
-        '''
-        cmd = f'lsof -i -P -n | grep LISTEN | grep ":{port} (LISTEN)" | grep -v grep'
-        self.log.debug(f'Checking for port {port} in use: ' + cmd)
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        data = proc.communicate()[0]
-        data = data.decode("utf-8").strip()
-
-        if len(data) == 0:
-            return False
-        else:
-            self.log.debug(f"Port {port} is in use.")
-            return True
 
 
     ##-------------------------------------------------------------------------
@@ -1187,19 +1249,16 @@ class KeckVncLauncher(object):
         '''Close an SSH thread.
         '''
         try:
-            remote_connection, desktop, process = self.ports_in_use.pop(p, None)
+            t = self.ssh_tunnels.pop(p, None)
         except KeyError:
             return
-
-        self.log.info(f" Closing SSH tunnel for port {p:d}, {desktop:s} "
-                 f"on {remote_connection:s}")
-        process.kill()
+        t.close()
 
 
     def close_ssh_threads(self):
         '''Close all SSH threads.
         '''
-        for p in list(self.ports_in_use.keys()):
+        for p in list(self.ssh_tunnels.keys()):
             self.close_ssh_thread(p)
 
 
