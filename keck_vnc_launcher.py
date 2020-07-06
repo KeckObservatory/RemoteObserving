@@ -7,7 +7,6 @@ import atexit
 from datetime import datetime
 from getpass import getpass
 import logging
-import math
 import os
 from pathlib import Path
 import platform
@@ -410,11 +409,9 @@ class KeckVncLauncher(object):
         '''
 
         ##---------------------------------------------------------------------
-        ## Parse command line args and get config
+        ## Parse command line args
         self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
         self.args = create_parser()
-        self.get_config()
-        self.check_config()
 
         ##---------------------------------------------------------------------
         ## Log basic system info
@@ -422,8 +419,14 @@ class KeckVncLauncher(object):
         self.check_version()
         self.get_ping_cmd()
         if self.args.authonly is False:
-            self.get_vncviewer_properties()
             self.get_display_info()
+
+        ##---------------------------------------------------------------------
+        ## Read configuration
+        self.get_config()
+        self.check_config()
+        if self.args.authonly is False:
+            self.get_vncviewer_properties()
 
         ##---------------------------------------------------------------------
         ## Run tests
@@ -527,88 +530,6 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Get & Check Configuration
-    ##-------------------------------------------------------------------------
-    def get_config(self):
-        '''Read the configuration file.
-        '''
-        #define files to try loading in order of pref
-        filenames=['local_config.yaml', 'keck_vnc_config.yaml']
-
-        #if config file specified, put that at beginning of list
-        filename = self.args.config
-        if filename is not None:
-            if not Path(filename).is_file():
-                self.log.error(f'Specified config file "{filename}" does not exist.')
-                self.exit_app()
-            else:
-                filenames.insert(0, filename)
-
-        #find first file that exists
-        file = None
-        for f in filenames:
-            if Path(f).is_file():
-                file = f
-                break
-        if file is None:
-            self.log.error(f'No config files found in list: {filenames}')
-            self.exit_app()
-
-        #load config file and make sure it has the info we need
-        self.log.info(f'Using config file: {file}')
-
-        # open file a first time just to log the raw contents
-        contents = open(file).read()
-        self.log.debug(f"Contents of config file:\n{contents}")
-
-        # open file a second time to properly read config
-        config = yaml.load(open(file), Loader=yaml.FullLoader)
-
-        for key in ['ssh_pkey', 'vncviewer', 'soundplayer', 'aplay']:
-            if key in config.keys():
-                config[key] = os.path.expanduser(config[key])
-                config[key] = os.path.expandvars(config[key])
-
-        cstr = "Parsed Configuration:\n"
-        for key, c in config.items():
-            cstr += f"\t{key} = " + str(c) + "\n"
-        self.log.debug(cstr)
-
-        self.config = config
-
-        # Load some values
-        self.ssh_pkey = self.config.get('ssh_pkey', None)
-        lps = self.config.get('local_port_start', None)
-        self.local_port = self.LOCAL_PORT_START if lps is None else lps
-
-
-    def check_config(self):
-        '''Do some basic checks on the configuration.
-        '''
-        #check firewall config
-        self.firewall_requested = False
-        self.firewall_address = self.config.get('firewall_address', None)
-        self.firewall_user = self.config.get('firewall_user', None)
-        self.firewall_port = self.config.get('firewall_port', None)
-
-        if self.firewall_address is not None and \
-           self.firewall_user is not None and \
-           self.firewall_port is not None:
-            self.firewall_requested = True
-
-        elif self.firewall_address is not None or \
-             self.firewall_user is not None or \
-             self.firewall_port is not None:
-            self.log.warning("Incomplete firewall configuration detected:")
-            if self.firewall_address is None:
-                self.log.warning("firewall_address not set")
-            if self.firewall_user is None:
-                self.log.warning("firewall_user not set")
-            if self.firewall_port is None:
-                self.log.warning("firewall_port not set")
-
-
-    ##-------------------------------------------------------------------------
     ## Retrieve or log basic system info
     ##-------------------------------------------------------------------------
     def log_system_info(self):
@@ -623,6 +544,9 @@ class KeckVncLauncher(object):
             # self.log.debug(f'System IP Address: {ip}')
             python_version_str = sys.version.replace("\n", " ")
             self.log.info(f'Python {python_version_str}')
+            self.log.debug(f'yaml {yaml.__version__}')
+            self.log.debug(f'requests {requests.__version__}')
+            self.log.debug(f'packaging {packaging.__version__}')
             self.log.info(f'Remote Observing Software Version = {__version__}')
         except:
             self.log.error("Unable to log system info.")
@@ -717,31 +641,6 @@ class KeckVncLauncher(object):
             return True
 
 
-    def get_vncviewer_properties(self):
-        '''Determine whether we are using TigerVNC
-        '''
-        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
-        cmd = [vncviewercmd, '--help']
-        self.log.debug(f'Checking VNC viewer: {" ".join(cmd)}')
-        result = subprocess.run(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-
-        output = result.stdout.decode() + '\n' + result.stderr.decode()
-        if re.search(r'TigerVNC', output):
-            self.log.info(f'We ARE using TigerVNC')
-            self.tigervnc = True
-        else:
-            self.log.debug(f'We ARE NOT using TigerVNC')
-            self.tigervnc = False
-
-        if re.search(r'[Gg]eometry', output):
-            self.log.info(f'Found geometry argument')
-            self.vncviewer_has_geometry = True
-        else:
-            self.log.debug(f'Could not find geometry argument')
-            self.vncviewer_has_geometry = False
-
-
     def get_display_info(self):
         '''Determine the screen number and size
         '''
@@ -783,6 +682,113 @@ class KeckVncLauncher(object):
         self.screens = [[int(val) for val in line] for line in find_dimensions]
         for screen in self.screens:
             self.log.debug(f"Screen size: {screen[0]}x{screen[1]}")
+
+
+    ##-------------------------------------------------------------------------
+    ## Get & Check Configuration
+    ##-------------------------------------------------------------------------
+    def get_config(self):
+        '''Read the configuration file.
+        '''
+        #define files to try loading in order of pref
+        filenames=['local_config.yaml', 'keck_vnc_config.yaml']
+
+        #if config file specified, put that at beginning of list
+        filename = self.args.config
+        if filename is not None:
+            if not Path(filename).is_file():
+                self.log.error(f'Specified config file "{filename}" does not exist.')
+                self.exit_app()
+            else:
+                filenames.insert(0, filename)
+
+        #find first file that exists
+        file = None
+        for f in filenames:
+            if Path(f).is_file():
+                file = f
+                break
+        if file is None:
+            self.log.error(f'No config files found in list: {filenames}')
+            self.exit_app()
+
+        #load config file and make sure it has the info we need
+        self.log.info(f'Using config file: {file}')
+
+        # open file a first time just to log the raw contents
+        contents = open(file).read()
+        self.log.debug(f"Contents of config file:\n{contents}")
+
+        # open file a second time to properly read config
+        config = yaml.load(open(file), Loader=yaml.FullLoader)
+
+        for key in ['ssh_pkey', 'vncviewer', 'soundplayer', 'aplay']:
+            if key in config.keys():
+                config[key] = os.path.expanduser(config[key])
+                config[key] = os.path.expandvars(config[key])
+
+        cstr = "Parsed Configuration:\n"
+        for key, c in config.items():
+            cstr += f"\t{key} = " + str(c) + "\n"
+        self.log.debug(cstr)
+
+        self.config = config
+
+        # Load some values
+        self.ssh_pkey = self.config.get('ssh_pkey', None)
+        lps = self.config.get('local_port_start', None)
+        self.local_port = self.LOCAL_PORT_START if lps is None else lps
+
+
+    def check_config(self):
+        '''Do some basic checks on the configuration.
+        '''
+        #check firewall config
+        self.firewall_requested = False
+        self.firewall_address = self.config.get('firewall_address', None)
+        self.firewall_user = self.config.get('firewall_user', None)
+        self.firewall_port = self.config.get('firewall_port', None)
+
+        if self.firewall_address is not None and \
+           self.firewall_user is not None and \
+           self.firewall_port is not None:
+            self.firewall_requested = True
+
+        elif self.firewall_address is not None or \
+             self.firewall_user is not None or \
+             self.firewall_port is not None:
+            self.log.warning("Incomplete firewall configuration detected:")
+            if self.firewall_address is None:
+                self.log.warning("firewall_address not set")
+            if self.firewall_user is None:
+                self.log.warning("firewall_user not set")
+            if self.firewall_port is None:
+                self.log.warning("firewall_port not set")
+
+
+    def get_vncviewer_properties(self):
+        '''Determine whether we are using TigerVNC
+        '''
+        vncviewercmd = self.config.get('vncviewer', 'vncviewer')
+        cmd = [vncviewercmd, '--help']
+        self.log.debug(f'Checking VNC viewer: {" ".join(cmd)}')
+        result = subprocess.run(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+
+        output = result.stdout.decode() + '\n' + result.stderr.decode()
+        if re.search(r'TigerVNC', output):
+            self.log.info(f'We ARE using TigerVNC')
+            self.tigervnc = True
+        else:
+            self.log.debug(f'We ARE NOT using TigerVNC')
+            self.tigervnc = False
+
+        if re.search(r'[Gg]eometry', output):
+            self.log.info(f'Found geometry argument')
+            self.vncviewer_has_geometry = True
+        else:
+            self.log.debug(f'Could not find geometry argument')
+            self.vncviewer_has_geometry = False
 
 
     ##-------------------------------------------------------------------------
