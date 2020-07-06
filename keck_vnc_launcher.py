@@ -545,8 +545,6 @@ class KeckVncLauncher(object):
             python_version_str = sys.version.replace("\n", " ")
             self.log.info(f'Python {python_version_str}')
             self.log.debug(f'yaml {yaml.__version__}')
-            self.log.debug(f'requests {requests.__version__}')
-            self.log.debug(f'packaging {packaging.__version__}')
             self.log.info(f'Remote Observing Software Version = {__version__}')
         except:
             self.log.error("Unable to log system info.")
