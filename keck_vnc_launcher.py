@@ -1210,7 +1210,7 @@ class KeckVncLauncher(object):
                 display = geometry[2]
                 # setenv DISPLAY ${xhostnam}:${xdispnum}.$screen
                 self.log.debug(f'Display number for vncviewer command: {display}')
-                cmd.extend(['setenv', 'DISPLAY', f':{display}.0'])
+                cmd.extend(['setenv', 'DISPLAY', f':{display}'])
 
         cmd.append(vncviewercmd)
         if vncargs is not None:
