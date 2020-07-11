@@ -717,6 +717,19 @@ class KeckVncLauncher(object):
         contents = open(file).read()
         self.log.debug(f"Contents of config file:\n{contents}")
 
+        # Look for syntax error in configuration file
+        self.log.debug('Checking config format')
+        configok = True
+        lines = contents.split('\n')
+        for line in lines:
+            if re.match('(^[\w_]+):[\w\d]', line):
+                self.log.error(f'The format of the config is "keyword: value"')
+                self.log.error(f'A space is missing in line: {line}')
+                configok = False
+        if configok is False:
+            self.log.error('Exiting app')
+            sys.exit(1)
+
         # open file a second time to properly read config
         config = yaml.load(open(file), Loader=yaml.FullLoader)
 
