@@ -1010,7 +1010,6 @@ class KeckVncLauncher(object):
                 self.log.info('Retrying ssh with different key exchange flag')
                 return self.do_ssh_cmd(cmd, server, account)
 
-
         stdout = stdout.decode()
         stdout = stdout.strip()
         self.log.debug(f"Output: '{stdout}'")
