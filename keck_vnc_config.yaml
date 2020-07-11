@@ -108,7 +108,7 @@ firewall_cleanup: False
 ##   netcat, set the command and arguments below.
 ##
 ##   Example: linux (Ncat 7.70 installed via apt-get install netcat)
-#netcat: 'ncat -w 2'
+#netcat: 'ncat -z -w 2'
 ##
 ##   Example: macOS (netcat v 0.7.1 installed via brew)
 #netcat: 'netcat -z -w 2'

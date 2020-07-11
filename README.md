@@ -66,6 +66,11 @@ Note: The examples below assuming sudo/root installation for all users and were 
             TigerVNC Configuration file Version 1.0
             RemoteResize=0
             ```
+        - In order for sounds to work, you will need a local sound player.  The
+          `aplay` tool is installed by default on many linux distributions, but
+          if yours does not have it, it is part of the
+          [ALSA](https://alsa.opensrc.org/Aplay) package (often part of
+          `alsa-utils` or a similar package in your package manager).
         - (optional) Install wmctrl (Used for auto-positioning VNC windows)
             ```
             sudo yum install epel-release
