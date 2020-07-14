@@ -654,6 +654,11 @@ class KeckVncLauncher(object):
             self.log.debug('xpdyinfo not found')
             self.log.debug(e)
             return
+        except subprocess.TimeoutExpired as e:
+            # If xpdyinfo fails just log and keep going
+            self.log.debug('xpdyinfo failed')
+            self.log.debug(e)
+            return
         except TimeoutError as e:
             # If xpdyinfo fails just log and keep going
             self.log.debug('xpdyinfo failed')
