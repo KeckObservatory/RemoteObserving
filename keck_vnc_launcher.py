@@ -1126,6 +1126,9 @@ class KeckVncLauncher(object):
             self.log.debug(trace)
             data = ''
 
+        if data is None:
+            return sessions
+
         lines = data.split('\n')
         for line in lines:
             if line[0] != '#':
