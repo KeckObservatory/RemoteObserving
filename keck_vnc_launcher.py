@@ -30,7 +30,7 @@ supportEmail = 'remote-observing@keck.hawaii.edu'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
-                 'telanalys', 'telstatus', 'status')
+                 'telanalys', 'telstatus')
 KROException = Exception
 
 
@@ -390,10 +390,8 @@ class KeckVncLauncher(object):
         domain = '.keck.hawaii.edu'
         self.servers_to_try = [f"{server}{domain}" for server in servers]
 
-        #The 'status' session is potentially on a different server and is
-        # always on port 1,
-        self.STATUS_PORT = ':1'
-        self.LOCAL_PORT_START = 5901 # can be overridden by config file
+        #local port start (can be overridden by config file)
+        self.LOCAL_PORT_START = 5901
 
         #ssh key constants
         self.kvnc_account = 'kvnc'
@@ -1139,9 +1137,6 @@ class KeckVncLauncher(object):
                     s = VNCSession(display=display, desktop=desktop, user=user, pid=pid)
                     if s.user == instr_account:
                         sessions.append(s)
-        # Add "status" session for either K1 or K2 as appropriate
-        sessions.append(VNCSession(name='status', display=self.STATUS_PORT,
-                                   desktop='FACSUM & XMET', user=''))
 
         self.log.debug(f'  Got {len(sessions)} sessions')
         for s in sessions:
@@ -1266,10 +1261,8 @@ class KeckVncLauncher(object):
             self.print_sessions_found()
             return
 
-        #determine vncserver (only different for "status")
+        #determine vncserver
         vncserver = self.vncserver
-        if session_name == 'status':
-            vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
 
         #get remote port
         display = int(session.display[1:])
