@@ -378,12 +378,8 @@ class KeckVncLauncher(object):
         self.log = logging.getLogger('KRO')
 
         #default start sessions
-        self.default_sessions = [
-            'control0',
-            'control1',
-            'control2',
-            'telstatus',
-        ]
+        self.default_sessions = []
+#         self.default_sessions = ['control0', 'control1', 'control2', 'telstatus']
 
         #default servers to try at Keck
         servers = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
