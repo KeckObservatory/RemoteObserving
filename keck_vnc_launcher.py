@@ -431,7 +431,7 @@ class KeckVncLauncher(object):
         # Verify Tiger VNC Config
         if self.args.authonly is False:
             if self.test_tigervnc() > 0:
-                self.log.error('TigerVNC is not conifgured properly.  See instructions.')
+                self.log.error('TigerVNC is not configured properly. See instructions.')
                 self.log.error('This can have negative effects on other users.')
                 self.log.error('Exiting program.')
                 self.exit_app()
@@ -1808,7 +1808,9 @@ class KeckVncLauncher(object):
         tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
         if tigervnc_config_file.exists() is False:
             self.log.error(f'Could not find {tigervnc_config_file}')
+            self.log.error('This file is required for Keck connections')
             failcount += 1
+            return failcount
 
         with open(tigervnc_config_file) as FO:
             tiger_config = FO.read()
