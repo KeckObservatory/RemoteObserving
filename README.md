@@ -1,11 +1,31 @@
 # RemoteObserving
 
-These scripts are to be used by remote sites to connect to W. M. Keck Observatory for remote observing.
+These scripts are to be used by remote sites and by individual
+observers to connect to W. M. Keck Observatory for remote observing.
 
 Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical remote observing policy and documentation at: [https://www2.keck.hawaii.edu/inst/mainland_observing/](https://www2.keck.hawaii.edu/inst/mainland_observing/)
 
 ## Notify Keck of your intent to connect remotely
 Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
+
+### If you are setting up remote observing from home for yourself
+
+- Email
+  [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu)
+  with the following info:
+
+    - Institution
+    - First and Last name of observer
+    - Date of observation (HST or UT, please specify)
+    - TAC assigned program ID (from the Keck [schedule](https://www2.keck.hawaii.edu/observing/keckSchedule/keckSchedule.php)
+    - Staff Astronomer assigned to your night
+    - Cellphone number capable of receiving texts
+    - Have you used pajamas mode successful before and do you have the software installed?
+    - If yes, is your ssh key still valid?
+    - If no, include a new id_rsa.pub key as specified in the installation instructions
+
+### if you are using an official site, or are setting up a new
+    official site
 
 - Email [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) with the following info about your remote site:
     - Institution
