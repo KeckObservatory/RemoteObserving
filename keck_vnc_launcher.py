@@ -1507,10 +1507,9 @@ class KeckVncLauncher(object):
 
         command = [soundplayer, '-l']
 
-        aplay = self.config.get('aplay', None)
-        if aplay is not None:
-            command.append('-px')
-            command.append(aplay)
+        aplay = self.config.get('aplay', 'aplay')
+        command.append('-px')
+        command.append(aplay)
 
         self.log.info('Playing test sound')
         self.log.debug('Calling: ' + ' '.join(command))
