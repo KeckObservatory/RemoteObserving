@@ -591,8 +591,9 @@ class KeckVncLauncher(object):
             ping = ping.decode()
             ping = ping.strip()
             self.ping_cmd = [ping]
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
             self.log.error("Ping command not available")
+            self.log.error(e)
             return None
 
         os = platform.system()
