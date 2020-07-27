@@ -81,7 +81,7 @@ def create_parser():
             help=f"Open {name} VNC session")
 
     ## add arguments
-    parser.add_argument("account", type=str, nargs='?', default='hires1',
+    parser.add_argument("account", type=str.lower, nargs='?', default='hires1',
                         help="The user account.")
 
     ## add options
