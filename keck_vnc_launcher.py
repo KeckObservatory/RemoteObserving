@@ -1716,8 +1716,14 @@ class KeckVncLauncher(object):
         #helpful user error message
         print("\n****** PROGRAM ERROR ******\n")
         print("Error message: " + str(error) + "\n")
-        print("If you need troubleshooting assistance:")
-        print(f"* Email {supportEmail}\n")
+        print()
+        print("Please search for your error message in this form:")
+        print("https://keckobservatory.atlassian.net/servicedesk/customer/portals?q=")
+        print()
+        print("If that does not yeild an answer, please contact us:")
+        print("https://keckobservatory.atlassian.net/servicedesk/customer/portal/2/group/3/create/10")
+        print(f"or email us at {supportEmail}")
+        print()
 
         #Log error if we have a log object (otherwise dump error to stdout)
         #and call exit_app function
