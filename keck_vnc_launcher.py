@@ -972,7 +972,7 @@ class KeckVncLauncher(object):
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
 
-        command = ['ssh', server, '-l', account, '-T']
+        command = ['ssh', server, '-l', account, '-T', '-v', '-v']
 
         if self.ssh_pkey is not None:
             command.append('-i')
@@ -985,19 +985,13 @@ class KeckVncLauncher(object):
         command.append(cmd)
         self.log.debug('ssh command: ' + ' '.join(command))
 
-        pipe = subprocess.PIPE
-        null = subprocess.DEVNULL
-        stdout = subprocess.STDOUT
-
-        proc = subprocess.Popen(command, stdin=null, stdout=pipe, stderr=stdout)
-        if proc.poll() is not None:
-            raise RuntimeError('subprocess failed to execute ssh')
-
-        try:
-            stdout,stderr = proc.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            self.log.error('  Timeout')
-            return
+        proc = subprocess.run(command, timeout=timeout,
+                               stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        stdout = proc.stdout.strip().decode()
+        for line in stdout.split('\n'):
+            self.log.debug(f'STDOUT: {line}')
+        for line in proc.stderr.strip().decode().split('\n'):
+            self.log.debug(f'STDERR: {line}')
 
         if proc.returncode != 0:
             message = '  command failed with error ' + str(proc.returncode)
@@ -1020,10 +1014,6 @@ class KeckVncLauncher(object):
                 self.ssh_additional_kex = None
                 self.log.info('Retrying ssh with different key exchange flag')
                 return self.do_ssh_cmd(cmd, server, account)
-
-        stdout = stdout.decode()
-        stdout = stdout.strip()
-        self.log.debug(f"Output: '{stdout}'")
 
         # The first line might be a warning about accepting a ssh host key.
         # Check for that, and get rid of it from the output.
