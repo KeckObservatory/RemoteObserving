@@ -545,6 +545,17 @@ class KeckVncLauncher(object):
             trace = traceback.format_exc()
             self.log.debug(trace)
 
+        try:
+            whereisssh = subprocess.check_output(['which', 'ssh'])
+            self.log.debug(f'SSH command is {whereisssh.decode().strip()}')
+            sshversion = subprocess.check_output(['ssh', '-V'],
+                                    stderr=subprocess.STDOUT)
+            self.log.debug(f'SSH version is {sshversion.decode().strip()}')
+        except:
+            self.log.error("Unable to log SSH info.")
+            trace = traceback.format_exc()
+            self.log.debug(trace)
+
 
     def check_version(self):
         '''Compare the version of the local software against that available on
