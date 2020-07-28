@@ -38,8 +38,9 @@ KROException = Exception
 ## Main
 ##-------------------------------------------------------------------------
 def main():
-    create_logger()
-    kvl = KeckVncLauncher()
+    args = create_parser()
+    create_logger(args)
+    kvl = KeckVncLauncher(args)
     #catch all exceptions so we can exit gracefully
     try:
         kvl.start()
@@ -73,6 +74,9 @@ def create_parser():
     parser.add_argument("--viewonly", dest="viewonly",
         default=False, action="store_true",
         help="Open VNC sessions in View Only mode (only for TigerVnC viewer)")
+    parser.add_argument("-v", "--verbose", dest="verbose",
+        default=False, action="store_true",
+        help="Be verbose.")
     for name in SESSION_NAMES:
         parser.add_argument(f"--{name}",
             dest=name,
@@ -102,7 +106,7 @@ def create_parser():
 ##-------------------------------------------------------------------------
 ## Create logger
 ##-------------------------------------------------------------------------
-def create_logger():
+def create_logger(args):
 
     ## Create logger object
     log = logging.getLogger('KRO')
@@ -122,9 +126,12 @@ def create_logger():
         log.info("EXITING APP\n")
         sys.exit(1)
 
-    #stream/console handler (info+ only)
+    #stream/console handler
     logConsoleHandler = logging.StreamHandler()
-    logConsoleHandler.setLevel(logging.INFO)
+    if args.verbose is True:
+        logConsoleHandler.setLevel(logging.DEBUG)
+    else:
+        logConsoleHandler.setLevel(logging.INFO)
     logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
     logFormat.converter = time.gmtime
     logConsoleHandler.setFormatter(logFormat)
@@ -355,7 +362,7 @@ class SSHTunnel(object):
 ##-------------------------------------------------------------------------
 class KeckVncLauncher(object):
 
-    def __init__(self):
+    def __init__(self, args):
         #init vars we need to shutdown app properly
         self.config = None
         self.log = None
@@ -375,6 +382,7 @@ class KeckVncLauncher(object):
         self.tigervnc = None
         self.vncviewer_has_geometry = None
 
+        self.args = args
         self.log = logging.getLogger('KRO')
 
         #default start sessions
@@ -405,7 +413,6 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Parse command line args
         self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
-        self.args = create_parser()
 
         ##---------------------------------------------------------------------
         ## Log basic system info
@@ -973,6 +980,9 @@ class KeckVncLauncher(object):
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
 
         command = ['ssh', server, '-l', account, '-T']
+        if self.args.verbose is True:
+            command.append('-v')
+            command.append('-v')
 
         if self.ssh_pkey is not None:
             command.append('-i')
@@ -985,19 +995,13 @@ class KeckVncLauncher(object):
         command.append(cmd)
         self.log.debug('ssh command: ' + ' '.join(command))
 
-        pipe = subprocess.PIPE
-        null = subprocess.DEVNULL
-        stdout = subprocess.STDOUT
-
-        proc = subprocess.Popen(command, stdin=null, stdout=pipe, stderr=stdout)
-        if proc.poll() is not None:
-            raise RuntimeError('subprocess failed to execute ssh')
-
-        try:
-            stdout,stderr = proc.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            self.log.error('  Timeout')
-            return
+        proc = subprocess.run(command, timeout=timeout,
+                               stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        stdout = proc.stdout.strip().decode()
+        for line in stdout.split('\n'):
+            self.log.debug(f'STDOUT: {line}')
+        for line in proc.stderr.strip().decode().split('\n'):
+            self.log.debug(f'STDERR: {line}')
 
         if proc.returncode != 0:
             message = '  command failed with error ' + str(proc.returncode)
@@ -1020,10 +1024,6 @@ class KeckVncLauncher(object):
                 self.ssh_additional_kex = None
                 self.log.info('Retrying ssh with different key exchange flag')
                 return self.do_ssh_cmd(cmd, server, account)
-
-        stdout = stdout.decode()
-        stdout = stdout.strip()
-        self.log.debug(f"Output: '{stdout}'")
 
         # The first line might be a warning about accepting a ssh host key.
         # Check for that, and get rid of it from the output.
