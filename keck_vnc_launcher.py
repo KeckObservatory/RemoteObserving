@@ -25,12 +25,12 @@ import yaml
 import soundplay
 
 
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
-                 'telanalys', 'telstatus', 'status')
+                 'telanalys', 'telstatus')
 KROException = Exception
 
 
@@ -38,8 +38,9 @@ KROException = Exception
 ## Main
 ##-------------------------------------------------------------------------
 def main():
-    create_logger()
-    kvl = KeckVncLauncher()
+    args = create_parser()
+    create_logger(args)
+    kvl = KeckVncLauncher(args)
     #catch all exceptions so we can exit gracefully
     try:
         kvl.start()
@@ -73,6 +74,9 @@ def create_parser():
     parser.add_argument("--viewonly", dest="viewonly",
         default=False, action="store_true",
         help="Open VNC sessions in View Only mode (only for TigerVnC viewer)")
+    parser.add_argument("-v", "--verbose", dest="verbose",
+        default=False, action="store_true",
+        help="Be verbose.")
     for name in SESSION_NAMES:
         parser.add_argument(f"--{name}",
             dest=name,
@@ -81,7 +85,7 @@ def create_parser():
             help=f"Open {name} VNC session")
 
     ## add arguments
-    parser.add_argument("account", type=str, nargs='?', default='hires1',
+    parser.add_argument("account", type=str.lower, nargs='?', default='hires1',
                         help="The user account.")
 
     ## add options
@@ -102,7 +106,7 @@ def create_parser():
 ##-------------------------------------------------------------------------
 ## Create logger
 ##-------------------------------------------------------------------------
-def create_logger():
+def create_logger(args):
 
     ## Create logger object
     log = logging.getLogger('KRO')
@@ -122,9 +126,12 @@ def create_logger():
         log.info("EXITING APP\n")
         sys.exit(1)
 
-    #stream/console handler (info+ only)
+    #stream/console handler
     logConsoleHandler = logging.StreamHandler()
-    logConsoleHandler.setLevel(logging.INFO)
+    if args.verbose is True:
+        logConsoleHandler.setLevel(logging.DEBUG)
+    else:
+        logConsoleHandler.setLevel(logging.INFO)
     logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
     logFormat.converter = time.gmtime
     logConsoleHandler.setFormatter(logFormat)
@@ -355,7 +362,7 @@ class SSHTunnel(object):
 ##-------------------------------------------------------------------------
 class KeckVncLauncher(object):
 
-    def __init__(self):
+    def __init__(self, args):
         #init vars we need to shutdown app properly
         self.config = None
         self.log = None
@@ -375,25 +382,20 @@ class KeckVncLauncher(object):
         self.tigervnc = None
         self.vncviewer_has_geometry = None
 
+        self.args = args
         self.log = logging.getLogger('KRO')
 
         #default start sessions
-        self.default_sessions = [
-            'control0',
-            'control1',
-            'control2',
-            'telstatus',
-        ]
+        self.default_sessions = []
+#         self.default_sessions = ['control0', 'control1', 'control2', 'telstatus']
 
         #default servers to try at Keck
         servers = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
         domain = '.keck.hawaii.edu'
         self.servers_to_try = [f"{server}{domain}" for server in servers]
 
-        #The 'status' session is potentially on a different server and is
-        # always on port 1,
-        self.STATUS_PORT = ':1'
-        self.LOCAL_PORT_START = 5901 # can be overridden by config file
+        #local port start (can be overridden by config file)
+        self.LOCAL_PORT_START = 5901
 
         #ssh key constants
         self.kvnc_account = 'kvnc'
@@ -411,7 +413,6 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Parse command line args
         self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
-        self.args = create_parser()
 
         ##---------------------------------------------------------------------
         ## Log basic system info
@@ -437,7 +438,7 @@ class KeckVncLauncher(object):
         # Verify Tiger VNC Config
         if self.args.authonly is False:
             if self.test_tigervnc() > 0:
-                self.log.error('TigerVNC is not conifgured properly.  See instructions.')
+                self.log.error('TigerVNC is not configured properly. See instructions.')
                 self.log.error('This can have negative effects on other users.')
                 self.log.error('Exiting program.')
                 self.exit_app()
@@ -551,6 +552,17 @@ class KeckVncLauncher(object):
             trace = traceback.format_exc()
             self.log.debug(trace)
 
+        try:
+            whereisssh = subprocess.check_output(['which', 'ssh'])
+            self.log.debug(f'SSH command is {whereisssh.decode().strip()}')
+            sshversion = subprocess.check_output(['ssh', '-V'],
+                                    stderr=subprocess.STDOUT)
+            self.log.debug(f'SSH version is {sshversion.decode().strip()}')
+        except:
+            self.log.error("Unable to log SSH info.")
+            trace = traceback.format_exc()
+            self.log.debug(trace)
+
 
     def check_version(self):
         '''Compare the version of the local software against that available on
@@ -597,8 +609,9 @@ class KeckVncLauncher(object):
             ping = ping.decode()
             ping = ping.strip()
             self.ping_cmd = [ping]
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
             self.log.error("Ping command not available")
+            self.log.error(e)
             return None
 
         os = platform.system()
@@ -967,6 +980,9 @@ class KeckVncLauncher(object):
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
 
         command = ['ssh', server, '-l', account, '-T']
+        if self.args.verbose is True:
+            command.append('-v')
+            command.append('-v')
 
         if self.ssh_pkey is not None:
             command.append('-i')
@@ -979,19 +995,13 @@ class KeckVncLauncher(object):
         command.append(cmd)
         self.log.debug('ssh command: ' + ' '.join(command))
 
-        pipe = subprocess.PIPE
-        null = subprocess.DEVNULL
-        stdout = subprocess.STDOUT
-
-        proc = subprocess.Popen(command, stdin=null, stdout=pipe, stderr=stdout)
-        if proc.poll() is not None:
-            raise RuntimeError('subprocess failed to execute ssh')
-
-        try:
-            stdout,stderr = proc.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            self.log.error('  Timeout')
-            return
+        proc = subprocess.run(command, timeout=timeout,
+                               stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        stdout = proc.stdout.strip().decode()
+        for line in stdout.split('\n'):
+            self.log.debug(f'STDOUT: {line}')
+        for line in proc.stderr.strip().decode().split('\n'):
+            self.log.debug(f'STDERR: {line}')
 
         if proc.returncode != 0:
             message = '  command failed with error ' + str(proc.returncode)
@@ -1014,10 +1024,6 @@ class KeckVncLauncher(object):
                 self.ssh_additional_kex = None
                 self.log.info('Retrying ssh with different key exchange flag')
                 return self.do_ssh_cmd(cmd, server, account)
-
-        stdout = stdout.decode()
-        stdout = stdout.strip()
-        self.log.debug(f"Output: '{stdout}'")
 
         # The first line might be a warning about accepting a ssh host key.
         # Check for that, and get rid of it from the output.
@@ -1139,9 +1145,6 @@ class KeckVncLauncher(object):
                     s = VNCSession(display=display, desktop=desktop, user=user, pid=pid)
                     if s.user == instr_account:
                         sessions.append(s)
-        # Add "status" session for either K1 or K2 as appropriate
-        sessions.append(VNCSession(name='status', display=self.STATUS_PORT,
-                                   desktop='FACSUM & XMET', user=''))
 
         self.log.debug(f'  Got {len(sessions)} sessions')
         for s in sessions:
@@ -1266,10 +1269,8 @@ class KeckVncLauncher(object):
             self.print_sessions_found()
             return
 
-        #determine vncserver (only different for "status")
+        #determine vncserver
         vncserver = self.vncserver
-        if session_name == 'status':
-            vncserver = f"svncserver{self.tel}.keck.hawaii.edu"
 
         #get remote port
         display = int(session.display[1:])
@@ -1518,10 +1519,9 @@ class KeckVncLauncher(object):
 
         command = [soundplayer, '-l']
 
-        aplay = self.config.get('aplay', None)
-        if aplay is not None:
-            command.append('-px')
-            command.append(aplay)
+        aplay = self.config.get('aplay', 'aplay')
+        command.append('-px')
+        command.append(aplay)
 
         self.log.info('Playing test sound')
         self.log.debug('Calling: ' + ' '.join(command))
@@ -1728,8 +1728,14 @@ class KeckVncLauncher(object):
         #helpful user error message
         print("\n****** PROGRAM ERROR ******\n")
         print("Error message: " + str(error) + "\n")
-        print("If you need troubleshooting assistance:")
-        print(f"* Email {supportEmail}\n")
+        print()
+        print("Please search for your error message in this form:")
+        print("https://keckobservatory.atlassian.net/servicedesk/customer/portals?q=")
+        print()
+        print("If that does not yeild an answer, please contact us:")
+        print("https://keckobservatory.atlassian.net/servicedesk/customer/portal/2/group/3/create/10")
+        print(f"or email us at {supportEmail}")
+        print()
 
         #Log error if we have a log object (otherwise dump error to stdout)
         #and call exit_app function
@@ -1819,7 +1825,9 @@ class KeckVncLauncher(object):
         tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
         if tigervnc_config_file.exists() is False:
             self.log.error(f'Could not find {tigervnc_config_file}')
+            self.log.error('This file is required for Keck connections')
             failcount += 1
+            return failcount
 
         with open(tigervnc_config_file) as FO:
             tiger_config = FO.read()
