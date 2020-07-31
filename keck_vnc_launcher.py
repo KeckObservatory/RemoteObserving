@@ -1557,26 +1557,36 @@ class KeckVncLauncher(object):
     def position_vnc_windows(self):
         '''Reposition the VNC windows to the preferred positions
         '''
+        #get all x-window processes
+        #NOTE: using wmctrl (does not work for Mac)
+        #alternate option: xdotool?
+        if 'darwin' in platform.system().lower():
+            self.log.warning('Positioning windows after opening does not work on macOS.')
+            return
+
         self.log.info("Re-reading config file")
         self.get_config()
         self.log.info(f"Positioning VNC windows...")
         self.calc_window_geometry()
 
-        #get all x-window processes
-        #NOTE: using wmctrl (does not work for Mac)
-        #alternate option: xdotool?
-        cmd = ['wmctrl', '-l']
-        wmctrl_l = subprocess.run(cmd, stdout=subprocess.PIPE, timeout=5)
+        which_wmctrl = subprocess.run(['which', 'wmctrl'],
+                                      stdout=subprocess.PIPE, timeout=5)
+        if which_wmctrl.returncode != 0:
+            self.log.warning('Could not find wmctrl. Can not reposition windows.')
+            return
+        where_is_wmctrl = which_wmctrl.stdout.decode().strip('\n')
+
+        cmd = [where_is_wmctrl, '-l']
+        wmctrl_l = subprocess.run(cmd, stdout=subprocess.PIPE, 
+                                  stderr=subprocess.PIPE, timeout=5)
         stdout = wmctrl_l.stdout.decode()
         for line in stdout.split('\n'):
-            self.log.debug(f'wmctrl line: {line}')
+            self.log.debug(f'wmctrl STDOUT: {line}')
+        stderr = wmctrl_l.stderr.decode()
+        for line in stderr.split('\n'):
+            self.log.debug(f'wmctrl STDERR: {line}')
         if wmctrl_l.returncode != 0:
             self.log.debug(f'wmctrl failed')
-            for line in stdout.split('\n'):
-                self.log.debug(f'wmctrl line: {line}')
-            stderr = wmctrl_l.stderr.decode()
-            for line in stderr.split('\n'):
-                self.log.debug(f'wmctrl line: {line}')
             return None
         win_ids = dict([x for x in zip(self.sessions_requested,
                                 [None for entry in self.sessions_requested])])
@@ -1605,7 +1615,7 @@ class KeckVncLauncher(object):
 #                 for line in stdout.split('\n'):
 #                     self.log.debug(f'wmctrl line: {line}')
             else:
-                self.log.info(f"Could not find window process for VNC session '{session}'")
+                self.log.warning(f"Could not find window process for VNC session '{session}'")
 
 
     ##-------------------------------------------------------------------------
