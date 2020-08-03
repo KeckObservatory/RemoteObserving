@@ -229,7 +229,11 @@ def do_firewall_command(firewall_address, firewall_port, firewall_user,
     if password_response[-19:] != 'Enter your choice: ':
         log.error('Got unexpected response from firewall:')
         log.error(password_response)
-        raise KROException('Got unexpected response from firewall')
+        log.error('')
+        log.error('Please try again. If this reoccurs, create a support ticket at:')
+        log.error('https://keckobservatory.atlassian.net/servicedesk/customer/portals')
+        log.error('and be sure to attach the log file.')
+        return False
 
     log.debug(f'Sending response: {selection}')
     tn.write(f'{selection}\n'.encode('ascii'))
@@ -870,8 +874,11 @@ class KeckVncLauncher(object):
     def open_firewall(self, authpass):
         '''Simple wrapper to open firewall.
         '''
-        do_firewall_command(self.firewall_address, self.firewall_port,
-                            self.firewall_user, authpass, 1)
+        if do_firewall_command(self.firewall_address, self.firewall_port,
+                              self.firewall_user, authpass, 1):
+            return True
+        else:
+            self.exit_app()
 
 
     def close_firewall(self, authpass):
