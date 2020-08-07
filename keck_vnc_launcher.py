@@ -392,7 +392,6 @@ class KeckVncLauncher(object):
 
         #default start sessions
         self.default_sessions = []
-#         self.default_sessions = ['control0', 'control1', 'control2', 'telstatus']
 
         #default servers to try at Keck
         servers = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
@@ -417,7 +416,8 @@ class KeckVncLauncher(object):
 
         ##---------------------------------------------------------------------
         ## Parse command line args
-        self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
+        self.log.debug("\n***** PROGRAM STARTED *****")
+        self.log.debug(f"Command: {' '.join(sys.argv)}")
 
         ##---------------------------------------------------------------------
         ## Log basic system info
