@@ -334,7 +334,8 @@ class SSHTunnel(object):
         # ssh to establish the tunnel. 50 checks with a 0.1 second sleep between
         # checks is effectively a five second timeout.
 
-        checks = 50
+        checks = 100
+        waittime = 0.1
         while checks > 0:
             result = is_local_port_in_use(local_port)
             if result == True:
@@ -343,10 +344,10 @@ class SSHTunnel(object):
                 raise RuntimeError('ssh command exited unexpectedly')
 
             checks -= 1
-            time.sleep(0.1)
+            time.sleep(waittime)
 
         if checks == 0:
-            raise RuntimeError('ssh tunnel failed to open after 5 seconds')
+            raise RuntimeError(f'ssh tunnel failed to open after {checks*waittime:.0f} seconds')
 
 
     def close(self):
