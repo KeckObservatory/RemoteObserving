@@ -1015,6 +1015,10 @@ class KeckVncLauncher(object):
             message = '  command failed with error ' + str(proc.returncode)
             self.log.error(message)
 
+            if re.search('timeout', stdout.lower()):
+                self.log.error('SSH timeouts may be due to network instability.')
+                self.log.error('Please retry to see if the problem is intermittant.')
+
             # Older ssh binaries don't like the '+' option when specifying
             # key exchange algorithms. Any binaries that old won't need the
             # value specified at all, so remove the option for all future
