@@ -284,7 +284,7 @@ class SSHTunnel(object):
     '''An object to contain information about an SSH tunnel.
     '''
     def __init__(self, server, username, ssh_pkey, remote_port, local_port,
-                 session_name='unknown', ssh_additional_kex=None):
+                 session_name='unknown', ssh_additional_kex=None, timeout=10):
         self.log = logging.getLogger('KRO')
         self.server = server
         self.username = username
@@ -333,8 +333,8 @@ class SSHTunnel(object):
         # A delay is built-in here as it takes some finite amount of time for
         # ssh to establish the tunnel. 
 
-        checks = 150
         waittime = 0.1
+        checks = int(timeout/waittime)
         while checks > 0:
             result = is_local_port_in_use(local_port)
             if result == True:
@@ -1227,6 +1227,7 @@ class KeckVncLauncher(object):
 
         t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
                       session_name=session_name,
+                      timeout=self.config.get('ssh_timeout', 10),
                       ssh_additional_kex=self.ssh_additional_kex)
         self.ssh_tunnels[local_port] = t
         return local_port
