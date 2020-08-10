@@ -331,8 +331,7 @@ class SSHTunnel(object):
             raise RuntimeError('subprocess failed to execute ssh')
 
         # A delay is built-in here as it takes some finite amount of time for
-        # ssh to establish the tunnel. 50 checks with a 0.1 second sleep between
-        # checks is effectively a five second timeout.
+        # ssh to establish the tunnel. 
 
         checks = 150
         waittime = 0.1
@@ -980,10 +979,12 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## SSH Command
     ##-------------------------------------------------------------------------
-    def do_ssh_cmd(self, cmd, server, account, timeout=15):
+    def do_ssh_cmd(self, cmd, server, account):
         '''Utility function for opening ssh client, executing command and
         closing.
         '''
+        timeout = self.config.get('ssh_timeout', 10)
+
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
 
