@@ -25,7 +25,7 @@ import yaml
 import soundplay
 
 
-__version__ = '1.2.3'
+__version__ = '1.2.4'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
