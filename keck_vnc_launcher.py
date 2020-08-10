@@ -334,7 +334,7 @@ class SSHTunnel(object):
         # ssh to establish the tunnel. 50 checks with a 0.1 second sleep between
         # checks is effectively a five second timeout.
 
-        checks = 100
+        checks = 150
         waittime = 0.1
         while checks > 0:
             result = is_local_port_in_use(local_port)
@@ -980,7 +980,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## SSH Command
     ##-------------------------------------------------------------------------
-    def do_ssh_cmd(self, cmd, server, account, timeout=10):
+    def do_ssh_cmd(self, cmd, server, account, timeout=15):
         '''Utility function for opening ssh client, executing command and
         closing.
         '''
@@ -1016,8 +1016,8 @@ class KeckVncLauncher(object):
             self.log.error(message)
 
             if re.search('timeout', stdout.lower()):
-                self.log.error('SSH timeouts may be due to network instability.')
-                self.log.error('Please retry to see if the problem is intermittant.')
+                self.log.error('  SSH timeouts may be due to network instability.')
+                self.log.error('  Please retry to see if the problem is intermittant.')
 
             # Older ssh binaries don't like the '+' option when specifying
             # key exchange algorithms. Any binaries that old won't need the
@@ -1071,6 +1071,11 @@ class KeckVncLauncher(object):
 
         try:
             data = self.do_ssh_cmd(cmd, server, account)
+        except subprocess.TimeoutExpired:
+            self.log.error('  Timed out vailidating SSH key.')
+            self.log.error('  SSH timeouts may be due to network instability.')
+            self.log.error('  Please retry to see if the problem is intermittant.')
+            data = None
         except Exception as e:
             self.log.error('  Failed: ' + str(e))
             trace = traceback.format_exc()
