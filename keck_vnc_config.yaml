@@ -112,3 +112,9 @@ firewall_cleanup: False
 ##
 ##   Example: macOS (netcat v 0.7.1 installed via brew)
 #netcat: 'netcat -z -w 2'
+
+
+## SSH Timeout
+##   Sometimes extending the SSH timeout can eliminate failures for slow
+##   machines or during internet slow downs.
+#ssh_timeout: 10

@@ -25,7 +25,7 @@ import yaml
 import soundplay
 
 
-__version__ = '1.2.3'
+__version__ = '1.2.4'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -229,7 +229,11 @@ def do_firewall_command(firewall_address, firewall_port, firewall_user,
     if password_response[-19:] != 'Enter your choice: ':
         log.error('Got unexpected response from firewall:')
         log.error(password_response)
-        raise KROException('Got unexpected response from firewall')
+        log.error('')
+        log.error('Please try again. If this reoccurs, create a support ticket at:')
+        log.error('https://keckobservatory.atlassian.net/servicedesk/customer/portals')
+        log.error('and be sure to attach the log file.')
+        return False
 
     log.debug(f'Sending response: {selection}')
     tn.write(f'{selection}\n'.encode('ascii'))
@@ -280,7 +284,7 @@ class SSHTunnel(object):
     '''An object to contain information about an SSH tunnel.
     '''
     def __init__(self, server, username, ssh_pkey, remote_port, local_port,
-                 session_name='unknown', ssh_additional_kex=None):
+                 session_name='unknown', ssh_additional_kex=None, timeout=10):
         self.log = logging.getLogger('KRO')
         self.server = server
         self.username = username
@@ -327,10 +331,10 @@ class SSHTunnel(object):
             raise RuntimeError('subprocess failed to execute ssh')
 
         # A delay is built-in here as it takes some finite amount of time for
-        # ssh to establish the tunnel. 50 checks with a 0.1 second sleep between
-        # checks is effectively a five second timeout.
+        # ssh to establish the tunnel. 
 
-        checks = 50
+        waittime = 0.1
+        checks = int(timeout/waittime)
         while checks > 0:
             result = is_local_port_in_use(local_port)
             if result == True:
@@ -339,10 +343,10 @@ class SSHTunnel(object):
                 raise RuntimeError('ssh command exited unexpectedly')
 
             checks -= 1
-            time.sleep(0.1)
+            time.sleep(waittime)
 
         if checks == 0:
-            raise RuntimeError('ssh tunnel failed to open after 5 seconds')
+            raise RuntimeError(f'ssh tunnel failed to open after {checks*waittime:.0f} seconds')
 
 
     def close(self):
@@ -387,7 +391,6 @@ class KeckVncLauncher(object):
 
         #default start sessions
         self.default_sessions = []
-#         self.default_sessions = ['control0', 'control1', 'control2', 'telstatus']
 
         #default servers to try at Keck
         servers = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
@@ -412,7 +415,8 @@ class KeckVncLauncher(object):
 
         ##---------------------------------------------------------------------
         ## Parse command line args
-        self.log.debug("\n***** PROGRAM STARTED *****\nCommand: "+' '.join(sys.argv))
+        self.log.debug("\n***** PROGRAM STARTED *****")
+        self.log.debug(f"Command: {' '.join(sys.argv)}")
 
         ##---------------------------------------------------------------------
         ## Log basic system info
@@ -870,8 +874,11 @@ class KeckVncLauncher(object):
     def open_firewall(self, authpass):
         '''Simple wrapper to open firewall.
         '''
-        do_firewall_command(self.firewall_address, self.firewall_port,
-                            self.firewall_user, authpass, 1)
+        if do_firewall_command(self.firewall_address, self.firewall_port,
+                              self.firewall_user, authpass, 1):
+            return True
+        else:
+            self.exit_app()
 
 
     def close_firewall(self, authpass):
@@ -972,10 +979,12 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## SSH Command
     ##-------------------------------------------------------------------------
-    def do_ssh_cmd(self, cmd, server, account, timeout=10):
+    def do_ssh_cmd(self, cmd, server, account):
         '''Utility function for opening ssh client, executing command and
         closing.
         '''
+        timeout = self.config.get('ssh_timeout', 10)
+
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
 
@@ -1006,6 +1015,10 @@ class KeckVncLauncher(object):
         if proc.returncode != 0:
             message = '  command failed with error ' + str(proc.returncode)
             self.log.error(message)
+
+            if re.search('timeout', stdout.lower()):
+                self.log.error('  SSH timeouts may be due to network instability.')
+                self.log.error('  Please retry to see if the problem is intermittant.')
 
             # Older ssh binaries don't like the '+' option when specifying
             # key exchange algorithms. Any binaries that old won't need the
@@ -1059,6 +1072,11 @@ class KeckVncLauncher(object):
 
         try:
             data = self.do_ssh_cmd(cmd, server, account)
+        except subprocess.TimeoutExpired:
+            self.log.error('  Timed out vailidating SSH key.')
+            self.log.error('  SSH timeouts may be due to network instability.')
+            self.log.error('  Please retry to see if the problem is intermittant.')
+            data = None
         except Exception as e:
             self.log.error('  Failed: ' + str(e))
             trace = traceback.format_exc()
@@ -1209,6 +1227,7 @@ class KeckVncLauncher(object):
 
         t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
                       session_name=session_name,
+                      timeout=self.config.get('ssh_timeout', 10),
                       ssh_additional_kex=self.ssh_additional_kex)
         self.ssh_tunnels[local_port] = t
         return local_port
@@ -1557,26 +1576,36 @@ class KeckVncLauncher(object):
     def position_vnc_windows(self):
         '''Reposition the VNC windows to the preferred positions
         '''
+        #get all x-window processes
+        #NOTE: using wmctrl (does not work for Mac)
+        #alternate option: xdotool?
+        if 'darwin' in platform.system().lower():
+            self.log.warning('Positioning windows after opening does not work on macOS.')
+            return
+
         self.log.info("Re-reading config file")
         self.get_config()
         self.log.info(f"Positioning VNC windows...")
         self.calc_window_geometry()
 
-        #get all x-window processes
-        #NOTE: using wmctrl (does not work for Mac)
-        #alternate option: xdotool?
-        cmd = ['wmctrl', '-l']
-        wmctrl_l = subprocess.run(cmd, stdout=subprocess.PIPE, timeout=5)
+        which_wmctrl = subprocess.run(['which', 'wmctrl'],
+                                      stdout=subprocess.PIPE, timeout=5)
+        if which_wmctrl.returncode != 0:
+            self.log.warning('Could not find wmctrl. Can not reposition windows.')
+            return
+        where_is_wmctrl = which_wmctrl.stdout.decode().strip('\n')
+
+        cmd = [where_is_wmctrl, '-l']
+        wmctrl_l = subprocess.run(cmd, stdout=subprocess.PIPE, 
+                                  stderr=subprocess.PIPE, timeout=5)
         stdout = wmctrl_l.stdout.decode()
         for line in stdout.split('\n'):
-            self.log.debug(f'wmctrl line: {line}')
+            self.log.debug(f'wmctrl STDOUT: {line}')
+        stderr = wmctrl_l.stderr.decode()
+        for line in stderr.split('\n'):
+            self.log.debug(f'wmctrl STDERR: {line}')
         if wmctrl_l.returncode != 0:
             self.log.debug(f'wmctrl failed')
-            for line in stdout.split('\n'):
-                self.log.debug(f'wmctrl line: {line}')
-            stderr = wmctrl_l.stderr.decode()
-            for line in stderr.split('\n'):
-                self.log.debug(f'wmctrl line: {line}')
             return None
         win_ids = dict([x for x in zip(self.sessions_requested,
                                 [None for entry in self.sessions_requested])])
@@ -1605,7 +1634,7 @@ class KeckVncLauncher(object):
 #                 for line in stdout.split('\n'):
 #                     self.log.debug(f'wmctrl line: {line}')
             else:
-                self.log.info(f"Could not find window process for VNC session '{session}'")
+                self.log.warning(f"Could not find window process for VNC session '{session}'")
 
 
     ##-------------------------------------------------------------------------
