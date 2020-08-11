@@ -1974,12 +1974,12 @@ class KeckVncLauncher(object):
             self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
 
             output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                                    self.kvnc_account, timeout=20)
+                                    self.kvnc_account)
             if output is None:
                 # On timeout, the result returned by do_ssh_cmd is None
                 # Just try a second time
                 output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                                        self.kvnc_account, timeout=20)
+                                        self.kvnc_account)
             self.log.debug(f'Got hostname "{output}" from {server}')
             if output in [None, '']:
                 self.log.error(f'Failed to connect to {server}')
