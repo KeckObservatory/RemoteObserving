@@ -80,11 +80,6 @@ Note: The examples below assuming sudo/root installation for all users and were 
             sudo apt-get install tigervnc-viewer
             ```
 
-        - **Important!** If you are using TigerVNC, in the `~/.vnc` directory, create a file `default.tigervnc` with these two lines:
-            ```
-            TigerVNC Configuration file Version 1.0
-            RemoteResize=0
-            ```
         - In order for sounds to work, you will need a local sound player.  The
           `aplay` tool is installed by default on many linux distributions, but
           if yours does not have it, it is part of the
@@ -99,6 +94,12 @@ Note: The examples below assuming sudo/root installation for all users and were 
         - [Tiger VNC](https://tigervnc.org) is recommended as it supports automatic window positioning.
         - Real VNC's [VNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) also works, but without automatic window positioning (note, this is the free software, you do not need VNC Viewer Plus).
         - It is also possible to use the built in VNC viewer on macOS, but we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen.
+
+**--> Important! <--** If you are using TigerVNC on either OS, in the `~/.vnc` directory, create a file named `default.tigervnc` with these two lines:
+```
+TigerVNC Configuration file Version 1.0
+RemoteResize=0
+```
 
 
 ## Install the Keck Remote Observing software
