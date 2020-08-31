@@ -71,6 +71,9 @@ def create_parser():
     parser.add_argument("--nosound", dest="nosound",
         default=False, action="store_true",
         help="Skip start of soundplay application.")
+    parser.add_argument("--soundonly", dest="soundonly",
+        default=False, action="store_true",
+        help="Skip VNC sessions, only bring up soundplay")
     parser.add_argument("--viewonly", dest="viewonly",
         default=False, action="store_true",
         help="Open VNC sessions in View Only mode (only for TigerVnC viewer)")
@@ -512,14 +515,15 @@ class KeckVncLauncher(object):
                                                         self.kvnc_account,
                                                         self.args.account)
 
-            if (not self.sessions_found or len(self.sessions_found) == 0):
-                self.exit_app('No VNC sessions found')
+            if self.args.soundonly is False:
+                if (not self.sessions_found or len(self.sessions_found) == 0):
+                    self.exit_app('No VNC sessions found')
 
-            ##-----------------------------------------------------------------
-            ## Open requested sessions
-            self.calc_window_geometry()
-            for session_name in self.sessions_requested:
-                self.start_vnc_session(session_name)
+                ##-------------------------------------------------------------
+                ## Open requested sessions
+                self.calc_window_geometry()
+                for session_name in self.sessions_requested:
+                    self.start_vnc_session(session_name)
 
             ##-----------------------------------------------------------------
             ## Open Soundplay
