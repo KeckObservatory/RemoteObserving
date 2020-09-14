@@ -5,10 +5,37 @@ observers to connect to W. M. Keck Observatory for remote observing.
 
 Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical remote observing policy and documentation at: [https://www2.keck.hawaii.edu/inst/mainland_observing/](https://www2.keck.hawaii.edu/inst/mainland_observing/)
 
+# Table of Contents
+
+1. Remote Observing at Keck
+    - Notify Keck of your intent to connect remotely
+1. Hardware
+    - Displays
+    - Computer Recommendations
+1. Software Installation
+    - Install Software Dependencies
+    - Install the Keck Remote Observing Software
+    - Configure Keck Remote Observing Software
+    - Test your Connection to Keck
+1. Running the Keck Remote Observing Software
+    - Opening and Closing Individual VNC Sessions
+    - Getting a List of VNC Sessions
+    - Uploading a log file to Keck
+1. Troubleshooting Common Problems
+    - Can not see entire VNC desktop / VNC desktop is small
+    - Connection Quality Problems
+    - No Sounds
+1. Upgrading the Software
+
+# Remote Observing at Keck
+
 ## Notify Keck of your intent to connect remotely
+
+**--> Important! <--** You must have an approved remote observing request before you can observe remotely.  Please submit your request from your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php).
+
 Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
 
-### If you are setting up remote observing from home for yourself
+#### If you are setting up remote observing from home for yourself
 
 - Email
   [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu)
@@ -24,7 +51,7 @@ Before you can connect to Keck remotely, we need to provide you with the firewal
     - If yes, is your ssh key still valid?
     - If no, include a new id_rsa.pub key as specified in the installation instructions
 
-### if you are using an official site, or are setting up a new official site
+#### if you are using an official site, or are setting up a new official site
 
 - Email [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) with the following info about your remote site:
     - Institution
@@ -37,7 +64,7 @@ Before you can connect to Keck remotely, we need to provide you with the firewal
 Once we receive your request, we will respond with instructions on obtaining the firewall info, firewall password, and VNC session password.
 
 
-# Hardware Setup
+# Hardware
 
 ## Displays
 
@@ -102,7 +129,7 @@ RemoteResize=0
 ```
 
 
-## Install the Keck Remote Observing software
+## Install the Keck Remote Observing Software
 
 (NOTE: Examples below assuming a user named 'observer' and installing to home directory)
 
@@ -141,7 +168,7 @@ RemoteResize=0
     export PATH=/home/observer/RemoteObserving:$PATH
     ```
 
-## Configure Keck VNC software
+## Configure Keck Remote Observing Software
 
 Edit the `local_config.yaml` file you created above.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading `#`) lines you want to customize.
 
@@ -186,7 +213,7 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
 - **Configure Default Sessions:** Keck instruments typically use 4 VNC sessions for instrument control named "control0", "control1", "control2", and "telstatus".  On a normal invocation of the software (via the `start_keck_viewers` command) it will open the four sessions specified here.  For stations which split the duties among 2 computers, one could set this line to control which computer opens which sessions.
 
 
-# Test your connection to Keck
+## Test your Connection to Keck
 
 Only after your SSH key is successfully installed at Keck, you can test your system.
 
@@ -201,25 +228,95 @@ This may query you for passwords, depending on your local configuration. It shou
 If there are test failures, email your logfile to [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu).  Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
 
-# Run the VNC launch script
+# Running the Keck Remote Observing Software
 
-From the command line, cd into your install directory and run `start_keck_viewers` followed by the name of the instrument account assigned for your observing night (i.e. `nires1`, `mosfire2`).  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer. Additionally, you should see a command line menu with more options once you have started the script.:
+From the command line, cd into your install directory and run `start_keck_viewers` followed by the name of the instrument account assigned for your observing night (i.e. `nires1`, `mosfire2`).  Running the script without options will start 4 VNC sessions (control0, control1, control2, telstatus) and the soundplayer.
+
 ```
 cd ~/RemoteObserving
 ./start_keck_viewers [instrument account]
 ```
+
+**NOTE:** Be sure to exit the script by using the 'q' quit option or control-c to ensure all VNC processes, SSH tunnels, and authentication are terminated properly.
 
 To get help on available command line options:
 ```
 ./start_keck_viewers --help
 ```
 
-**NOTE:** Be sure to exit the script by using the 'q' quit option or control-c to ensure all VNC processes, SSH tunnels, and authentication are terminated properly.
+Unlike the previous incarnation of the Keck VNC launch script, this software is not actually a script, but an app.  After being run, the terminal in which you ran the `start_keck_viewers` command will have a prompt and a menu.  For example:
 
+```
+|--------------------------------------------------|
+|          Keck Remote Observing (v1.2.4)          |
+|                     MENU                         |
+|--------------------------------------------------|
+|  l               List sessions available         |
+|  [session name]  Open VNC session by name        |
+|  w               Position VNC windows            |
+|  s               Soundplayer restart             |
+|  u               Upload log to Keck              |
+|  p               Play a local test sound         |
+|  t               List local ports in use         |
+|  c [port]        Close ssh tunnel on local port  |
+|  v               Check if software is up to date |
+|  q               Quit (or Control-C)             |
+|--------------------------------------------------|
+> 
+```
 
-# Troubleshooting and common problems
+The user can type commands at the `>` prompt.  The most important is the `q` (quit) command which closes down the SSH tunnels and VNC viewer sessions and exits the app.
+
+## Opening and Closing Individual VNC Sessions
+
+The user can close individual VNC sessions, by simply closing the VNC viewer window for that session (using whatever UI scheme is used by their local OS).  To reopen a session, just type the name at the command prompt.  For example, if I close `control0`  session and later I want it back, I just type `control0`  in the app command line.
+
+## Getting a List of VNC Sessions
+
+The `l` command lists the available VNC sessions.  For example:
+
+```
+> l
+     INFO: Recieved command "l"
+     INFO: Connecting to kvnc@mosfire.keck.hawaii.edu to get VNC sessions list
+
+Sessions found for account 'mosfire3':
+  control0     :19   mosfire-mosfire3-control0
+  control1     :20   mosfire-mosfire3-control1
+  control2     :21   mosfire-mosfire3-control2
+  telstatus    :22   mosfire-mosfire3-telstatus
+```
+
+in this example, we see that there are the usual 4 VNC sessions for MOSFIRE.
+
+## Uploading a log file to Keck
+
+The `u` command will copy your local log file to a Keck computer.  This will only be useful if the software has established SSH connections to Keck, so it will not help in the case of catastrophic problems.  If you upload a log, you need to tell Keck Staff when you upload it and tell them which instrument you are logged in to and when you uploaded it.  These logs are not permanently stored and may be overwritten by other users, so if you want your log examined for issues, notify Keck Staff promptly.
+
+# Troubleshooting Common Problems
 
 Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
 If you need assistance, please email [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) and attach the most recent log file from the logs folder.
 
+## Can not see entire VNC desktop / VNC desktop is small
+
+If the user can not see the entire VNC desktop of the remote computer or if the VNC desktop is rendered small and hard to read, then try to look for sizing options on the local VNC viewer.  For some users, scaling the VNC screen to the window may be a good option to reveal areas they can not see at the cost of smaller UI element size.  For others, rendering the window very small may be worse than having to scroll around the desktop.  The local VNC viewer client will have options for controlling this behavior.  The best solution is to have a lot of local screen real estate (pixel count) and a lot of screen area (inches).  There is more detail is the [Keck Remote Observing Policy](https://www2.keck.hawaii.edu/realpublic/inst/mainland_observing/policy).
+
+## Connection Quality Problems
+
+If your connection quality is poor (bad color rendition, blurry (compressed) graphics, etc., play with the quality and color settings on the local VNC viewer client software.  There's a tradeoff between responsiveness and quality as you would imagine.  The default option set is `--FullColor`  (in your local config file), try with other settings.  There is also a quality adjustment option for most VNC viewers.
+
+Another option would simply be to use fewer VNC sessions.  If you can get all your GUIs on to 3 sessions instead of 4, that helps.
+
+A more extreme version would be to only keep one or two sessions open at a time and then open and close them as needded.  You can close a particular VNC session by closing that VNC viewer window and then reopen it from the app's command line.  
+
+## No Sounds
+
+VNC does not carry sounds, so we have a separate system for playing instrument sounds such as "exposure complete" indicators on the remote machine.  This system has several moving parts, so troubleshooting can be challenging.  The vast majority of sound problems however are local to the users machine.  To play a test sound, type the `p` command.  This will play a local sound file (it will need to be downloaded on the first instance of this).  If you can't hear this test sound (the quality is poor and scratchy, but it sounds like a doorbell), then check your local machine's volume settings and speaker configuration.  You may also not have configured your local `aplay` instance properly.
+
+# Upgrading the Software
+
+The software doen a simple check to see if it is the latest released version.  You can see a log line with this information on startup, or you can get the saem result using the `v` command.
+
+Upgrading the software is done via a `git pull` in the directory where the software is installed.  If your software version is earlier than v1.0, this may require rebuilding your `local_config.yaml` file.  If you need to do this, just copy values from your old local config file in to a new one generated from the template as per the instructions above.
