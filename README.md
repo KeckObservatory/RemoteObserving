@@ -31,6 +31,8 @@ Before embarking on setting up a Keck Remote Observing station, we recommend rea
 
 ## Notify Keck of your intent to connect remotely
 
+**--> Important! <--** You must have an approved remote observing request before you can observe remotely.  Please submit your request from your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php).
+
 Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
 
 #### If you are setting up remote observing from home for yourself
