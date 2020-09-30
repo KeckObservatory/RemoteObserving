@@ -6,6 +6,7 @@ import argparse
 import atexit
 from datetime import datetime
 from getpass import getpass
+import json
 import logging
 import os
 from pathlib import Path
@@ -18,6 +19,7 @@ from telnetlib import Telnet
 from threading import Thread
 import time
 import traceback
+from urllib.request import urlopen
 import warnings
 import yaml
 
@@ -25,9 +27,10 @@ import yaml
 import soundplay
 
 
-__version__ = '1.2.4'
+## Module vars
+__version__ = '1.3.0'
 supportEmail = 'remote-observing@keck.hawaii.edu'
-
+KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
                  'telanalys', 'telstatus')
@@ -274,7 +277,7 @@ class VNCSession(object):
         self.pid = pid
 
     def __str__(self):
-        return f"  {self.name:12s} {self.display:5s} {self.desktop:s}"
+        return f"  {self.name:12s} {self.display:5s}"
 
 
 ##-------------------------------------------------------------------------
@@ -385,6 +388,7 @@ class KeckVncLauncher(object):
         self.geometry = list()
         self.tigervnc = None
         self.vncviewer_has_geometry = None
+        self.api_data = None
 
         self.args = args
         self.log = logging.getLogger('KRO')
@@ -439,6 +443,9 @@ class KeckVncLauncher(object):
             # On test, always cleanup firewall
             self.config['firewall_cleanup'] = True
             self.test_all()
+            self.exit_app()
+
+        ##---------------------------------------------------------------------
         # Verify Tiger VNC Config
         if self.args.authonly is False:
             if self.test_tigervnc() > 0:
@@ -446,6 +453,16 @@ class KeckVncLauncher(object):
                 self.log.error('This can have negative effects on other users.')
                 self.log.error('Exiting program.')
                 self.exit_app()
+
+        ##---------------------------------------------------------------------
+        ## Get connect info from API
+        if self.api_key:
+            self.get_api_data(self.api_key, self.args.account)
+            if self.api_data is None:
+                if self.firewall_defined is True:
+                    self.log.info('Firewall info detected in config.  Trying ate method.')
+                else:
+                    self.exit_app('API method failed.')
 
         ##---------------------------------------------------------------------
         ## Authenticate Through Firewall (or Disconnect)
@@ -456,7 +473,9 @@ class KeckVncLauncher(object):
 
         # Do we need to interact with the firewall?
         need_password = self.config.get('firewall_cleanup', False)
-        if self.firewall_requested == True and self.firewall_opened == False:
+        if self.firewall_requested == True \
+            and self.firewall_opened == False \
+            and self.firewall_pass == None:
             need_password = True
 
         if need_password == True:
@@ -776,8 +795,10 @@ class KeckVncLauncher(object):
     def check_config(self):
         '''Do some basic checks on the configuration.
         '''
-        #check firewall config
         self.firewall_requested = False
+        self.firewall_defined = False
+
+        #check firewall config first
         self.firewall_address = self.config.get('firewall_address', None)
         self.firewall_user = self.config.get('firewall_user', None)
         self.firewall_port = self.config.get('firewall_port', None)
@@ -786,6 +807,7 @@ class KeckVncLauncher(object):
            self.firewall_user is not None and \
            self.firewall_port is not None:
             self.firewall_requested = True
+            self.firewall_defined = True
 
         elif self.firewall_address is not None or \
              self.firewall_user is not None or \
@@ -797,6 +819,15 @@ class KeckVncLauncher(object):
                 self.log.warning("firewall_user not set")
             if self.firewall_port is None:
                 self.log.warning("firewall_port not set")
+
+        #check API key config (This will take priority later on)
+        self.api_key = self.config.get('api_key', None)
+        if self.api_key is None:
+            self.log.warning("API key is not set.")
+            if self.firewall_defined is True:
+                self.log.info('Firewall info detected in config. Will try alternate method.')
+        else:
+            self.firewall_requested = True
 
 
     def get_vncviewer_properties(self):
@@ -822,6 +853,79 @@ class KeckVncLauncher(object):
         else:
             self.log.debug(f'Could not find geometry argument')
             self.vncviewer_has_geometry = False
+
+
+    def get_api_data(self, api_key, account):
+        '''Get data from API which contains all info needed to connect.'''
+        self.api_data = None
+
+        #form API url and get data
+        url = f'{KRO_API}?key={self.api_key}'
+        if account is not False: url += f'&account={self.args.account}'
+        self.log.debug(f'Calling API with URL: {url}')
+        data = None
+        try:
+            data = urlopen(url, timeout=10).read().decode('utf8')
+            data = json.loads(data)
+        except Exception as e:
+            self.log.error(f'Could not get data from API.')
+            self.log.error(str(e))
+            return
+        if data is None:
+            self.log.error('No response from API.')
+            return
+
+        #todo Log the API response?  Probably want to blank the passwords.
+
+        #Look for any errors
+        stdmsg = ('API failed to retrieve connection info.  '
+                  'Please try again or contact your SA.')
+        stdmsg2 = ('Please check your Keck Observer Homepage for information '
+                   'regarding when your key is approved and deployed according '
+                   'to the observing schedule.')
+        api_err_map = {
+            'DATABASE_ERROR': stdmsg,
+            'FIREWALL_INFO_ERROR': stdmsg,
+            'INSTRUMENT_ACCOUNT_ERROR': f'API does not recognize instrument account "{self.args.account}"',
+            'KVNC_INFO_ERROR':  stdmsg,
+            'KVNC_STATUS_ERROR': stdmsg,
+            'NO_API_KEY': 'No matching API key found. Please check your "api_key" config value is correct.',
+            'SSH_KEY_NOT_APPROVED': f'Your SSH key has not yet been approved. {stdmsg2}',
+            'SSH_KEY_NOT_DEPLOYED': f'Your SSH key is not deployed on the Keck server. {stdmsg2}',
+        } 
+        code = data.get('apiCode', '').upper()
+        if code in api_err_map:
+            self.log.error(f'API error code: {code}')
+            self.log.error(api_err_map[code])
+            return
+        if code != 'SUCCESS':
+            self.log.error(f'Invalid status code returned from API: {code}')
+            return
+
+        #get firewall info
+        fw = data.get('firewall')
+        if fw is None:
+            self.log.error(f'Could not determine get firewall info from API')
+            return
+        fw_ip   = fw.get('ip')
+        fw_port = fw.get('port')
+        fw_user = fw.get('username')
+        fw_pass = fw.get('pwd')
+        if    fw_ip   is None \
+           or fw_user is None \
+           or fw_port is None \
+           or fw_pass is None:
+            self.log.error(f'Could not determine firewall info from API')
+            return
+
+        #if firewall info successful, overwrite what we might have defined in config
+        self.firewall_address = fw_ip
+        self.firewall_port    = fw_port
+        self.firewall_user    = fw_user
+        self.firewall_pass    = fw_pass
+
+        #all good
+        self.api_data = data
 
 
     ##-------------------------------------------------------------------------
@@ -1067,17 +1171,7 @@ class KeckVncLauncher(object):
 
         self.ssh_key_valid = False
         cmd = 'whoami'
-#         server = self.servers_to_try[0]
-
-        # Find a server in the servers_to_try list with is not an svncserverN
-        server = None
-        for s in self.servers_to_try:
-            if s not in ['svncserver1', 'svncserver2']:
-                server = s
-        # If we can't find one, just use the first in the list
-        if server is None:
-            server = self.servers_to_try[0]
-
+        server = self.servers_to_try[0]
         account = self.kvnc_account
 
         try:
@@ -1115,22 +1209,31 @@ class KeckVncLauncher(object):
         those machines, but other instruments return a correct server.
         '''
         self.log.info(f"Determining VNC server for '{account}'...")
-        vncserver = None
-        for server in self.servers_to_try:
-            cmd = f'kvncinfo -server -I {instrument}'
 
-            try:
-                data = self.do_ssh_cmd(cmd, server, account)
-            except Exception as e:
-                self.log.error('  Failed: ' + str(e))
-                trace = traceback.format_exc()
-                self.log.debug(trace)
-                data = None
+        #API Route
+        if self.api_data:
+            vncserver = self.api_data.get('vncserver')
+            if vncserver is None:
+                self.log.error(f'Could not determine VNC server from API')
 
-            if data is not None and ' ' not in data:
-                vncserver = data
-                self.log.info(f"Got VNC server: '{vncserver}'")
-                break
+        #SSH Route
+        else:
+            vncserver = None
+            for server in self.servers_to_try:
+                cmd = f'kvncinfo -server -I {instrument}'
+
+                try:
+                    data = self.do_ssh_cmd(cmd, server, account)
+                except Exception as e:
+                    self.log.error('  Failed: ' + str(e))
+                    trace = traceback.format_exc()
+                    self.log.debug(trace)
+                    data = None
+
+                if data is not None and ' ' not in data:
+                    vncserver = data
+                    self.log.info(f"Got VNC server: '{vncserver}'")
+                    break
 
         # Temporary hack for KCWI
         if vncserver == 'vm-kcwivnc':
@@ -1150,30 +1253,51 @@ class KeckVncLauncher(object):
         '''
         self.log.info(f"Connecting to {account}@{vncserver} to get VNC sessions list")
 
-        sessions = list()
-        cmd = f'setenv INSTRUMENT {instrument}; kvncstatus -a'
-        try:
-            data = self.do_ssh_cmd(cmd, vncserver, account)
-        except Exception as e:
-            self.log.error('  Failed: ' + str(e))
-            trace = traceback.format_exc()
-            self.log.debug(trace)
-            data = ''
+        #API Route
+        #todo jriley: call API again (so we can use menu func)
+        if self.api_data:
+            sessions = list()
+            vncports = self.api_data.get('vncports')
+            if vncports is None or not isinstance(vncports, list):
+                self.log.error(f'Could not determine get VNC session list from API')
+                return sessions
 
-        if data is None:
-            return sessions
+            for vp in vncports:
+                port = vp.get('port')
+                name = vp.get('name')
+                if port is None or name is None:
+                    self.log.error('Invalid VNC session info: {port}, {name}')
+                    continue
+                s = VNCSession(name=name, display=port, user=self.args.account)
+                sessions.append(s)
 
-        lines = data.split('\n')
-        for line in lines:
-            if line[0] != '#':
-                if len(line.split()) != 4:
-                    self.log.error(f'Unable to parse line: "{line}"')
-                else:
-                    display, desktop, user, pid = line.split()
-                    s = VNCSession(display=display, desktop=desktop, user=user, pid=pid)
-                    if s.user == instr_account:
-                        sessions.append(s)
+        #SSH Route
+        else:
+            sessions = list()
+            cmd = f'setenv INSTRUMENT {instrument}; kvncstatus -a'
+            try:
+                data = self.do_ssh_cmd(cmd, vncserver, account)
+            except Exception as e:
+                self.log.error('  Failed: ' + str(e))
+                trace = traceback.format_exc()
+                self.log.debug(trace)
+                data = ''
 
+            if data is None:
+                return sessions
+
+            lines = data.split('\n')
+            for line in lines:
+                if line[0] != '#':
+                    if len(line.split()) != 4:
+                        self.log.error(f'Unable to parse line: "{line}"')
+                    else:
+                        display, desktop, user, pid = line.split()
+                        s = VNCSession(display=display, desktop=desktop, user=user, pid=pid)
+                        if s.user == instr_account:
+                            sessions.append(s)
+
+        #print and return
         self.log.debug(f'  Got {len(sessions)} sessions')
         for s in sessions:
             self.log.debug(s)
@@ -1743,7 +1867,7 @@ class KeckVncLauncher(object):
         self.close_ssh_threads()
 
         close_requested = self.config.get('firewall_cleanup', False)
-        if close_requested == True:
+        if close_requested == True and self.firewall_requested == True:
             try:
                 self.close_firewall(self.firewall_pass)
             except:
@@ -1804,28 +1928,38 @@ class KeckVncLauncher(object):
         '''
         import socket
         failcount = 0
-        self.log.info('Checking config file: firewall_address')
-        firewall_address = self.config.get('firewall_address', None)
-        if firewall_address is None:
-            self.log.error(f"No firewall address found")
-            failcount += 1
-        try:
-            socket.inet_aton(firewall_address)
-        except OSError:
-            self.log.error(f'firewall_address: "{firewall_address}" is invalid')
+
+        #API must be defined if firewall info was not defined.
+        self.log.info('Checking config file: api_key')
+        api_key = self.config.get('api_key', None)
+        if api_key is None and self.firewall_defined == False:
+            self.log.error(f'api_key must be specified if you are outside the WMKO network')
             failcount += 1
 
-        self.log.info('Checking config file: firewall_port')
-        firewall_port = self.config.get('firewall_port', None)
-        if isinstance(int(firewall_port), int) is False:
-            self.log.error(f'firewall_port: "{firewall_port}" is invalid')
-            failcount += 1
+        #Check firewall config if api_key not defined
+        if api_key is None:            
+            self.log.info('Checking config file: firewall_address')
+            firewall_address = self.config.get('firewall_address', None)
+            if firewall_address is None:
+                self.log.error(f"No firewall address found")
+                failcount += 1
+            try:
+                socket.inet_aton(firewall_address)
+            except OSError:
+                self.log.error(f'firewall_address: "{firewall_address}" is invalid')
+                failcount += 1
 
-        self.log.info('Checking config file: firewall_user')
-        firewall_user = self.config.get('firewall_user', None)
-        if firewall_user in [None, '']:
-            self.log.error(f'firewall_user must be specified if you are outside the WMKO network')
-            failcount += 1
+            self.log.info('Checking config file: firewall_port')
+            firewall_port = self.config.get('firewall_port', None)
+            if isinstance(int(firewall_port), int) is False:
+                self.log.error(f'firewall_port: "{firewall_port}" is invalid')
+                failcount += 1
+
+            self.log.info('Checking config file: firewall_user')
+            firewall_user = self.config.get('firewall_user', None)
+            if firewall_user in [None, '']:
+                self.log.error(f'firewall_user must be specified if you are outside the WMKO network')
+                failcount += 1
 
         self.log.info('Checking config file: ssh_pkey')
         ssh_pkey = self.config.get('ssh_pkey', '~/.ssh/id_rsa')
@@ -1920,6 +2054,24 @@ class KeckVncLauncher(object):
         return failcount
 
 
+    def test_api(self):
+        '''Test:
+        - If api_key is set, must get valid response.
+        '''
+        if self.api_key is None:
+            self.log.warning("API key is not defined.  Unable to test API.")
+            return 0
+
+        failcount = 0    
+        #todo: jriley: need ability to bypass account param in API call
+        self.get_api_data(self.api_key, 'kcwi1')
+        if self.api_data is None:
+            self.log.error(f'Could not get a valid reponse from API.')
+            failcount += 1
+
+        return failcount
+
+
     def test_firewall_authentication(self):
         '''Test:
         - Must authenticate through the firewall successfully.
@@ -1928,7 +2080,8 @@ class KeckVncLauncher(object):
         self.log.info('Testing firewall authentication')
         self.firewall_opened = False
         if self.firewall_requested == True:
-            self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
+            if self.firewall_pass is None:
+                self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
             try:
                 self.firewall_opened = self.open_firewall(self.firewall_pass)
             except ConnectionRefusedError as e:
@@ -2013,6 +2166,7 @@ class KeckVncLauncher(object):
         if self.test_firewall() is None:
             self.log.error('Could not determine if firewall is open')
             failcount += 1
+        failcount += self.test_api()
         failcount += self.test_firewall_authentication()
         failcount += self.test_ssh_key()
         failcount += self.test_basic_connectivity()
@@ -2024,8 +2178,6 @@ class KeckVncLauncher(object):
 
         if self.config.get('vncviewer', False) is not True:
             self.play_test_sound()
-
-        self.exit_app()
 
 
 ##-------------------------------------------------------------------------
