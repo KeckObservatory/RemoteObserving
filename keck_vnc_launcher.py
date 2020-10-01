@@ -916,7 +916,7 @@ class KeckVncLauncher(object):
             self.log.error(f'Could not determine get firewall info from API')
             return
         fw_ip   = fw.get('ip')
-        fw_port = fw.get('port')
+        fw_port = fw.get('telnetport')
         fw_user = fw.get('username')
         fw_pass = fw.get('pwd')
         if    fw_ip   is None \
