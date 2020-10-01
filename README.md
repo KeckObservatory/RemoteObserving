@@ -48,8 +48,6 @@ Before you can connect to Keck remotely, we need to provide you with the firewal
     - Staff Astronomer assigned to your night
     - Cellphone number capable of receiving texts
     - Have you used pajamas mode successful before and do you have the software installed?
-    - If yes, is your ssh key still valid?
-    - If no, include a new id_rsa.pub key as specified in the installation instructions
 
 #### if you are using an official site, or are setting up a new official site
 
@@ -161,8 +159,8 @@ RemoteResize=0
         ```
         ssh-keygen -t rsa -b 4096 -m PEM
         ```
-    - Email the **public** key file (i.e. `id_rsa.pub`) to [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu)
-
+    - Upload your **public** key file at your Keck Observer Homepage (https://www2.keck.hawaii.edu/inst/PILogin/homepage.php). Click on "Manage Your Remote Observing SSH Key" and follow the instructions.
+    
 - (optional) Add VNC start script to path:
     ```
     export PATH=/home/observer/RemoteObserving:$PATH
@@ -172,13 +170,7 @@ RemoteResize=0
 
 Edit the `local_config.yaml` file you created above.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading `#`) lines you want to customize.
 
-- **Configure Firewall:** If you are connecting outside of the Keck network, enter the firewall address, port and user info.  You'll need to get this information from someone at Keck.
-
-    ```
-    firewall_address: ???.???.???.???
-    firewall_port: ???
-    firewall_user: ???
-    ```
+- **Configure API Key:** If you are connecting outside of the Keck network, enter your uniquely generated "API Key".  This can be obtained from the same SSH key manager page described in "Setup SSH Keys" above.
 
 - **Configure Path to Private SSH Key:** Enter the path to the **private** key corresponding to the public key that you emailed to Keck in the appropriate field.  For example:
 
@@ -215,7 +207,9 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
 
 ## Test your Connection to Keck
 
-Only after your SSH key is successfully installed at Keck, you can test your system.
+Only after your SSH key is successfully installed at Keck, you can test your system.  You can see the status of your SSH Key approval and deployment by clicking "Manage Your Remote Observing SSH Key" on your Keck Observer Homepage (https://www2.keck.hawaii.edu/inst/PILogin/homepage.php)
+
+**--> Important! <--** SSH Keys are deployed on a time window based on your scheduled observing dates.  This window is roughly several days before and a few days after observing.  Check your Keck SSH Key Management page for exact deployment times.  If you need to connect outside this window, contact your SA.
 
 From the directory where the Keck VNC software is installed (e.g. `~/RemoteObserving/`), run:
 
@@ -223,7 +217,7 @@ From the directory where the Keck VNC software is installed (e.g. `~/RemoteObser
 ./start_keck_viewers --test
 ```
 
-This may query you for passwords, depending on your local configuration. It should print out a report which indicates that all tests passed. Make sure there are no test failures.
+This should print out a report which indicates that all tests passed. Make sure there are no test failures.
 
 If there are test failures, email your logfile to [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu).  Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
