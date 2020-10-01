@@ -1565,6 +1565,8 @@ class KeckVncLauncher(object):
                      ]
         if self.args.authonly is False:
             lines.extend(morelines)
+        if self.api_data is not None:
+            lines.append(f"  i               View extra connection info")
         lines.extend([f"  v               Check if software is up to date",
                       f"  q               Quit (or Control-C)",
                       f"-"*(line_length),
@@ -1596,6 +1598,8 @@ class KeckVncLauncher(object):
                 quit = True
             elif cmd == 'w':
                 self.position_vnc_windows()
+            elif cmd == 'i':
+                self.view_connection_info()
             elif cmd == 'p':
                 self.play_test_sound()
             elif cmd == 's':
@@ -1769,6 +1773,28 @@ class KeckVncLauncher(object):
 #                     self.log.debug(f'wmctrl line: {line}')
             else:
                 self.log.warning(f"Could not find window process for VNC session '{session}'")
+
+
+    ##-------------------------------------------------------------------------
+    ## View extra connection info (VNC passwords, zoom info, etc)
+    ##-------------------------------------------------------------------------
+    def view_connection_info(self):
+        '''View extra connection info (VNC passwords, zoom info, etc)
+        '''
+        pw = self.api_data.get('vncpwd')
+        if not pw:
+            self.log.error(f'API did not return a VNC password value.')
+        else:
+            print(f"\nVNC password is {pw}")
+
+        zoom = self.api_data.get('zoom')
+        if not zoom:
+            self.log.error(f'API did not return Zoom info.')
+        else:
+            print(f"\nZoom info:")
+            print(f"\tURL: {zoom.get('url', '')}")
+            print(f"\tMeeting ID: {zoom.get('meetingId', '')}")
+            print(f"\tPassword: {zoom.get('pwd', '')}")
 
 
     ##-------------------------------------------------------------------------
