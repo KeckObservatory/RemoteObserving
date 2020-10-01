@@ -94,9 +94,9 @@ def create_parser():
     ## add options
     parser.add_argument("-c", "--config", dest="config", type=str,
         help="Path to local configuration file.")
-    parser.add_argument("--vncserver", type=str,
-        help="Name of VNC server to connec to.  Takes precedence over all.")
-    parser.add_argument( '--vncports', nargs='+', type=str,
+    parser.add_argument("-vncserver", type=str,
+        help="Name of VNC server to connect to.  Takes precedence over all.")
+    parser.add_argument( '-vncports', nargs='+', type=str,
         help="Numerical list of VNC ports to connect to.  Takes precedence over all.")
 
     #parse
@@ -1216,16 +1216,22 @@ class KeckVncLauncher(object):
         be out of date. As of this writing (July 2, 2020), ESI is incorrect on
         those machines, but other instruments return a correct server.
         '''
-        self.log.info(f"Determining VNC server for '{account}'...")
+
+        #cmd line option
+        if self.args.vncserver is not None:
+            self.log.info("Using VNC server defined on command line")
+            vncserver = self.args.vncserver
 
         #API Route
-        if self.api_data:
+        elif self.api_data:
+            self.log.info(f"Determining VNC server for '{account}'...")
             vncserver = self.api_data.get('vncserver')
             if vncserver is None:
                 self.log.error(f'Could not determine VNC server from API')
 
         #SSH Route
         else:
+            self.log.info(f"Determining VNC server for '{account}'...")
             vncserver = None
             for server in self.servers_to_try:
                 cmd = f'kvncinfo -server -I {instrument}'
