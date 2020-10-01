@@ -1248,13 +1248,16 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Determine VNC Sessions
     ##-------------------------------------------------------------------------
-    def get_vnc_sessions(self, vncserver, instrument, account, instr_account):
+    def get_vnc_sessions(self, vncserver, instrument, account, instr_account, requery=False):
         '''Determine the VNC sessions running for the given account.
         '''
-        self.log.info(f"Connecting to {account}@{vncserver} to get VNC sessions list")
+
+        #If called from menu, requery API again 
+        if self.api_key and requery:
+            self.log.info(f"Recontacting API to get VNC sessions list")
+            self.get_api_data(self.api_key, self.args.account)
 
         #API Route
-        #todo jriley: call API again (so we can use menu func)
         if self.api_data:
             sessions = list()
             vncports = self.api_data.get('vncports')
@@ -1273,6 +1276,7 @@ class KeckVncLauncher(object):
 
         #SSH Route
         else:
+            self.log.info(f"Connecting to {account}@{vncserver} to get VNC sessions list")
             sessions = list()
             cmd = f'setenv INSTRUMENT {instrument}; kvncstatus -a'
             try:
@@ -1615,7 +1619,8 @@ class KeckVncLauncher(object):
                 self.sessions_found = self.get_vnc_sessions(self.vncserver,
                                                             self.instrument,
                                                             self.kvnc_account,
-                                                            self.args.account)
+                                                            self.args.account,
+                                                            True)
                 self.print_sessions_found()
             elif cmd == 't':
                 self.list_tunnels()
@@ -1785,7 +1790,7 @@ class KeckVncLauncher(object):
         if not pw:
             self.log.error(f'API did not return a VNC password value.')
         else:
-            print(f"\nVNC password is {pw}")
+            print(f"\nVNC password: {pw}")
 
         zoom = self.api_data.get('zoom')
         if not zoom:
