@@ -94,6 +94,10 @@ def create_parser():
     ## add options
     parser.add_argument("-c", "--config", dest="config", type=str,
         help="Path to local configuration file.")
+    parser.add_argument("--vncserver", type=str,
+        help="Name of VNC server to connec to.  Takes precedence over all.")
+    parser.add_argument( '--vncports', nargs='+', type=str,
+        help="Numerical list of VNC ports to connect to.  Takes precedence over all.")
 
     #parse
     args = parser.parse_args()
@@ -537,8 +541,12 @@ class KeckVncLauncher(object):
             ##-----------------------------------------------------------------
             ## Open requested sessions
             self.calc_window_geometry()
-            for session_name in self.sessions_requested:
-                self.start_vnc_session(session_name)
+            if self.args.vncports is not None:
+                for port in self.args.vncports:
+                    self.start_vnc_session(port)
+            else:
+                for session_name in self.sessions_requested:
+                    self.start_vnc_session(session_name)
 
             ##-----------------------------------------------------------------
             ## Open Soundplay
@@ -825,7 +833,7 @@ class KeckVncLauncher(object):
         if self.api_key is None:
             self.log.warning("API key is not set.")
             if self.firewall_defined is True:
-                self.log.info('Firewall info detected in config. Will try alternate method.')
+                self.log.info('Firewall config detected. Trying alternate method.')
         else:
             self.firewall_requested = True
 
@@ -889,9 +897,9 @@ class KeckVncLauncher(object):
             'INSTRUMENT_ACCOUNT_ERROR': f'API does not recognize instrument account "{self.args.account}"',
             'KVNC_INFO_ERROR':  stdmsg,
             'KVNC_STATUS_ERROR': stdmsg,
-            'NO_API_KEY': 'No matching API key found. Please check your "api_key" config value is correct.',
-            'SSH_KEY_NOT_APPROVED': f'Your SSH key has not yet been approved. {stdmsg2}',
-            'SSH_KEY_NOT_DEPLOYED': f'Your SSH key is not deployed on the Keck server. {stdmsg2}',
+            'NO_API_KEY': 'No matching API key found. Please check your "api_key" config value.',
+            'SSH_KEY_NOT_APPROVED': f'Your SSH key is not yet approved. {stdmsg2}',
+            'SSH_KEY_NOT_DEPLOYED': f'Your SSH key is not deployed. {stdmsg2}',
         } 
         code = data.get('apiCode', '').upper()
         if code in api_err_map:
@@ -1251,6 +1259,17 @@ class KeckVncLauncher(object):
     def get_vnc_sessions(self, vncserver, instrument, account, instr_account, requery=False):
         '''Determine the VNC sessions running for the given account.
         '''
+        sessions = list()
+
+        #If vncports defined use that
+        if self.args.vncports is not None:
+            self.log.info(f"Using VNC ports defined from command line.")
+            for port in self.args.vncports:
+                name = port
+                if not port.startswith(':'): port = ':'+port
+                s = VNCSession(name=name, display=port, user=self.args.account)
+                sessions.append(s)
+            return sessions
 
         #If called from menu, requery API again 
         if self.api_key and requery:
@@ -1259,7 +1278,6 @@ class KeckVncLauncher(object):
 
         #API Route
         if self.api_data:
-            sessions = list()
             vncports = self.api_data.get('vncports')
             if vncports is None or not isinstance(vncports, list):
                 self.log.error(f'Could not determine get VNC session list from API')
@@ -1277,7 +1295,6 @@ class KeckVncLauncher(object):
         #SSH Route
         else:
             self.log.info(f"Connecting to {account}@{vncserver} to get VNC sessions list")
-            sessions = list()
             cmd = f'setenv INSTRUMENT {instrument}; kvncstatus -a'
             try:
                 data = self.do_ssh_cmd(cmd, vncserver, account)
