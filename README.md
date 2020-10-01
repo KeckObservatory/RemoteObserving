@@ -33,7 +33,7 @@ Before embarking on setting up a Keck Remote Observing station, we recommend rea
 
 **--> Important! <--** You must have an approved remote observing request before you can observe remotely.  Please submit your request from your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php).
 
-Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
+Before you can connect to Keck remotely, we need info about your remote observing station.
 
 #### If you are setting up remote observing from home for yourself
 
@@ -159,7 +159,7 @@ RemoteResize=0
         ```
         ssh-keygen -t rsa -b 4096 -m PEM
         ```
-    - Upload your **public** key file at your Keck Observer Homepage (https://www2.keck.hawaii.edu/inst/PILogin/homepage.php). Click on "Manage Your Remote Observing SSH Key" and follow the instructions.
+    - Upload your **public** key file at your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php). Click on "Manage Your Remote Observing SSH Key" and follow the instructions.
     
 - (optional) Add VNC start script to path:
     ```
@@ -170,7 +170,7 @@ RemoteResize=0
 
 Edit the `local_config.yaml` file you created above.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading `#`) lines you want to customize.
 
-- **Configure API Key:** If you are connecting outside of the Keck network, enter your uniquely generated "API Key".  This can be obtained from the same SSH key manager page described in "Setup SSH Keys" above.
+- **Configure API Key:** If you are connecting outside of the Keck network, enter your uniquely generated "API Key".  This is generated when you upload your SSH public key (see "Setup SSH keys" above).  Visit your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php) and click on "Manage Your Remote Observing SSH Key".
 
 - **Configure Path to Private SSH Key:** Enter the path to the **private** key corresponding to the public key that you emailed to Keck in the appropriate field.  For example:
 
@@ -207,7 +207,7 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
 
 ## Test your Connection to Keck
 
-Only after your SSH key is successfully installed at Keck, you can test your system.  You can see the status of your SSH Key approval and deployment by clicking "Manage Your Remote Observing SSH Key" on your Keck Observer Homepage (https://www2.keck.hawaii.edu/inst/PILogin/homepage.php)
+Only after your SSH key is successfully installed at Keck, you can test your system.  You can see the status of your SSH Key approval and deployment by clicking "Manage Your Remote Observing SSH Key" on your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php).
 
 **--> Important! <--** SSH Keys are deployed on a time window based on your scheduled observing dates.  This window is roughly several days before and a few days after observing.  Check your Keck SSH Key Management page for exact deployment times.  If you need to connect outside this window, contact your SA.
 
