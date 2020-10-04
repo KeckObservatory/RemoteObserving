@@ -464,7 +464,7 @@ class KeckVncLauncher(object):
             self.get_api_data(self.api_key, self.args.account)
             if self.api_data is None:
                 if self.firewall_defined is True:
-                    self.log.info('Firewall info detected in config.  Trying ate method.')
+                    self.log.info('Firewall info detected in config.  Trying alternate method.')
                 else:
                     self.exit_app('API method failed.')
 
