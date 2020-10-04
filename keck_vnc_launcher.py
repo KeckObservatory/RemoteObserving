@@ -94,9 +94,9 @@ def create_parser():
     ## add options
     parser.add_argument("-c", "--config", dest="config", type=str,
         help="Path to local configuration file.")
-    parser.add_argument("-vncserver", type=str,
+    parser.add_argument("--vncserver", type=str,
         help="Name of VNC server to connect to.  Takes precedence over all.")
-    parser.add_argument( '-vncports', nargs='+', type=str,
+    parser.add_argument( '--vncports', nargs='+', type=str,
         help="Numerical list of VNC ports to connect to.  Takes precedence over all.")
 
     #parse
