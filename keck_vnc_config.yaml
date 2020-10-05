@@ -6,7 +6,7 @@
 ##   Click on 'Manage your Remote Observing SSH key', follow the instructions
 ##   and paste your API key here when you have uploaded your SSH key. 
 ##   If this is being run inside of the Keck network, comment out this line.
-api_key: '87723324c284b02e1591ecacc39baed0'
+api_key: ''
 
 
 ## SSH Key Info:
