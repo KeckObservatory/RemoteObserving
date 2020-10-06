@@ -1179,7 +1179,16 @@ class KeckVncLauncher(object):
 
         self.ssh_key_valid = False
         cmd = 'whoami'
-        server = self.servers_to_try[0]
+
+        # Find a server in the servers_to_try list with is not an svncserverN
+        server = None
+        for s in self.servers_to_try:
+            if s not in ['svncserver1', 'svncserver2']:
+                server = s
+        # If we can't find one, just use the first in the list
+        if server is None:
+            server = self.servers_to_try[0]
+
         account = self.kvnc_account
 
         try:
