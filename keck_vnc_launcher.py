@@ -536,7 +536,7 @@ class KeckVncLauncher(object):
                                                         self.args.account)
 
             if (not self.sessions_found or len(self.sessions_found) == 0):
-                self.exit_app('No VNC sessions found')
+                self.exit_app(f"No VNC sessions found for '{self.args.account}'")
 
             ##-----------------------------------------------------------------
             ## Open requested sessions
@@ -1162,7 +1162,7 @@ class KeckVncLauncher(object):
                 lines = lines[1:]
                 stdout = '\n'.join(lines)
 
-        return stdout
+        return stdout, proc.returncode
 
 
     ##-------------------------------------------------------------------------
@@ -1192,7 +1192,7 @@ class KeckVncLauncher(object):
         account = self.kvnc_account
 
         try:
-            data = self.do_ssh_cmd(cmd, server, account)
+            data, rc = self.do_ssh_cmd(cmd, server, account)
         except subprocess.TimeoutExpired:
             self.log.error('  Timed out vailidating SSH key.')
             self.log.error('  SSH timeouts may be due to network instability.')
@@ -1204,7 +1204,11 @@ class KeckVncLauncher(object):
             self.log.debug(trace)
             data = None
 
-        if data == self.kvnc_account:
+        #NOTE: The 'whoami' test can fail if the kvnc account has a .cshrc 
+        #that produces other output.  Other ssh cmds would be invalid too.
+        #If API data exists, we don't get data via ssh, so just check ret code.
+        if data == self.kvnc_account \
+            or (self.api_data is not None and rc == 0):
             self.ssh_key_valid = True
             self.log.info("  SSH key OK")
         else:
@@ -1233,20 +1237,20 @@ class KeckVncLauncher(object):
 
         #API Route
         elif self.api_data:
-            self.log.info(f"Determining VNC server for '{account}'...")
+            self.log.info(f"Determining VNC server for '{self.args.account}' (via API)")
             vncserver = self.api_data.get('vncserver')
             if vncserver is None:
                 self.log.error(f'Could not determine VNC server from API')
 
         #SSH Route
         else:
-            self.log.info(f"Determining VNC server for '{account}'...")
+            self.log.info(f"Determining VNC server for '{self.args.account}' (via SSH)")
             vncserver = None
             for server in self.servers_to_try:
                 cmd = f'kvncinfo -server -I {instrument}'
 
                 try:
-                    data = self.do_ssh_cmd(cmd, server, account)
+                    data, rc = self.do_ssh_cmd(cmd, server, account)
                 except Exception as e:
                     self.log.error('  Failed: ' + str(e))
                     trace = traceback.format_exc()
@@ -1312,7 +1316,7 @@ class KeckVncLauncher(object):
             self.log.info(f"Connecting to {account}@{vncserver} to get VNC sessions list")
             cmd = f'setenv INSTRUMENT {instrument}; kvncstatus -a'
             try:
-                data = self.do_ssh_cmd(cmd, vncserver, account)
+                data, rc = self.do_ssh_cmd(cmd, vncserver, account)
             except Exception as e:
                 self.log.error('  Failed: ' + str(e))
                 trace = traceback.format_exc()
@@ -2199,13 +2203,13 @@ class KeckVncLauncher(object):
         for server, result in servers_and_results:
             self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
 
-            output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                                    self.kvnc_account)
+            output, rc = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+                                        self.kvnc_account)
             if output is None:
                 # On timeout, the result returned by do_ssh_cmd is None
                 # Just try a second time
-                output = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                                        self.kvnc_account)
+                output, rc = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+                                            self.kvnc_account)
             self.log.debug(f'Got hostname "{output}" from {server}')
             if output in [None, '']:
                 self.log.error(f'Failed to connect to {server}')
