@@ -554,6 +554,12 @@ class KeckVncLauncher(object):
             if self.args.nosound is False and self.config.get('nosound', False) != True:
                 self.start_soundplay()
 
+            ##-----------------------------------------------------------------
+            ## Final output should be connection info
+            if self.api_data is not None:
+                self.view_connection_info()
+
+
         ##---------------------------------------------------------------------
         ## Wait for quit signal, then all done
         atexit.register(self.exit_app, msg="App exit")
@@ -1824,11 +1830,12 @@ class KeckVncLauncher(object):
     def view_connection_info(self):
         '''View extra connection info (VNC passwords, zoom info, etc)
         '''
+        print("\n========================================")
         pw = self.api_data.get('vncpwd')
         if not pw:
             self.log.error(f'API did not return a VNC password value.')
         else:
-            print(f"\nVNC password: {pw}")
+            print(f"VNC password: {pw}")
 
         zoom = self.api_data.get('zoom')
         if not zoom:
@@ -1838,6 +1845,7 @@ class KeckVncLauncher(object):
             print(f"\tURL: {zoom.get('url', '')}")
             print(f"\tMeeting ID: {zoom.get('meetingId', '')}")
             print(f"\tPassword: {zoom.get('pwd', '')}")
+        print("========================================")
 
 
     ##-------------------------------------------------------------------------
