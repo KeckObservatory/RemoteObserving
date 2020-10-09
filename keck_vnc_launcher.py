@@ -1247,7 +1247,7 @@ class KeckVncLauncher(object):
         elif self.api_data:
             self.log.info(f"Determining VNC server for '{self.args.account}' (via API)")
             vncserver = self.api_data.get('vncserver')
-            if vncserver is None:
+            if not vncserver:
                 self.log.error(f'Could not determine VNC server from API')
 
         #SSH Route
@@ -1267,8 +1267,10 @@ class KeckVncLauncher(object):
 
                 if data is not None and ' ' not in data:
                     vncserver = data
-                    self.log.info(f"Got VNC server: '{vncserver}'")
                     break
+
+        if vncserver:
+            self.log.info(f"Got VNC server: '{vncserver}'")
 
         # Temporary hack for KCWI
         if vncserver == 'vm-kcwivnc':
