@@ -889,8 +889,6 @@ class KeckVncLauncher(object):
             self.log.error('No response from API.')
             return
 
-        #todo Log the API response?  Probably want to blank the passwords.
-
         #Look for any errors
         stdmsg = ('API failed to retrieve connection info.  Please try again. '
                  f'If this reoccurs, email us at {supportEmail} or create a support ticket at: '
@@ -910,6 +908,7 @@ class KeckVncLauncher(object):
             'SSH_KEY_NOT_DEPLOYED': f'Your SSH key is not deployed.\n{stdmsg2}',
         } 
         code = data.get('apiCode', '').upper()
+        self.log.debug(f'API response code is: {code}')
         if code in api_err_map:
             self.log.debug(f'API error code: {code}')
             self.log.error(api_err_map[code])
@@ -942,6 +941,7 @@ class KeckVncLauncher(object):
 
         #all good
         self.api_data = data
+        self.log.debug('API call was successful')
 
 
     ##-------------------------------------------------------------------------
