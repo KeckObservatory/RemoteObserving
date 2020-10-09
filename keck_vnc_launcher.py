@@ -886,8 +886,10 @@ class KeckVncLauncher(object):
         #todo Log the API response?  Probably want to blank the passwords.
 
         #Look for any errors
-        stdmsg = ('API failed to retrieve connection info.  '
-                  'Please try again or contact your SA.')
+        stdmsg = ('API failed to retrieve connection info.  Please try again. '
+                 f'If this reoccurs, email us at {supportEmail} or create a support ticket at: '
+                  'https://keckobservatory.atlassian.net/servicedesk/customer/portals '
+                  'and be sure to attach the log file.')
         stdmsg2 = ('Please check your Keck Observer Homepage for information '
                    'regarding when your key is approved and deployed according '
                    'to the observing schedule.')
@@ -897,13 +899,13 @@ class KeckVncLauncher(object):
             'INSTRUMENT_ACCOUNT_ERROR': f'API does not recognize instrument account "{self.args.account}"',
             'KVNC_INFO_ERROR':  stdmsg,
             'KVNC_STATUS_ERROR': stdmsg,
-            'NO_API_KEY': 'No matching API key found. Please check your "api_key" config value.',
-            'SSH_KEY_NOT_APPROVED': f'Your SSH key is not yet approved. {stdmsg2}',
-            'SSH_KEY_NOT_DEPLOYED': f'Your SSH key is not deployed. {stdmsg2}',
+            'NO_API_KEY': f'No matching API key found. Please check your "api_key" config value.',
+            'SSH_KEY_NOT_APPROVED': f'Your SSH key is not yet approved.\n{stdmsg2}',
+            'SSH_KEY_NOT_DEPLOYED': f'Your SSH key is not deployed.\n{stdmsg2}',
         } 
         code = data.get('apiCode', '').upper()
         if code in api_err_map:
-            self.log.error(f'API error code: {code}')
+            self.log.debug(f'API error code: {code}')
             self.log.error(api_err_map[code])
             return
         if code != 'SUCCESS':
