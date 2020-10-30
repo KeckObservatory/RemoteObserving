@@ -828,8 +828,6 @@ class KeckVncLauncher(object):
     ## Open and Close the firewall
     ##-------------------------------------------------------------------------
     def test_firewall(self):
-#todo: remove this test
-        return False
         ''' Return True if the sshuser firewall hole is open; otherwise
         return False. Also return False if the test cannot be performed.
         '''
