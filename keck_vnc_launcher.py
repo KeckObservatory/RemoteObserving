@@ -994,18 +994,15 @@ class KeckVncLauncher(object):
     def open_firewall(self, authpass):
         '''Simple wrapper to open firewall.
         '''
-        if do_firewall_command(self.firewall_address, self.firewall_port,
-                              self.firewall_user, authpass, 1):
-            return True
-        else:
-            self.exit_app()
+        return do_firewall_command(self.firewall_address, self.firewall_port,
+                                   self.firewall_user, authpass, 1)
 
 
     def close_firewall(self, authpass):
         '''Simple wrapper to close firewall.
         '''
-        do_firewall_command(self.firewall_address, self.firewall_port,
-                            self.firewall_user, authpass, 2)
+        return do_firewall_command(self.firewall_address, self.firewall_port,
+                                   self.firewall_user, authpass, 2)
 
 
     ##-------------------------------------------------------------------------
@@ -2180,6 +2177,7 @@ class KeckVncLauncher(object):
             if self.firewall_opened is False:
                 self.log.error('Failed to open firewall')
                 failcount += 1
+                self.exit_app('Authentication failure! Must be able to authenticate to finish tests.')
 
         return failcount
 
