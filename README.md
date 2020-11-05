@@ -1,70 +1,60 @@
 # RemoteObserving
 
-These scripts are to be used by remote sites and by individual
-observers to connect to W. M. Keck Observatory for remote observing.
-
-Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical remote observing policy and documentation at: [https://www2.keck.hawaii.edu/inst/mainland_observing/](https://www2.keck.hawaii.edu/inst/mainland_observing/)
+These scripts are to be used by remote sites and by individual observers to connect to W. M. Keck Observatory for remote observing. Before embarking on setting up a Keck Remote Observing station, we recommend reading the offical remote observing policy and documentation at: [https://www2.keck.hawaii.edu/inst/mainland_observing/](https://www2.keck.hawaii.edu/inst/mainland_observing/)
 
 # Table of Contents
 
-1. Remote Observing at Keck
-    - Notify Keck of your intent to connect remotely
-1. Hardware
+- Requirements for Remote Observing at Keck
+    - 1 - Have an approved remote observing request
+    - 2 - Be listed as an observer
+    - 3 - Upload your SSH key
+- Hardware Recommendations
     - Displays
     - Computer Recommendations
-1. Software Installation
+- Software Installation
     - Install Software Dependencies
     - Install the Keck Remote Observing Software
     - Configure Keck Remote Observing Software
     - Test your Connection to Keck
-1. Running the Keck Remote Observing Software
+- Running the Keck Remote Observing Software
     - Opening and Closing Individual VNC Sessions
     - Getting a List of VNC Sessions
     - Uploading a log file to Keck
-1. Troubleshooting Common Problems
+- Troubleshooting Common Problems
     - Can not see entire VNC desktop / VNC desktop is small
     - Connection Quality Problems
     - No Sounds
-1. Upgrading the Software
+- Upgrading the Software
 
-# Remote Observing at Keck
+# Requirements for Remote Observing at Keck
 
-## Notify Keck of your intent to connect remotely
+**IMPORTANT**: Last minute additions of observers to an observing night will not be possible.  Observers **must** complete the items below at least two days ahead of time.
 
-**--> Important! <--** You must have an approved remote observing request before you can observe remotely.  Please submit your request from your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php).
+## 1 - Have an approved remote observing request
 
-Before you can connect to Keck remotely, we need to provide you with the firewall info and passwords.  As well, we need info about your remote observing station.
+You must have an approved remote observing request before you can observe remotely.  Please submit your request from your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php).
 
-#### If you are setting up remote observing from home for yourself
+## 2 - Be listed as an observer
 
-- Email
-  [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu)
-  with the following info:
+Each person wanting to connect **must** be listed in the [Keck Observing Schedule](https://www2.keck.hawaii.edu/observing/keckSchedule/keckSchedule.php?calType=classic&telnr=0&viewType=schedule) as an observer.
 
-    - Institution
-    - First and Last name of observer
-    - Date of observation (HST or UT, please specify)
-    - TAC assigned program ID (from the Keck [schedule](https://www2.keck.hawaii.edu/observing/keckSchedule/keckSchedule.php) )
-    - Staff Astronomer assigned to your night
-    - Cellphone number capable of receiving texts
-    - Have you used pajamas mode successful before and do you have the software installed?
-    - If yes, is your ssh key still valid?
-    - If no, include a new id_rsa.pub key as specified in the installation instructions
+The schedule is filled based on your remote observing request, but this is a manual step and thus it must be done at least **two days in advance of your run**.
 
-#### if you are using an official site, or are setting up a new official site
+## 3 - Upload your SSH key
 
-- Email [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) with the following info about your remote site:
-    - Institution
-    - City, State
-    - Room Name/#
-    - Room phone #
-    - Emergency Services phone #
-    - Site manager/admin names, emails and phone #s
+- Generate ssh public/private key pair **(do not set a passphrase)**
+    ```
+    cd ~/.ssh
+    ssh-keygen -t rsa -b 4096
+    ```
 
-Once we receive your request, we will respond with instructions on obtaining the firewall info, firewall password, and VNC session password.
+- Make sure that the resulting key is an RSA key.  The **private** key should have a first line which looks like `-----BEGIN RSA PRIVATE KEY-----` (it should not be an OPENSSH key).  If you do get an OPENSSH key (we've seen this on macOS and Ubuntu Linux), try generating the key with the `-m PEM` option: `ssh-keygen -t rsa -b 4096 -m PEM`
 
+- Upload your **public** key file at your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php). Click on "Manage Your Remote Observing SSH Key" and follow the instructions.
 
-# Hardware
+- After you have uploaded the key, note the "API key".  This will be a long string of letters and numbers.  You will need this key to connect (see the section below titled "Configure Keck Remote Observing Software").
+
+# Hardware Recommendations
 
 ## Displays
 
@@ -76,9 +66,7 @@ We have also tried a 43 inch 4k resolution TV screen (which works out to about 1
 
 A number of computer hardware configurations have been tested.  Various intel-based computers running linux, numerous mac laptops and desktops, and even a Raspberry Pi 4.
 
-This hardware configuration has been tested at Keck HQ and found to work well: 
-
-- [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html), CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core), RAM: 16GB
+This hardware configuration has been tested at Keck HQ and found to work well:  [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html), CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core), RAM: 16GB
 
 
 # Software Installation
@@ -151,18 +139,6 @@ RemoteResize=0
     conda env create -f environment.yaml
     ```
 
-- Setup SSH Keys:
-    - Generate ssh public/private key pair **(do not set a passphrase)**
-        ```
-        cd ~/.ssh
-        ssh-keygen -t rsa -b 4096
-        ```
-    - Make sure that the resulting key is an RSA key.  The **private** key should have a first line which looks like `-----BEGIN RSA PRIVATE KEY-----` (it should not be an OPENSSH key).  If you do get an OPENSSH key (we've seen this on macOS and Ubuntu Linux), try generating the key with the `-m PEM` option:
-        ```
-        ssh-keygen -t rsa -b 4096 -m PEM
-        ```
-    - Email the **public** key file (i.e. `id_rsa.pub`) to [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu)
-
 - (optional) Add VNC start script to path:
     ```
     export PATH=/home/observer/RemoteObserving:$PATH
@@ -172,13 +148,7 @@ RemoteResize=0
 
 Edit the `local_config.yaml` file you created above.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading `#`) lines you want to customize.
 
-- **Configure Firewall:** If you are connecting outside of the Keck network, enter the firewall address, port and user info.  You'll need to get this information from someone at Keck.
-
-    ```
-    firewall_address: ???.???.???.???
-    firewall_port: ???
-    firewall_user: ???
-    ```
+- **Configure API Key:** If you are connecting outside of the Keck network, enter your uniquely generated "API Key".  This is generated when you upload your SSH public key (see "Upload your SSH key" above).  Visit your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php) and click on "Manage Your Remote Observing SSH Key".
 
 - **Configure Path to Private SSH Key:** Enter the path to the **private** key corresponding to the public key that you emailed to Keck in the appropriate field.  For example:
 
@@ -187,35 +157,25 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
     ```
 
 - **Configure Local VNC Viewer Software:** This is where one sets `vncviewer` with the path and executable for the local VNC viewer client.  Some VNC viewers (such as the built in macOS one) may need a prefix such as `vnc://` which can be set via the `vncprefix` value.  Options which should be passed to the vncviewer application are set in the `vncargs` value.
-    - **Important:** Make sure you have configured your client **not** to resize the sessions (see the note about TigerVNC above).
-    - **On Linux:** (optional) Save VNC session password (not available on macOS):
-        - NOTE: This is for the final password prompt for each VNC window.
-        - Run the `vncpasswd` command line utility and note where it saves the VNC password file.
-        - Edit `local_config.yaml` to include the password file as a VNC start option:
-            ```
-            vncargs: '-passwd=/home/observer/.vnc/passwd'
-            ```
-
-- **Soundplay Configuration:** For compatible systems, uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) for help configuring this value if needed.  Also, if your local machine's path to the `aplay` executable is non-standard, specify that in the `aplay` value.
+- **Important:** Make sure you have configured your VNC viewer **not** to resize the sessions (see the note about TigerVNC above).
+- **Soundplay Configuration:** Uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) for help configuring this value if needed.  Also, if your local machine's path to the `aplay` executable is non-standard, specify that in the `aplay` value.
     - At the moment, the default Linux executable seems to work for CentOS and Ubuntu Linux.
     - For macOS, use the settings as described in the `keck_vnc_config.yaml` section which specify a specific soundplay executable and a specific aplay calling format:
         ```
         soundplayer: 'soundplay.darwin.x86_64'
         aplay: '/usr/bin/afplay -v %v %s'
         ```
-        As described in the comments in that file, replace `%v` with a value from 0 to 100 if you want to override the volume control in eventsounds.  Many users find the macOS sounds too loud, so replacing `%v` with `1` can help.
-    - If your system is not compatible, or if you do not want it to have sounds, add a line to your `local_config.yaml` file:
-        ```
-        nosound: True
-        ```
-    to avoid starting sounds.  This is important for sites which are using multiple computers for each set of VNC sessions.  Choose one to handle sounds, and set the `nosound: True,` option for the other.
+        As described in the comments in that file, replace `%v` with a value from 0 to 100 if you want to override the volume control in eventsounds.  Many users find the macOS sounds too loud, so replacing `%v` with a value less than 1 can help.
+    - If your system is not compatible, or if you do not want it to have sounds, add a line to your `local_config.yaml` file which contains `nosound: True` to avoid starting sounds.  This is important for sites which are using multiple computers for each set of VNC sessions.  Choose one to handle sounds, and set the `nosound: True,` option for the other.
 
 - **Configure Default Sessions:** Keck instruments typically use 4 VNC sessions for instrument control named "control0", "control1", "control2", and "telstatus".  On a normal invocation of the software (via the `start_keck_viewers` command) it will open the four sessions specified here.  For stations which split the duties among 2 computers, one could set this line to control which computer opens which sessions.
 
 
 ## Test your Connection to Keck
 
-Only after your SSH key is successfully installed at Keck, you can test your system.
+Only after your SSH key is successfully installed at Keck, you can test your system.  You can see the status of your SSH Key approval and deployment by clicking "Manage Your Remote Observing SSH Key" on your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php).
+
+**--> Important! <--** SSH Keys are deployed on a time window based on your scheduled observing dates.  This window is roughly several days before and a few days after observing.  Check your Keck SSH Key Management page for exact deployment times.  If you need to connect outside this window, contact your SA.
 
 From the directory where the Keck VNC software is installed (e.g. `~/RemoteObserving/`), run:
 
@@ -223,7 +183,7 @@ From the directory where the Keck VNC software is installed (e.g. `~/RemoteObser
 ./start_keck_viewers --test
 ```
 
-This may query you for passwords, depending on your local configuration. It should print out a report which indicates that all tests passed. Make sure there are no test failures.
+This should print out a report which indicates that all tests passed. Make sure there are no test failures.
 
 If there are test failures, email your logfile to [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu).  Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
@@ -317,6 +277,6 @@ VNC does not carry sounds, so we have a separate system for playing instrument s
 
 # Upgrading the Software
 
-The software doen a simple check to see if it is the latest released version.  You can see a log line with this information on startup, or you can get the saem result using the `v` command.
+The software does a simple check to see if it is the latest released version.  You can see a log line with this information on startup, or you can get the saem result using the `v` command.
 
 Upgrading the software is done via a `git pull` in the directory where the software is installed.  If your software version is earlier than v1.0, this may require rebuilding your `local_config.yaml` file.  If you need to do this, just copy values from your old local config file in to a new one generated from the template as per the instructions above.
