@@ -2,7 +2,7 @@
 ##   If you are connecting outsite of the Keck network and need to authenticate
 ##   through the Keck firewall, enter the 32-character Ascii string needed to 
 ##   access the Keck Remote Observing API.  You can find this value on your Keck
-##   Observer Homepage at https://www2/keck.hawaii.edu/inst/PILogin/homepage.php
+##   Observer Homepage at https://www2.keck.hawaii.edu/inst/PILogin/homepage.php
 ##   Click on 'Manage your Remote Observing SSH key', follow the instructions
 ##   and paste your API key here when you have uploaded your SSH key. 
 ##   If this is being run inside of the Keck network, comment out this line.
