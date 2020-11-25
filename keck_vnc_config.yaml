@@ -1,11 +1,12 @@
-## Firewall Connection Info:
-##   If you are outside of the Keck network and need to authenticate through the
-##   Keck firewall, fill out the appropriate IP address, port, and username
-##   which will be used to authenticate. If this is being run inside of the
-##   Keck network, comment out these lines.
-firewall_address: ???.???.???.???
-firewall_port: ???
-firewall_user: ???
+## API Key:
+##   If you are connecting outsite of the Keck network and need to authenticate
+##   through the Keck firewall, enter the 32-character Ascii string needed to 
+##   access the Keck Remote Observing API.  You can find this value on your Keck
+##   Observer Homepage at https://www2.keck.hawaii.edu/inst/PILogin/homepage.php
+##   Click on 'Manage your Remote Observing SSH key', follow the instructions
+##   and paste your API key here when you have uploaded your SSH key. 
+##   If this is being run inside of the Keck network, comment out this line.
+api_key: ''
 
 
 ## SSH Key Info:
@@ -118,3 +119,15 @@ firewall_cleanup: False
 ##   Sometimes extending the SSH timeout can eliminate failures for slow
 ##   machines or during internet slow downs.
 #ssh_timeout: 10
+
+
+## Firewall Connection Info:
+##   If you are not using the "api_key" defined above and are outside of the Keck 
+##   network and need to authenticate through the Keck firewall, fill out the 
+##   appropriate IP address, port, and username which will be used to authenticate. 
+##   If this is being run inside of the Keck network, comment out these lines.
+#firewall_address: ???.???.???.???
+#firewall_port: ???
+#firewall_user: ???
+
+
