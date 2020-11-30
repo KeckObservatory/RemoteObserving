@@ -1830,17 +1830,15 @@ class KeckVncLauncher(object):
         '''View extra connection info (VNC passwords, zoom info, etc)
         '''
         print("\n========================================")
-        pw = self.api_data.get('vncpwd')
-        if not pw:
-            self.log.error(f'API did not return a VNC password value.')
-        else:
-            print(f"VNC password: {pw}")
+        pw = self.api_data.get('vncpwd', '')
+        if pw != '':
+            print(f'VNC password: {pw}')
 
         zoom = self.api_data.get('zoom')
         if not zoom:
             self.log.error(f'API did not return Zoom info.')
         else:
-            print(f"\nZoom info:")
+            print(f"Zoom info:")
             print(f"\tURL: {zoom.get('url', '')}")
             print(f"\tMeeting ID: {zoom.get('meetingId', '')}")
             print(f"\tPassword: {zoom.get('pwd', '')}")
