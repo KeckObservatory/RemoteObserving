@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.0'
+__version__ = '2.0.1'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -1100,7 +1100,7 @@ class KeckVncLauncher(object):
         '''Utility function for opening ssh client, executing command and
         closing.
         '''
-        timeout = self.config.get('ssh_timeout', 10)
+        timeout = self.config.get('ssh_timeout', 30)
 
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
@@ -1251,7 +1251,7 @@ class KeckVncLauncher(object):
         else:
             self.log.info(f"Determining VNC server for '{self.args.account}' (via SSH)")
             vncserver = None
-            for server in self.servers_to_try:
+            for server in ['svncserver1.keck.hawaii.edu', 'svncserver2.keck.hawaii.edu']:
                 cmd = f'kvncinfo -server -I {instrument}'
 
                 try:
@@ -2201,11 +2201,11 @@ class KeckVncLauncher(object):
         response from an SSH command.
         '''
         failcount = 0
-        servers_and_results = [('svncserver1', 'kaalualu'),
-                               ('svncserver2', 'ohaiula'),
-                               ('mosfire', 'vm-mosfire'),
+        servers_and_results = [('mosfire', 'vm-mosfire'),
                                ('hires', 'vm-hires'),
                                ('lris', 'vm-lris'),
+                               ('osiris', 'vm-osiris'),
+                               ('deimos', 'deimos'),
                                ('kcwi', 'vm-kcwi'),
                                ('nirc2', 'vm-nirc2'),
                                ('nires', 'vm-nires'),
