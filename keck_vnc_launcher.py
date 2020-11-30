@@ -2008,12 +2008,12 @@ class KeckVncLauncher(object):
         #API must be defined if firewall info was not defined.
         self.log.info('Checking config file: api_key')
         api_key = self.config.get('api_key', None)
-        if api_key is None and self.firewall_defined == False:
-            self.log.error(f'api_key must be specified if you are outside the WMKO network')
+        if api_key in [None, '']:
+            self.log.error(f'api_key should be specified')
             failcount += 1
 
         #Check firewall config if api_key not defined
-        if api_key is None:            
+        if api_key  in [None, '']:            
             self.log.info('Checking config file: firewall_address')
             firewall_address = self.config.get('firewall_address', None)
             if firewall_address is None:
