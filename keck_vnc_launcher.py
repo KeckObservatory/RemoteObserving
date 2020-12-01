@@ -968,6 +968,7 @@ class KeckVncLauncher(object):
                 netcat_result = subprocess.run(cmd+server_and_port, timeout=5,
                                                stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE)
+                self.log.debug(f'  return code: {netcat_result.returncode}')
                 up = (netcat_result.returncode == 0)
                 if up is True:
                     self.log.info('firewall is open')
@@ -978,7 +979,7 @@ class KeckVncLauncher(object):
         # Use ping if no netcat is specified
         if self.ping_cmd is not None:
             for server in self.servers_to_try:
-                up = self.ping(server, wait=2)
+                up = self.ping(server, wait=1)
                 if up is True:
                     self.log.info('firewall is open')
                     return True
