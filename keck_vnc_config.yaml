@@ -118,7 +118,7 @@ firewall_cleanup: False
 ## SSH Timeout
 ##   Sometimes extending the SSH timeout can eliminate failures for slow
 ##   machines or during internet slow downs.
-#ssh_timeout: 10
+#ssh_timeout: 30
 
 
 ## Firewall Connection Info:

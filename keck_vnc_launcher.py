@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.0'
+__version__ = '2.0.1'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -401,7 +401,7 @@ class KeckVncLauncher(object):
         self.default_sessions = []
 
         #default servers to try at Keck
-        servers = ['svncserver2', 'svncserver1', 'kcwi', 'mosfire']
+        servers = ['kcwi', 'mosfire', 'deimos', 'osiris']
         domain = '.keck.hawaii.edu'
         self.servers_to_try = [f"{server}{domain}" for server in servers]
 
@@ -968,6 +968,7 @@ class KeckVncLauncher(object):
                 netcat_result = subprocess.run(cmd+server_and_port, timeout=5,
                                                stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE)
+                self.log.debug(f'  return code: {netcat_result.returncode}')
                 up = (netcat_result.returncode == 0)
                 if up is True:
                     self.log.info('firewall is open')
@@ -978,7 +979,7 @@ class KeckVncLauncher(object):
         # Use ping if no netcat is specified
         if self.ping_cmd is not None:
             for server in self.servers_to_try:
-                up = self.ping(server, wait=2)
+                up = self.ping(server, wait=1)
                 if up is True:
                     self.log.info('firewall is open')
                     return True
@@ -1100,7 +1101,7 @@ class KeckVncLauncher(object):
         '''Utility function for opening ssh client, executing command and
         closing.
         '''
-        timeout = self.config.get('ssh_timeout', 10)
+        timeout = self.config.get('ssh_timeout', 30)
 
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
@@ -1203,11 +1204,13 @@ class KeckVncLauncher(object):
             self.log.error('  SSH timeouts may be due to network instability.')
             self.log.error('  Please retry to see if the problem is intermittant.')
             data = None
+            rc = None
         except Exception as e:
             self.log.error('  Failed: ' + str(e))
             trace = traceback.format_exc()
             self.log.debug(trace)
             data = None
+            rc = None
 
         #NOTE: The 'whoami' test can fail if the kvnc account has a .cshrc 
         #that produces other output.  Other ssh cmds would be invalid too.
@@ -1251,7 +1254,7 @@ class KeckVncLauncher(object):
         else:
             self.log.info(f"Determining VNC server for '{self.args.account}' (via SSH)")
             vncserver = None
-            for server in self.servers_to_try:
+            for server in ['svncserver1.keck.hawaii.edu', 'svncserver2.keck.hawaii.edu']:
                 cmd = f'kvncinfo -server -I {instrument}'
 
                 try:
@@ -1830,17 +1833,15 @@ class KeckVncLauncher(object):
         '''View extra connection info (VNC passwords, zoom info, etc)
         '''
         print("\n========================================")
-        pw = self.api_data.get('vncpwd')
-        if not pw:
-            self.log.error(f'API did not return a VNC password value.')
-        else:
-            print(f"VNC password: {pw}")
+        pw = self.api_data.get('vncpwd', '')
+        if pw != '':
+            print(f'VNC password: {pw}')
 
         zoom = self.api_data.get('zoom')
         if not zoom:
             self.log.error(f'API did not return Zoom info.')
         else:
-            print(f"\nZoom info:")
+            print(f"Zoom info:")
             print(f"\tURL: {zoom.get('url', '')}")
             print(f"\tMeeting ID: {zoom.get('meetingId', '')}")
             print(f"\tPassword: {zoom.get('pwd', '')}")
@@ -2008,12 +2009,12 @@ class KeckVncLauncher(object):
         #API must be defined if firewall info was not defined.
         self.log.info('Checking config file: api_key')
         api_key = self.config.get('api_key', None)
-        if api_key is None and self.firewall_defined == False:
-            self.log.error(f'api_key must be specified if you are outside the WMKO network')
+        if api_key in [None, '']:
+            self.log.error(f'api_key should be specified')
             failcount += 1
 
         #Check firewall config if api_key not defined
-        if api_key is None:            
+        if api_key  in [None, '']:            
             self.log.info('Checking config file: firewall_address')
             firewall_address = self.config.get('firewall_address', None)
             if firewall_address is None:
@@ -2201,11 +2202,11 @@ class KeckVncLauncher(object):
         response from an SSH command.
         '''
         failcount = 0
-        servers_and_results = [('svncserver1', 'kaalualu'),
-                               ('svncserver2', 'ohaiula'),
-                               ('mosfire', 'vm-mosfire'),
+        servers_and_results = [('mosfire', 'vm-mosfire'),
                                ('hires', 'vm-hires'),
                                ('lris', 'vm-lris'),
+                               ('osiris', 'vm-osiris'),
+                               ('deimos', 'deimos'),
                                ('kcwi', 'vm-kcwi'),
                                ('nirc2', 'vm-nirc2'),
                                ('nires', 'vm-nires'),
