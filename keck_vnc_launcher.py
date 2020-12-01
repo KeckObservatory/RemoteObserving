@@ -1204,11 +1204,13 @@ class KeckVncLauncher(object):
             self.log.error('  SSH timeouts may be due to network instability.')
             self.log.error('  Please retry to see if the problem is intermittant.')
             data = None
+            rc = None
         except Exception as e:
             self.log.error('  Failed: ' + str(e))
             trace = traceback.format_exc()
             self.log.debug(trace)
             data = None
+            rc = None
 
         #NOTE: The 'whoami' test can fail if the kvnc account has a .cshrc 
         #that produces other output.  Other ssh cmds would be invalid too.
