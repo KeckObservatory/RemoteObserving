@@ -560,11 +560,11 @@ class KeckVncLauncher(object):
                 self.view_connection_info()
 
 
-        ##---------------------------------------------------------------------
-        ## Wait for quit signal, then all done
-        atexit.register(self.exit_app, msg="App exit")
-        self.prompt_menu()
-        self.exit_app()
+            ##---------------------------------------------------------------------
+            ## Wait for quit signal, then all done
+            atexit.register(self.exit_app, msg="App exit")
+            self.prompt_menu()
+            self.exit_app()
 
 
     ##-------------------------------------------------------------------------
