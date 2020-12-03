@@ -560,6 +560,9 @@ class KeckVncLauncher(object):
                 self.view_connection_info()
 
 
+        if self.args.authonly is False or\
+           (self.args.authonly is True \
+            and self.config.get('firewall_cleanup', False)):
             ##---------------------------------------------------------------------
             ## Wait for quit signal, then all done
             atexit.register(self.exit_app, msg="App exit")
