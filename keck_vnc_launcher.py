@@ -306,6 +306,10 @@ class SSHTunnel(object):
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
 
+        if re.match('svncserver\d.keck.hawaii.edu', server) is not None:
+            self.log.debug('Extending timeout for svncserver connections')
+            timeout = 60
+
         # We now know everything we need to know in order to establish the
         # tunnel. Build the command line options and start the child process.
         # The -N and -T options below are somewhat exotic: they request that
@@ -353,7 +357,7 @@ class SSHTunnel(object):
             time.sleep(waittime)
 
         if checks == 0:
-            raise RuntimeError(f'ssh tunnel failed to open after {checks*waittime:.0f} seconds')
+            raise RuntimeError(f'ssh tunnel failed to open after {timeout:.0f} seconds')
 
 
     def close(self):
