@@ -1108,6 +1108,9 @@ class KeckVncLauncher(object):
 
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
+        if re.match('svncserver\d.keck.hawaii.edu', server) is not None:
+            self.log.debug('Extending timeout for svncserver connections')
+            timeout = 60
 
         command = ['ssh', server, '-l', account, '-T']
         if self.args.verbose is True:
