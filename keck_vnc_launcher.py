@@ -581,12 +581,18 @@ class KeckVncLauncher(object):
         '''Add info about the local system to the log for debugging
         '''
         try:
-            self.log.debug(f'System Info: {os.uname()}')
+            uname_result = os.uname()
+            self.log.debug(f'System Info: {uname_result}')
+            if re.search('Microsoft', uname_result.release) is not None\
+                or re.search('Microsoft', uname_result.version) is not None:
+                self.log.warning("This system appears to be running linux within "
+                                 "a Microsoft Windows environment. While this "
+                                 "can work, it is not a supported mode of this "
+                                 "software. WMKO will be unable to provide "
+                                 "support for this mode of operation.")
+
             hostname = socket.gethostname()
             self.log.debug(f'System hostname: {hostname}')
-            #todo: gethostbyname stopped working after I updated mac. need better method
-            # ip = socket.gethostbyname(hostname)
-            # self.log.debug(f'System IP Address: {ip}')
             python_version_str = sys.version.replace("\n", " ")
             self.log.info(f'Python {python_version_str}')
             self.log.debug(f'yaml {yaml.__version__}')
