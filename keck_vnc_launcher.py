@@ -2116,6 +2116,9 @@ class KeckVncLauncher(object):
         '''
         failcount = 0
         self.log.info('Checking localhost')
+        if self.ping_cmd is None:
+            self.log.warning('No ping command defined.  Unable to test localhost.')
+            return 0
         if self.ping('localhost') is False:
             self.log.error(f"localhost appears not to be configured")
             self.log.error(f"Your /etc/hosts file may need to be updated")
