@@ -1002,7 +1002,7 @@ class KeckVncLauncher(object):
             # No way to check the firewall status. Assume it is closed,
             # authentication will be required.
             self.log.info('firewall is unknown')
-            return None
+            return False
 
 
     def open_firewall(self, authpass):
