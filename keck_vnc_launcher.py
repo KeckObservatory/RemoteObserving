@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.1'
+__version__ = '2.0.2'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -306,6 +306,10 @@ class SSHTunnel(object):
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
 
+        if re.match('svncserver\d.keck.hawaii.edu', server) is not None:
+            self.log.debug('Extending timeout for svncserver connections')
+            timeout = 60
+
         # We now know everything we need to know in order to establish the
         # tunnel. Build the command line options and start the child process.
         # The -N and -T options below are somewhat exotic: they request that
@@ -353,7 +357,7 @@ class SSHTunnel(object):
             time.sleep(waittime)
 
         if checks == 0:
-            raise RuntimeError(f'ssh tunnel failed to open after {checks*waittime:.0f} seconds')
+            raise RuntimeError(f'ssh tunnel failed to open after {timeout:.0f} seconds')
 
 
     def close(self):
@@ -560,11 +564,14 @@ class KeckVncLauncher(object):
                 self.view_connection_info()
 
 
-        ##---------------------------------------------------------------------
-        ## Wait for quit signal, then all done
-        atexit.register(self.exit_app, msg="App exit")
-        self.prompt_menu()
-        self.exit_app()
+        if self.args.authonly is False or\
+           (self.args.authonly is True \
+            and self.config.get('firewall_cleanup', False)):
+            ##---------------------------------------------------------------------
+            ## Wait for quit signal, then all done
+            atexit.register(self.exit_app, msg="App exit")
+            self.prompt_menu()
+            self.exit_app()
 
 
     ##-------------------------------------------------------------------------
@@ -574,12 +581,18 @@ class KeckVncLauncher(object):
         '''Add info about the local system to the log for debugging
         '''
         try:
-            self.log.debug(f'System Info: {os.uname()}')
+            uname_result = os.uname()
+            self.log.debug(f'System Info: {uname_result}')
+            if re.search('Microsoft', uname_result.release) is not None\
+                or re.search('Microsoft', uname_result.version) is not None:
+                self.log.warning("This system appears to be running linux within "
+                                 "a Microsoft Windows environment. While this "
+                                 "can work, it is not a supported mode of this "
+                                 "software. WMKO will be unable to provide "
+                                 "support for this mode of operation.")
+
             hostname = socket.gethostname()
             self.log.debug(f'System hostname: {hostname}')
-            #todo: gethostbyname stopped working after I updated mac. need better method
-            # ip = socket.gethostbyname(hostname)
-            # self.log.debug(f'System IP Address: {ip}')
             python_version_str = sys.version.replace("\n", " ")
             self.log.info(f'Python {python_version_str}')
             self.log.debug(f'yaml {yaml.__version__}')
@@ -989,7 +1002,7 @@ class KeckVncLauncher(object):
             # No way to check the firewall status. Assume it is closed,
             # authentication will be required.
             self.log.info('firewall is unknown')
-            return None
+            return False
 
 
     def open_firewall(self, authpass):
@@ -1105,6 +1118,9 @@ class KeckVncLauncher(object):
 
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
+        if re.match('svncserver\d.keck.hawaii.edu', server) is not None:
+            self.log.debug('Extending timeout for svncserver connections')
+            timeout = 60
 
         command = ['ssh', server, '-l', account, '-T']
         if self.args.verbose is True:
@@ -2100,6 +2116,9 @@ class KeckVncLauncher(object):
         '''
         failcount = 0
         self.log.info('Checking localhost')
+        if self.ping_cmd is None:
+            self.log.warning('No ping command defined.  Unable to test localhost.')
+            return 0
         if self.ping('localhost') is False:
             self.log.error(f"localhost appears not to be configured")
             self.log.error(f"Your /etc/hosts file may need to be updated")
