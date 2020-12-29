@@ -1578,6 +1578,9 @@ class KeckVncLauncher(object):
 
             #config vars
             sound_port = 9798
+
+            self.log.info("Re-reading config file")
+            self.get_config()
             aplay = self.config.get('aplay', None)
             soundplayer = self.config.get('soundplayer', None)
             vncserver = self.vncserver
