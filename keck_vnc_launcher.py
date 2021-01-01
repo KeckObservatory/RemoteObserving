@@ -397,6 +397,7 @@ class KeckVncLauncher(object):
         self.tigervnc = None
         self.vncviewer_has_geometry = None
         self.api_data = None
+        self.ping_cmd = None
 
         self.args = args
         self.log = logging.getLogger('KRO')
