@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.2'
+__version__ = '2.0.3'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -397,6 +397,7 @@ class KeckVncLauncher(object):
         self.tigervnc = None
         self.vncviewer_has_geometry = None
         self.api_data = None
+        self.ping_cmd = None
 
         self.args = args
         self.log = logging.getLogger('KRO')
@@ -1578,6 +1579,9 @@ class KeckVncLauncher(object):
 
             #config vars
             sound_port = 9798
+
+            self.log.info("Re-reading config file")
+            self.get_config()
             aplay = self.config.get('aplay', None)
             soundplayer = self.config.get('soundplayer', None)
             vncserver = self.vncserver
