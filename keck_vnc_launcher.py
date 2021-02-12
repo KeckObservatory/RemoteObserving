@@ -2135,6 +2135,13 @@ class KeckVncLauncher(object):
         '''The SSH key must be RSA and must not use a passphrase
         '''
         failcount = 0
+        self.log.info('Checking SSH private key permissions')
+        permissions = oct(os.stat(self.ssh_pkey).st_mode)[-3:]
+        if permissions != '600':
+            self.log.error('The permissions on your private SSH key ({permissions}) may not be secure')
+            self.log.error('Please verify that your SSH key is useable normally before trying again')
+            failcount += 1
+
         self.log.info('Checking SSH private key format')
         with open(self.ssh_pkey, 'r') as f:
             contents = f.read()
