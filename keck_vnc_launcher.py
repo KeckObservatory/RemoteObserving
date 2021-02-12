@@ -434,6 +434,7 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Log basic system info
         self.log_system_info()
+        self.test_yaml_version()
         self.check_version()
         self.get_ping_cmd()
         if self.args.authonly is False:
@@ -2263,10 +2264,28 @@ class KeckVncLauncher(object):
         return failcount
 
 
+    def test_yaml_version(self):
+        '''Check to see if this
+        '''
+        failcount = 0
+        self.log.info('Chcking yaml version')
+        try:
+            func = yaml.safe_load
+            self.log.debug('yaml.safe_load = {func}')
+            self.safe_load = True
+        except AttributeError:
+            self.log.error('Unable to use safe_load. Please upgrade the pyyaml package.')
+            self.log.error(f'Current pyyaml package version is {yaml.__version__}')
+            self.safe_load = False
+            failcount += 1
+        return failcount
+
+
     def test_all(self):
         '''Run all of the tests.
         '''
         failcount = 0
+        failcount += self.test_yaml_version()
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
         failcount += self.test_localhost()

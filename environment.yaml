@@ -3,7 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - python=3.7
-  - yaml
-  - pyyaml=5.1.2
+  - pyyaml=5.2
   - requests
   - packaging
