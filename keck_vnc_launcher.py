@@ -1217,7 +1217,7 @@ class KeckVncLauncher(object):
         try:
             data, rc = self.do_ssh_cmd(cmd, server, account)
         except subprocess.TimeoutExpired:
-            self.log.error('  Timed out vailidating SSH key.')
+            self.log.error('  Timed out validating SSH key.')
             self.log.error('  SSH timeouts may be due to network instability.')
             self.log.error('  Please retry to see if the problem is intermittant.')
             data = None
