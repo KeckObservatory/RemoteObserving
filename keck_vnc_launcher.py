@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.3'
+__version__ = '2.0.4'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -434,6 +434,7 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Log basic system info
         self.log_system_info()
+        self.test_yaml_version()
         self.check_version()
         self.get_ping_cmd()
         if self.args.authonly is False:
@@ -1217,7 +1218,7 @@ class KeckVncLauncher(object):
         try:
             data, rc = self.do_ssh_cmd(cmd, server, account)
         except subprocess.TimeoutExpired:
-            self.log.error('  Timed out vailidating SSH key.')
+            self.log.error('  Timed out validating SSH key.')
             self.log.error('  SSH timeouts may be due to network instability.')
             self.log.error('  Please retry to see if the problem is intermittant.')
             data = None
@@ -2135,6 +2136,13 @@ class KeckVncLauncher(object):
         '''The SSH key must be RSA and must not use a passphrase
         '''
         failcount = 0
+        self.log.info('Checking SSH private key permissions')
+        permissions = oct(os.stat(self.ssh_pkey).st_mode)[-3:]
+        if permissions != '600':
+            self.log.error('The permissions on your private SSH key ({permissions}) may not be secure')
+            self.log.error('Please verify that your SSH key is useable normally before trying again')
+            failcount += 1
+
         self.log.info('Checking SSH private key format')
         with open(self.ssh_pkey, 'r') as f:
             contents = f.read()
@@ -2256,10 +2264,28 @@ class KeckVncLauncher(object):
         return failcount
 
 
+    def test_yaml_version(self):
+        '''Check to see if this
+        '''
+        failcount = 0
+        self.log.info('Chcking yaml version')
+        try:
+            func = yaml.safe_load
+            self.log.debug('yaml.safe_load = {func}')
+            self.safe_load = True
+        except AttributeError:
+            self.log.error('Unable to use safe_load. Please upgrade the pyyaml package.')
+            self.log.error(f'Current pyyaml package version is {yaml.__version__}')
+            self.safe_load = False
+            failcount += 1
+        return failcount
+
+
     def test_all(self):
         '''Run all of the tests.
         '''
         failcount = 0
+        failcount += self.test_yaml_version()
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
         failcount += self.test_localhost()

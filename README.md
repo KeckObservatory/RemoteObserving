@@ -156,7 +156,9 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
     ssh_pkey: '~/.ssh/id_rsa'
     ```
 
-- **Configure Local VNC Viewer Software:** This is where one sets `vncviewer` with the path and executable for the local VNC viewer client.  Some VNC viewers (such as the built in macOS one) may need a prefix such as `vnc://` which can be set via the `vncprefix` value.  Options which should be passed to the vncviewer application are set in the `vncargs` value.
+- **Configure Local VNC Viewer Software:** This is where one sets `vncviewer` with the path and executable for the local VNC viewer client.  The value for this field needs to be to the **executable** not the "app" on macOS.  You should be able to type this command in a terminal and get a VNC Viewer window to pop up.  Note that in a terminal, you will need to escape the spaces in the path with `\` while the value in the local config field can handle spaces, so it should **not** have those escape characters.
+    - Some VNC viewers (such as the built in macOS one) may need a prefix such as `vnc://` which can be set via the `vncprefix` value.
+    - Options which should be passed to the vncviewer application are set in the `vncargs` value.
 - **Important:** Make sure you have configured your VNC viewer **not** to resize the sessions (see the note about TigerVNC above).
 - **Soundplay Configuration:** Uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) for help configuring this value if needed.  Also, if your local machine's path to the `aplay` executable is non-standard, specify that in the `aplay` value.
     - At the moment, the default Linux executable seems to work for CentOS and Ubuntu Linux.
