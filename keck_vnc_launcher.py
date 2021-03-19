@@ -792,9 +792,13 @@ class KeckVncLauncher(object):
         configok = True
         lines = contents.split('\n')
         for line in lines:
-            if re.match('(^[\w_]+):[\w\d]', line):
+            if re.match('^([\w_]+):[\w\d\'\"]', line):
                 self.log.error(f'The format of the config is "keyword: value"')
                 self.log.error(f'A space is missing in line: {line}')
+                configok = False
+            if re.match('^\s([\w_]+):\s?[\w\d\'\"]', line):
+                self.log.error(f'The format of the config is "keyword: value"')
+                self.log.error(f'There is a leading space in line: {line}')
                 configok = False
         if configok is False:
             self.log.error('Exiting app')
