@@ -1997,7 +1997,7 @@ class KeckVncLauncher(object):
         print("Please search for your error message in this form:")
         print("https://keckobservatory.atlassian.net/servicedesk/customer/portals?q=")
         print()
-        print("If that does not yeild an answer, please contact us:")
+        print("If that does not yield an answer, please contact us:")
         print("https://keckobservatory.atlassian.net/servicedesk/customer/portal/2/group/3/create/10")
         print(f"or email us at {supportEmail}")
         print()
