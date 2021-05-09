@@ -273,7 +273,11 @@ class VNCSession(object):
     '''
     def __init__(self, name=None, display=None, desktop=None, user=None, pid=None):
         if name is None and display is not None:
-            name = desktop.split('-')[2]
+            try:
+                name = desktop.split('-')[2]
+            except IndexError:
+                name = desktop
+
         self.name = name
         self.display = display
         self.desktop = desktop
@@ -1997,7 +2001,7 @@ class KeckVncLauncher(object):
         print("Please search for your error message in this form:")
         print("https://keckobservatory.atlassian.net/servicedesk/customer/portals?q=")
         print()
-        print("If that does not yeild an answer, please contact us:")
+        print("If that does not yield an answer, please contact us:")
         print("https://keckobservatory.atlassian.net/servicedesk/customer/portal/2/group/3/create/10")
         print(f"or email us at {supportEmail}")
         print()
@@ -2248,6 +2252,7 @@ class KeckVncLauncher(object):
                                ('nirspec', 'vm-nirspec')]
         for server, result in servers_and_results:
             self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
+            tick = datetime.now()
 
             output, rc = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
                                         self.kvnc_account)
@@ -2256,7 +2261,9 @@ class KeckVncLauncher(object):
                 # Just try a second time
                 output, rc = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
                                             self.kvnc_account)
-            self.log.debug(f'Got hostname "{output}" from {server}')
+            tock = datetime.now()
+            elapsedtime = (tock-tick).total_seconds()
+            self.log.debug(f'Got hostname "{output}" from {server} after {elapsedtime:.1f}s')
             if output in [None, '']:
                 self.log.error(f'Failed to connect to {server}')
                 failcount += 1
