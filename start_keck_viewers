@@ -21,6 +21,15 @@ if [ "$CONDA_PREFIX" != "" ]; then
         $CONDA_PREFIX/bin/python3 keck_vnc_launcher.py $@
     fi
 else
+    echo "We are unable to determine the correct python version to run the"
+    echo "Remote Observing software.  We will now try a generic python3 call,"
+    echo "if this fails, simply execute the keck_vnc_launcher.py file using the"
+    echo "correct python version for your system and use the same arguments you"
+    echo "would use with the start_keck_viewers script.  For example:"
+    echo "  /path/to/python3 keck_vnc_launcher.py numbered_account"
+    echo "Of coure, you should use the proper path to your python executable"
+    echo "and the correct numbered account."
+
     # just try whatever is in the path and hope it works
     python3 keck_vnc_launcher.py $@
 fi
