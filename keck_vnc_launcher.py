@@ -377,6 +377,84 @@ class SSHTunnel(object):
 
 
 ##-------------------------------------------------------------------------
+## Define SSH Proxy Object
+##-------------------------------------------------------------------------
+class SSHProxy(object):
+    '''An object to contain information about an SSH proxy.
+    '''
+    def __init__(self, server, username, ssh_pkey, local_port,
+                 session_name='unknown', ssh_additional_kex=None, timeout=10):
+        self.log = logging.getLogger('KRO')
+        self.server = server
+        self.username = username
+        self.ssh_pkey = ssh_pkey
+        self.local_port = local_port
+        self.session_name = session_name
+        self.remote_connection = f'{username}@{server}'
+        self.ssh_additional_kex = ssh_additional_kex
+
+        # We now know everything we need to know in order to establish the
+        # tunnel. Build the command line options and start the child process.
+        # The -N and -T options below are somewhat exotic: they request that
+        # the login process not execute any commands and that the server does
+        # not allocate a pseudo-terminal for the established connection.
+
+        cmd = ['ssh', server, '-l', username, '-N', '-T', '-D', f"{local_port}"]
+        cmd.append('-oStrictHostKeyChecking=no')
+        cmd.append('-oCompression=yes')
+
+        if self.ssh_additional_kex is not None:
+            cmd.append('-oKexAlgorithms=' + self.ssh_additional_kex)
+
+        if ssh_pkey is not None:
+            cmd.append('-i')
+            cmd.append(ssh_pkey)
+
+        self.command = ' '.join(cmd)
+        self.log.debug(f'ssh command: {self.command}')
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                     stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL)
+
+        # Having started the process let's make sure it's actually running.
+        # First try polling,  then confirm the requested local port is in use.
+        # It's a fatal error if either check fails.
+
+        if self.proc.poll() is not None:
+            raise RuntimeError('subprocess failed to execute ssh')
+
+        # A delay is built-in here as it takes some finite amount of time for
+        # ssh to establish the tunnel. 
+
+        waittime = 0.1
+        checks = int(timeout/waittime)
+        while checks > 0:
+            result = is_local_port_in_use(local_port)
+            if result == True:
+                break
+            elif self.proc.poll() is not None:
+                raise RuntimeError('ssh command exited unexpectedly')
+
+            checks -= 1
+            time.sleep(waittime)
+
+        if checks == 0:
+            raise RuntimeError(f'ssh tunnel failed to open after {timeout:.0f} seconds')
+
+
+    def close(self):
+        '''Close this SSH tunnel
+        '''
+        self.log.info(f" Closing SSH tunnel for local port {self.local_port}: {self.session_name}")
+        self.proc.kill()
+
+
+    def __str__(self):
+        address_and_port = f"{self.username}@{self.server}:{self.remote_port}"
+        return f"SSH tunnel for {address_and_port} on local port {self.local_port}."
+
+
+##-------------------------------------------------------------------------
 ## Define Keck VNC Launcher
 ##-------------------------------------------------------------------------
 class KeckVncLauncher(object):
@@ -509,6 +587,10 @@ class KeckVncLauncher(object):
 
             if self.firewall_opened == False:
                 self.exit_app('Authentication failure!')
+
+        if self.config.get('proxy_port', None) is not None and\
+           self.config.get('proxy_server', None) is not None:
+            self.open_ssh_for_proxy()
 
 
         if self.args.authonly is False:
@@ -1444,6 +1526,22 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
+    ## Open SSH For Proxy
+    ##-------------------------------------------------------------------------
+    def open_ssh_for_proxy(self):
+        self.log.info(f'Opening SSH for proxy to port 8080')
+        local_port = int(self.config.get('proxy_port'))
+        t = SSHProxy(self.config.get('proxy_server'),
+                     self.kvnc_account, self.ssh_pkey,
+                     local_port,
+                     session_name='proxy',
+                     timeout=self.config.get('ssh_timeout', 10),
+                     ssh_additional_kex=self.ssh_additional_kex)
+        self.ssh_tunnels[local_port] = t
+        return local_port
+
+
+    ##-------------------------------------------------------------------------
     ## Start VNC session
     ##-------------------------------------------------------------------------
     def launch_vncviewer(self, vncserver, port, geometry=None):
@@ -1641,6 +1739,7 @@ class KeckVncLauncher(object):
                      f"  p               Play a local test sound",
                      f"  t               List local ports in use",
                      f"  c [port]        Close ssh tunnel on local port",
+                     f"  proxy           Open SSH for proxy",
                      ]
         if self.args.authonly is False:
             lines.extend(morelines)
@@ -1677,6 +1776,8 @@ class KeckVncLauncher(object):
                 quit = True
             elif cmd == 'w':
                 self.position_vnc_windows()
+            elif cmd == 'proxy':
+                self.open_ssh_for_proxy()
             elif cmd == 'i':
                 self.view_connection_info()
             elif cmd == 'p':
