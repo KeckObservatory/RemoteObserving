@@ -486,6 +486,7 @@ class KeckVncLauncher(object):
 
         #default start sessions
         self.default_sessions = []
+        self.sessions_found = []
 
         #default servers to try at Keck
         servers = ['kcwi', 'mosfire', 'deimos', 'osiris']
@@ -651,10 +652,9 @@ class KeckVncLauncher(object):
             if self.api_data is not None:
                 self.view_connection_info()
 
-
         if self.args.authonly is False or\
-           (self.args.authonly is True \
-            and self.config.get('firewall_cleanup', False)):
+           self.config.get('firewall_cleanup', False) or\
+           self.is_proxy_open():
             ##---------------------------------------------------------------------
             ## Wait for quit signal, then all done
             atexit.register(self.exit_app, msg="App exit")
@@ -1529,6 +1529,9 @@ class KeckVncLauncher(object):
     ## Open SSH For Proxy
     ##-------------------------------------------------------------------------
     def open_ssh_for_proxy(self):
+        if self.is_proxy_open() is True:
+            self.log.warning(f'SSH proxy already open on port 8080')
+            return
         self.log.info(f'Opening SSH for proxy to port 8080')
         local_port = int(self.config.get('proxy_port'))
         t = SSHProxy(self.config.get('proxy_server'),
@@ -1539,6 +1542,11 @@ class KeckVncLauncher(object):
                      ssh_additional_kex=self.ssh_additional_kex)
         self.ssh_tunnels[local_port] = t
         return local_port
+
+
+    def is_proxy_open(self):
+        names = [self.ssh_tunnels[p].session_name for p in self.ssh_tunnels.keys()]
+        return ('proxy' in names)
 
 
     ##-------------------------------------------------------------------------
@@ -1731,21 +1739,21 @@ class KeckVncLauncher(object):
                  f"                     MENU",
                  f"-"*(line_length)]
 
-        morelines = [f"  l               List sessions available",
-                     f"  [session name]  Open VNC session by name",
-                     f"  w               Position VNC windows",
-                     f"  s               Soundplayer restart",
-                     f"  u               Upload log to Keck",
-                     f"  p               Play a local test sound",
-                     f"  t               List local ports in use",
-                     f"  c [port]        Close ssh tunnel on local port",
-                     f"  proxy           Open SSH for proxy",
-                     ]
         if self.args.authonly is False:
+            morelines = [f"  l               List sessions available",
+                         f"  [session name]  Open VNC session by name",
+                         f"  w               Position VNC windows",
+                         f"  s               Soundplayer restart",
+                         f"  u               Upload log to Keck",
+                         f"  p               Play a local test sound",
+                         ]
             lines.extend(morelines)
         if self.api_data is not None:
             lines.append(f"  i               View extra connection info")
         lines.extend([f"  v               Check if software is up to date",
+                      f"  t               List local ports in use",
+                      f"  c [port]        Close ssh tunnel on local port",
+#                       f"  proxy           Open SSH for proxy",
                       f"  q               Quit (or Control-C)",
                       f"-"*(line_length),
                       ])
@@ -1776,8 +1784,8 @@ class KeckVncLauncher(object):
                 quit = True
             elif cmd == 'w':
                 self.position_vnc_windows()
-            elif cmd == 'proxy':
-                self.open_ssh_for_proxy()
+#             elif cmd == 'proxy':
+#                 self.open_ssh_for_proxy()
             elif cmd == 'i':
                 self.view_connection_info()
             elif cmd == 'p':
@@ -2119,6 +2127,7 @@ class KeckVncLauncher(object):
                 print(f"* Attach log file at: {logfiles[0]}\n")
             self.log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
 
+#         raise error
         self.exit_app()
 
 
