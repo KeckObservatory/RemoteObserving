@@ -973,6 +973,16 @@ class KeckVncLauncher(object):
             self.log.debug(f'Could not find geometry argument')
             self.vncviewer_has_geometry = False
 
+        # TigerVNC Viewer 64-bit v1.10.1
+        # VNC(R) Viewer 6.17.731 (r29523) x64 (Aug 3 2017 17:19:47)
+        self.log.debug(f"VNC Viewer Info:")
+        for line in output.split('\n'):
+            if line.strip('\n') != '':
+                self.log.debug(f"  {line}")
+            version_match = re.search('(\d+\.\d+\.\d+)', line)
+            if version_match is not None:
+                self.log.info(f'Matched VNC version pattern: {version_match.group(0)}')
+                break
 
     def get_api_data(self, api_key, account):
         '''Get data from API which contains all info needed to connect.'''
