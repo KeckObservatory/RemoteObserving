@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.5'
+__version__ = '2.0.6'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -273,7 +273,11 @@ class VNCSession(object):
     '''
     def __init__(self, name=None, display=None, desktop=None, user=None, pid=None):
         if name is None and display is not None:
-            name = desktop.split('-')[2]
+            try:
+                name = desktop.split('-')[2]
+            except IndexError:
+                name = desktop
+
         self.name = name
         self.display = display
         self.desktop = desktop
@@ -373,6 +377,84 @@ class SSHTunnel(object):
 
 
 ##-------------------------------------------------------------------------
+## Define SSH Proxy Object
+##-------------------------------------------------------------------------
+class SSHProxy(object):
+    '''An object to contain information about an SSH proxy.
+    '''
+    def __init__(self, server, username, ssh_pkey, local_port,
+                 session_name='unknown', ssh_additional_kex=None, timeout=10):
+        self.log = logging.getLogger('KRO')
+        self.server = server
+        self.username = username
+        self.ssh_pkey = ssh_pkey
+        self.local_port = local_port
+        self.session_name = session_name
+        self.remote_connection = f'{username}@{server}'
+        self.ssh_additional_kex = ssh_additional_kex
+
+        # We now know everything we need to know in order to establish the
+        # tunnel. Build the command line options and start the child process.
+        # The -N and -T options below are somewhat exotic: they request that
+        # the login process not execute any commands and that the server does
+        # not allocate a pseudo-terminal for the established connection.
+
+        cmd = ['ssh', server, '-l', username, '-N', '-T', '-D', f"{local_port}"]
+        cmd.append('-oStrictHostKeyChecking=no')
+        cmd.append('-oCompression=yes')
+
+        if self.ssh_additional_kex is not None:
+            cmd.append('-oKexAlgorithms=' + self.ssh_additional_kex)
+
+        if ssh_pkey is not None:
+            cmd.append('-i')
+            cmd.append(ssh_pkey)
+
+        self.command = ' '.join(cmd)
+        self.log.debug(f'ssh command: {self.command}')
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                     stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL)
+
+        # Having started the process let's make sure it's actually running.
+        # First try polling,  then confirm the requested local port is in use.
+        # It's a fatal error if either check fails.
+
+        if self.proc.poll() is not None:
+            raise RuntimeError('subprocess failed to execute ssh')
+
+        # A delay is built-in here as it takes some finite amount of time for
+        # ssh to establish the tunnel. 
+
+        waittime = 0.1
+        checks = int(timeout/waittime)
+        while checks > 0:
+            result = is_local_port_in_use(local_port)
+            if result == True:
+                break
+            elif self.proc.poll() is not None:
+                raise RuntimeError('ssh command exited unexpectedly')
+
+            checks -= 1
+            time.sleep(waittime)
+
+        if checks == 0:
+            raise RuntimeError(f'ssh tunnel failed to open after {timeout:.0f} seconds')
+
+
+    def close(self):
+        '''Close this SSH tunnel
+        '''
+        self.log.info(f" Closing SSH tunnel for local port {self.local_port}: {self.session_name}")
+        self.proc.kill()
+
+
+    def __str__(self):
+        address_and_port = f"{self.username}@{self.server}:{self.remote_port}"
+        return f"SSH tunnel for {address_and_port} on local port {self.local_port}."
+
+
+##-------------------------------------------------------------------------
 ## Define Keck VNC Launcher
 ##-------------------------------------------------------------------------
 class KeckVncLauncher(object):
@@ -404,6 +486,7 @@ class KeckVncLauncher(object):
 
         #default start sessions
         self.default_sessions = []
+        self.sessions_found = []
 
         #default servers to try at Keck
         servers = ['kcwi', 'mosfire', 'deimos', 'osiris']
@@ -506,6 +589,10 @@ class KeckVncLauncher(object):
             if self.firewall_opened == False:
                 self.exit_app('Authentication failure!')
 
+        if self.config.get('proxy_port', None) is not None and\
+           self.config.get('proxy_server', None) is not None:
+            self.open_ssh_for_proxy()
+
 
         if self.args.authonly is False:
             ##-----------------------------------------------------------------
@@ -565,10 +652,9 @@ class KeckVncLauncher(object):
             if self.api_data is not None:
                 self.view_connection_info()
 
-
         if self.args.authonly is False or\
-           (self.args.authonly is True \
-            and self.config.get('firewall_cleanup', False)):
+           self.config.get('firewall_cleanup', False) or\
+           self.is_proxy_open():
             ##---------------------------------------------------------------------
             ## Wait for quit signal, then all done
             atexit.register(self.exit_app, msg="App exit")
@@ -887,6 +973,16 @@ class KeckVncLauncher(object):
             self.log.debug(f'Could not find geometry argument')
             self.vncviewer_has_geometry = False
 
+        # TigerVNC Viewer 64-bit v1.10.1
+        # VNC(R) Viewer 6.17.731 (r29523) x64 (Aug 3 2017 17:19:47)
+        self.log.debug(f"VNC Viewer Info:")
+        for line in output.split('\n'):
+            if line.strip('\n') != '':
+                self.log.debug(f"  {line}")
+            version_match = re.search('(\d+\.\d+\.\d+)', line)
+            if version_match is not None:
+                self.log.info(f'Matched VNC version pattern: {version_match.group(0)}')
+                break
 
     def get_api_data(self, api_key, account):
         '''Get data from API which contains all info needed to connect.'''
@@ -1440,6 +1536,33 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
+    ## Open SSH For Proxy
+    ##-------------------------------------------------------------------------
+    def open_ssh_for_proxy(self):
+        local_port = int(self.config.get('proxy_port'))
+        if self.is_proxy_open() is True:
+            self.log.warning(f'SSH proxy already open on port 8080')
+            return
+        if is_local_port_in_use(local_port) is True:
+            self.log.warning(f'Port 8080 is in use, not starting proxy connection')
+            return
+        self.log.info(f'Opening SSH for proxy to port 8080')
+        t = SSHProxy(self.config.get('proxy_server'),
+                     self.kvnc_account, self.ssh_pkey,
+                     local_port,
+                     session_name='proxy',
+                     timeout=self.config.get('ssh_timeout', 10),
+                     ssh_additional_kex=self.ssh_additional_kex)
+        self.ssh_tunnels[local_port] = t
+        return local_port
+
+
+    def is_proxy_open(self):
+        names = [self.ssh_tunnels[p].session_name for p in self.ssh_tunnels.keys()]
+        return ('proxy' in names)
+
+
+    ##-------------------------------------------------------------------------
     ## Start VNC session
     ##-------------------------------------------------------------------------
     def launch_vncviewer(self, vncserver, port, geometry=None):
@@ -1629,20 +1752,21 @@ class KeckVncLauncher(object):
                  f"                     MENU",
                  f"-"*(line_length)]
 
-        morelines = [f"  l               List sessions available",
-                     f"  [session name]  Open VNC session by name",
-                     f"  w               Position VNC windows",
-                     f"  s               Soundplayer restart",
-                     f"  u               Upload log to Keck",
-                     f"  p               Play a local test sound",
-                     f"  t               List local ports in use",
-                     f"  c [port]        Close ssh tunnel on local port",
-                     ]
         if self.args.authonly is False:
+            morelines = [f"  l               List sessions available",
+                         f"  [session name]  Open VNC session by name",
+                         f"  w               Position VNC windows",
+                         f"  s               Soundplayer restart",
+                         f"  u               Upload log to Keck",
+                         f"  p               Play a local test sound",
+                         ]
             lines.extend(morelines)
         if self.api_data is not None:
             lines.append(f"  i               View extra connection info")
         lines.extend([f"  v               Check if software is up to date",
+                      f"  t               List local ports in use",
+                      f"  c [port]        Close ssh tunnel on local port",
+#                       f"  proxy           Open SSH for proxy",
                       f"  q               Quit (or Control-C)",
                       f"-"*(line_length),
                       ])
@@ -1673,6 +1797,8 @@ class KeckVncLauncher(object):
                 quit = True
             elif cmd == 'w':
                 self.position_vnc_windows()
+#             elif cmd == 'proxy':
+#                 self.open_ssh_for_proxy()
             elif cmd == 'i':
                 self.view_connection_info()
             elif cmd == 'p':
@@ -1997,7 +2123,7 @@ class KeckVncLauncher(object):
         print("Please search for your error message in this form:")
         print("https://keckobservatory.atlassian.net/servicedesk/customer/portals?q=")
         print()
-        print("If that does not yeild an answer, please contact us:")
+        print("If that does not yield an answer, please contact us:")
         print("https://keckobservatory.atlassian.net/servicedesk/customer/portal/2/group/3/create/10")
         print(f"or email us at {supportEmail}")
         print()
@@ -2014,6 +2140,7 @@ class KeckVncLauncher(object):
                 print(f"* Attach log file at: {logfiles[0]}\n")
             self.log.debug(f"\n\n!!!!! PROGRAM ERROR:\n{msg}\n")
 
+#         raise error
         self.exit_app()
 
 
@@ -2248,6 +2375,7 @@ class KeckVncLauncher(object):
                                ('nirspec', 'vm-nirspec')]
         for server, result in servers_and_results:
             self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
+            tick = datetime.now()
 
             output, rc = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
                                         self.kvnc_account)
@@ -2256,7 +2384,9 @@ class KeckVncLauncher(object):
                 # Just try a second time
                 output, rc = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
                                             self.kvnc_account)
-            self.log.debug(f'Got hostname "{output}" from {server}')
+            tock = datetime.now()
+            elapsedtime = (tock-tick).total_seconds()
+            self.log.debug(f'Got hostname "{output}" from {server} after {elapsedtime:.1f}s')
             if output in [None, '']:
                 self.log.error(f'Failed to connect to {server}')
                 failcount += 1
