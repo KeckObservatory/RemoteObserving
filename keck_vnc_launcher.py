@@ -2279,9 +2279,15 @@ class KeckVncLauncher(object):
             contents = f.read()
 
         # Check if this is an RSA key
-        foundrsa = re.search('BEGIN RSA PRIVATE KEY', contents)
-        if not foundrsa:
-            self.log.error(f"Your private key does not appear to be an RSA key")
+#         foundrsa = re.search('BEGIN RSA PRIVATE KEY', contents)
+#         if not foundrsa:
+#             self.log.error(f"Your private key does not appear to be an RSA key")
+#             failcount += 1
+
+        # Check if this is an OPENSSH key
+        foundopenssh = re.search('BEGIN OPENSSH PRIVATE KEY', contents)
+        if foundopenssh:
+            self.log.error(f"Your private key appears to be an OPENSSH key")
             failcount += 1
 
         # Check that there is no passphrase
