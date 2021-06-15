@@ -2399,10 +2399,10 @@ class KeckVncLauncher(object):
 
 
     def test_yaml_version(self):
-        '''Check to see if this
+        '''Check to see if we have the safe_load function in yaml
         '''
         failcount = 0
-        self.log.info('Chcking yaml version')
+        self.log.debug('Chcking yaml version')
         try:
             func = yaml.safe_load
             self.log.debug('yaml.safe_load = {func}')
