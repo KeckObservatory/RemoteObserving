@@ -6,6 +6,7 @@ if [ "$CONDA_PREFIX" != "" ]; then
     # NOTE: The KRO environment is created with:
     #       conda env create -f environment.yaml
     source $CONDA_PREFIX/etc/profile.d/conda.sh
+    conda deactivate
     conda activate KRO
 
     #change to script dir (so we don't need full path to keck_vnc_launcher.py)
