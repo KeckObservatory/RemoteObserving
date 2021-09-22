@@ -88,7 +88,7 @@ def create_parser():
             help=f"Open {name} VNC session")
 
     ## add arguments
-    parser.add_argument("account", type=str.lower, nargs='?', default='hires1',
+    parser.add_argument("account", type=str.lower, nargs='?', default='',
                         help="The user account.")
 
     ## add options
@@ -106,6 +106,10 @@ def create_parser():
     ## VNCs, they likely don't want sound as well.
     if args.authonly is True:
         args.nosound = True
+
+    if args.account == '':
+        args.authonly = True
+        args.account = 'hires1'
 
     return args
 
