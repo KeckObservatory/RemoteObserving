@@ -107,6 +107,8 @@ def create_parser():
     if args.authonly is True:
         args.nosound = True
 
+    ## Change default behavior if no account is given.  In that case, assume
+    ## --authonly is intended.
     if args.account == '':
         args.authonly = True
         args.account = 'hires1'
