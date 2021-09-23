@@ -1180,6 +1180,8 @@ class KeckVncLauncher(object):
                     'k2ao':     ['k2obsao'],
                     'k1inst':   ['k1insttech'],
                     'k2inst':   ['k2insttech'],
+                    'k1pcs':   ['k1pcs'],
+                    'k2pcs':   ['k2pcs'],
                    }
         accounts['mosfire'].append('moseng')
         accounts['hires'].append('hireseng')
@@ -1198,6 +1200,7 @@ class KeckVncLauncher(object):
                      'lris':    1,
                      'k1ao':    1,
                      'k1inst':  1,
+                     'k1pcs':   1,
                      'nires':   2,
                      'deimos':  2,
                      'esi':     2,
@@ -1206,6 +1209,7 @@ class KeckVncLauncher(object):
                      'kcwi':    2,
                      'k2ao':    2,
                      'k2inst':  2,
+                     'k2pcs':   2,
                     }
 
         for instrument in accounts.keys():
@@ -1367,6 +1371,10 @@ class KeckVncLauncher(object):
             self.log.info("Using VNC server defined on command line")
             vncserver = self.args.vncserver
 
+        # Manual override for PCS
+        elif instrument in ['k1pcs', 'k2pcs']:
+            vncserver = f"vm-{instrument}"
+
         #API Route
         elif self.api_data:
             self.log.info(f"Determining VNC server for '{self.args.account}' (via API)")
@@ -1417,6 +1425,17 @@ class KeckVncLauncher(object):
         #If vncports defined use that
         if self.args.vncports is not None:
             self.log.info(f"Using VNC ports defined from command line.")
+            for port in self.args.vncports:
+                name = port
+                if not port.startswith(':'): port = ':'+port
+                s = VNCSession(name=name, display=port, user=self.args.account)
+                sessions.append(s)
+            return sessions
+
+        #Override for PCS
+        if instrument in ['k1pcs', 'k2pcs']:
+            self.args.vncports = ['1']
+            self.log.info(f"Guessing at VNC port for PCS: {self.args.vncports}")
             for port in self.args.vncports:
                 name = port
                 if not port.startswith(':'): port = ':'+port
