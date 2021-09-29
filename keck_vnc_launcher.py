@@ -1786,7 +1786,7 @@ class KeckVncLauncher(object):
                          f"  p               Play a local test sound",
                          ]
             lines.extend(morelines)
-        if self.api_data is not None:
+        if self.api_data is not None and self.args.authonly is False:
             lines.append(f"  i               View extra connection info")
         lines.extend([f"  v               Check if software is up to date",
                       f"  t               List local ports in use",
