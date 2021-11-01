@@ -495,7 +495,7 @@ class KeckVncLauncher(object):
         self.sessions_found = []
 
         #default servers to try at Keck
-        servers = ['kcwi', 'mosfire', 'deimos', 'osiris']
+        servers = ['kcwi', 'mosfire']#, 'deimos', 'osiris']
         domain = '.keck.hawaii.edu'
         self.servers_to_try = [f"{server}{domain}" for server in servers]
 
