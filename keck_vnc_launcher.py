@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.6'
+__version__ = '2.0.7'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -88,7 +88,7 @@ def create_parser():
             help=f"Open {name} VNC session")
 
     ## add arguments
-    parser.add_argument("account", type=str.lower, nargs='?', default='hires1',
+    parser.add_argument("account", type=str.lower, nargs='?', default='',
                         help="The user account.")
 
     ## add options
@@ -106,6 +106,12 @@ def create_parser():
     ## VNCs, they likely don't want sound as well.
     if args.authonly is True:
         args.nosound = True
+
+    ## Change default behavior if no account is given.  In that case, assume
+    ## --authonly is intended.
+    if args.account == '':
+        args.authonly = True
+        args.account = 'hires1'
 
     return args
 
@@ -489,7 +495,7 @@ class KeckVncLauncher(object):
         self.sessions_found = []
 
         #default servers to try at Keck
-        servers = ['kcwi', 'mosfire', 'deimos', 'osiris']
+        servers = ['kcwi', 'mosfire']#, 'deimos', 'osiris']
         domain = '.keck.hawaii.edu'
         self.servers_to_try = [f"{server}{domain}" for server in servers]
 
@@ -1174,6 +1180,8 @@ class KeckVncLauncher(object):
                     'k2ao':     ['k2obsao'],
                     'k1inst':   ['k1insttech'],
                     'k2inst':   ['k2insttech'],
+                    'k1pcs':   ['k1pcs'],
+                    'k2pcs':   ['k2pcs'],
                    }
         accounts['mosfire'].append('moseng')
         accounts['hires'].append('hireseng')
@@ -1192,6 +1200,7 @@ class KeckVncLauncher(object):
                      'lris':    1,
                      'k1ao':    1,
                      'k1inst':  1,
+                     'k1pcs':   1,
                      'nires':   2,
                      'deimos':  2,
                      'esi':     2,
@@ -1200,6 +1209,7 @@ class KeckVncLauncher(object):
                      'kcwi':    2,
                      'k2ao':    2,
                      'k2inst':  2,
+                     'k2pcs':   2,
                     }
 
         for instrument in accounts.keys():
@@ -1361,6 +1371,10 @@ class KeckVncLauncher(object):
             self.log.info("Using VNC server defined on command line")
             vncserver = self.args.vncserver
 
+        # Manual override for PCS
+        elif instrument in ['k1pcs', 'k2pcs']:
+            vncserver = f"vm-{instrument}"
+
         #API Route
         elif self.api_data:
             self.log.info(f"Determining VNC server for '{self.args.account}' (via API)")
@@ -1411,6 +1425,17 @@ class KeckVncLauncher(object):
         #If vncports defined use that
         if self.args.vncports is not None:
             self.log.info(f"Using VNC ports defined from command line.")
+            for port in self.args.vncports:
+                name = port
+                if not port.startswith(':'): port = ':'+port
+                s = VNCSession(name=name, display=port, user=self.args.account)
+                sessions.append(s)
+            return sessions
+
+        #Override for PCS
+        if instrument in ['k1pcs', 'k2pcs']:
+            self.args.vncports = ['1']
+            self.log.info(f"Guessing at VNC port for PCS: {self.args.vncports}")
             for port in self.args.vncports:
                 name = port
                 if not port.startswith(':'): port = ':'+port
@@ -1761,7 +1786,7 @@ class KeckVncLauncher(object):
                          f"  p               Play a local test sound",
                          ]
             lines.extend(morelines)
-        if self.api_data is not None:
+        if self.api_data is not None and self.args.authonly is False:
             lines.append(f"  i               View extra connection info")
         lines.extend([f"  v               Check if software is up to date",
                       f"  t               List local ports in use",
@@ -2279,9 +2304,15 @@ class KeckVncLauncher(object):
             contents = f.read()
 
         # Check if this is an RSA key
-        foundrsa = re.search('BEGIN RSA PRIVATE KEY', contents)
-        if not foundrsa:
-            self.log.error(f"Your private key does not appear to be an RSA key")
+#         foundrsa = re.search('BEGIN RSA PRIVATE KEY', contents)
+#         if not foundrsa:
+#             self.log.error(f"Your private key does not appear to be an RSA key")
+#             failcount += 1
+
+        # Check if this is an OPENSSH key
+        foundopenssh = re.search('BEGIN OPENSSH PRIVATE KEY', contents)
+        if foundopenssh:
+            self.log.error(f"Your private key appears to be an OPENSSH key")
             failcount += 1
 
         # Check that there is no passphrase
@@ -2399,10 +2430,10 @@ class KeckVncLauncher(object):
 
 
     def test_yaml_version(self):
-        '''Check to see if this
+        '''Check to see if we have the safe_load function in yaml
         '''
         failcount = 0
-        self.log.info('Chcking yaml version')
+        self.log.debug('Chcking yaml version')
         try:
             func = yaml.safe_load
             self.log.debug('yaml.safe_load = {func}')
