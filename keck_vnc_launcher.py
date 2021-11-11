@@ -2453,7 +2453,7 @@ class KeckVncLauncher(object):
         failcount += self.test_yaml_version()
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
-        failcount += self.test_localhost()
+#         failcount += self.test_localhost()
         failcount += self.test_ssh_key_format()
         if self.test_firewall() is None:
             self.log.error('Could not determine if firewall is open')
