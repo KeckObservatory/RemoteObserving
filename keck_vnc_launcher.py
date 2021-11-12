@@ -107,10 +107,11 @@ def create_parser():
     if args.authonly is True:
         args.nosound = True
 
-    ## Change default behavior if no account is given.  In that case, assume
-    ## --authonly is intended.
+    ## Change default behavior if no account is given.
     if args.account == '':
-        args.authonly = True
+        ## Assume authonly if the vncserver and vncports are not specified
+        if args.vncserver is None and args.vncports is None:
+            args.authonly = True
         args.account = 'hires1'
 
     return args
