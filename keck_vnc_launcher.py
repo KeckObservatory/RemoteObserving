@@ -130,7 +130,6 @@ def create_logger(args):
         return
 
     #create log file and log dir if not exist
-    ymd = datetime.utcnow().strftime('%Y%m%d')
     try:
         Path('logs/').mkdir(parents=True, exist_ok=True)
     except PermissionError as error:
@@ -152,7 +151,8 @@ def create_logger(args):
     log.addHandler(logConsoleHandler)
 
     #file handler (full debug logging)
-    logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
+    ymd = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    logFile = Path(f'logs/keck-remote-log-utc-{ymd}.txt')
     logFileHandler = logging.FileHandler(logFile)
     logFileHandler.setLevel(logging.DEBUG)
     logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
