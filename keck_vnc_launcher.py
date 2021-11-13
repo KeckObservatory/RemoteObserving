@@ -1783,13 +1783,13 @@ class KeckVncLauncher(object):
                          f"  [session name]  Open VNC session by name",
                          f"  w               Position VNC windows",
                          f"  s               Soundplayer restart",
-                         f"  u               Upload log to Keck",
                          f"  p               Play a local test sound",
                          ]
             lines.extend(morelines)
         if self.api_data is not None and self.args.authonly is False:
             lines.append(f"  i               View extra connection info")
         lines.extend([f"  v               Check if software is up to date",
+                      f"  u               Upload log to Keck",
                       f"  t               List local ports in use",
                       f"  c [port]        Close ssh tunnel on local port",
 #                       f"  proxy           Open SSH for proxy",
@@ -1821,16 +1821,23 @@ class KeckVncLauncher(object):
 
             if cmd == 'q':
                 quit = True
-            elif cmd == 'w':
+            elif cmd == 'l' and self.args.authonly is False:
+                self.sessions_found = self.get_vnc_sessions(self.vncserver,
+                                                            self.instrument,
+                                                            self.kvnc_account,
+                                                            self.args.account,
+                                                            True)
+                self.print_sessions_found()
+            elif cmd == 'w' and self.args.authonly is False:
                 self.position_vnc_windows()
-#             elif cmd == 'proxy':
-#                 self.open_ssh_for_proxy()
-            elif cmd == 'i':
-                self.view_connection_info()
-            elif cmd == 'p':
-                self.play_test_sound()
-            elif cmd == 's':
+            elif cmd == 's' and self.args.authonly is False:
                 self.start_soundplay()
+            elif cmd == 'p' and self.args.authonly is False:
+                self.play_test_sound()
+            elif cmd == 'i' and self.args.authonly is False and self.api_data is not None:
+                self.view_connection_info()
+            elif cmd == 'v':
+                self.check_version()
             elif cmd == 'u':
                 try:
                     self.upload_log()
@@ -1838,17 +1845,8 @@ class KeckVncLauncher(object):
                     self.log.error('  Unable to upload logfile: ' + str(e))
                     trace = traceback.format_exc()
                     self.log.debug(trace)
-            elif cmd == 'l':
-                self.sessions_found = self.get_vnc_sessions(self.vncserver,
-                                                            self.instrument,
-                                                            self.kvnc_account,
-                                                            self.args.account,
-                                                            True)
-                self.print_sessions_found()
             elif cmd == 't':
                 self.list_tunnels()
-            elif cmd == 'v':
-                self.check_version()
             elif cmd in [s.name for s in self.sessions_found]:
                 self.start_vnc_session(cmd)
             elif cmatch is not None:
