@@ -2038,7 +2038,10 @@ class KeckVncLauncher(object):
         logfile = Path(logfile_handlers.pop(0).baseFilename)
 
         source = str(logfile)
-        destination = account + '@' + self.vncserver + ':' + logfile.name
+        destination = self.vncserver if self.vncserver is not None\
+                                     else 'mosfire.keck.hawaii.edu'
+        self.log.debug(f"Uploading to: {account}@{destination}:{logfile.name}")
+        destination = account + '@' + destination + ':' + logfile.name
 
         command = ['scp',]
 
