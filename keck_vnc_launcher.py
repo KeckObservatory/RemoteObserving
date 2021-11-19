@@ -328,7 +328,7 @@ class SSHTunnel(object):
         # not allocate a pseudo-terminal for the established connection.
 
         forwarding = f"{local_port}:localhost:{remote_port}"
-        cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T']
+        cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -406,7 +406,7 @@ class SSHProxy(object):
         # the login process not execute any commands and that the server does
         # not allocate a pseudo-terminal for the established connection.
 
-        cmd = ['ssh', server, '-l', username, '-N', '-T', '-D', f"{local_port}"]
+        cmd = ['ssh', server, '-l', username, '-N', '-T', '-x', '-D', f"{local_port}"]
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -1235,7 +1235,7 @@ class KeckVncLauncher(object):
             self.log.debug('Extending timeout for svncserver connections')
             timeout = 60
 
-        command = ['ssh', server, '-l', account, '-T']
+        command = ['ssh', server, '-l', account, '-T', '-x']
         if self.args.verbose is True:
             command.append('-v')
             command.append('-v')
