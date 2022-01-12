@@ -29,9 +29,11 @@ vncprefix: ''
 vncargs: '-Shared -FullColor -PreferredEncoding=ZRLE -AutoSelect=0'
 ##
 ##   Example: TigerVNC (macOS)
+##     Note, the -SendMediaKeys=0 -SendSpecialKeys=0 options may or may not be
+##     useful for TigerVNC.
 #vncviewer: '/Applications/TigerVNC Viewer 1.10.1.app/Contents/MacOS/TigerVNC Viewer'
 #vncprefix: ''
-#vncargs: '-Shared -FullColor -SendMediaKeys=0 -SendSpecialKeys=0'
+#vncargs: '-Shared -FullColor'
 ##
 ##   Example: RealVNC (macOS)
 #vncviewer: '/Applications/VNC Viewer.app/Contents/MacOS/vncviewer'
