@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.7'
+__version__ = '2.0.8'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -107,10 +107,11 @@ def create_parser():
     if args.authonly is True:
         args.nosound = True
 
-    ## Change default behavior if no account is given.  In that case, assume
-    ## --authonly is intended.
+    ## Change default behavior if no account is given.
     if args.account == '':
-        args.authonly = True
+        ## Assume authonly if the vncserver and vncports are not specified
+        if args.vncserver is None and args.vncports is None:
+            args.authonly = True
         args.account = 'hires1'
 
     return args
@@ -129,7 +130,6 @@ def create_logger(args):
         return
 
     #create log file and log dir if not exist
-    ymd = datetime.utcnow().strftime('%Y%m%d')
     try:
         Path('logs/').mkdir(parents=True, exist_ok=True)
     except PermissionError as error:
@@ -151,7 +151,8 @@ def create_logger(args):
     log.addHandler(logConsoleHandler)
 
     #file handler (full debug logging)
-    logFile = f'logs/keck-remote-log-utc-{ymd}.txt'
+    ymd = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    logFile = Path(f'logs/keck-remote-log-utc-{ymd}.txt')
     logFileHandler = logging.FileHandler(logFile)
     logFileHandler.setLevel(logging.DEBUG)
     logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
@@ -327,7 +328,7 @@ class SSHTunnel(object):
         # not allocate a pseudo-terminal for the established connection.
 
         forwarding = f"{local_port}:localhost:{remote_port}"
-        cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T']
+        cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -405,7 +406,7 @@ class SSHProxy(object):
         # the login process not execute any commands and that the server does
         # not allocate a pseudo-terminal for the established connection.
 
-        cmd = ['ssh', server, '-l', username, '-N', '-T', '-D', f"{local_port}"]
+        cmd = ['ssh', server, '-l', username, '-N', '-T', '-x', '-D', f"{local_port}"]
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -1234,7 +1235,7 @@ class KeckVncLauncher(object):
             self.log.debug('Extending timeout for svncserver connections')
             timeout = 60
 
-        command = ['ssh', server, '-l', account, '-T']
+        command = ['ssh', server, '-l', account, '-T', '-x']
         if self.args.verbose is True:
             command.append('-v')
             command.append('-v')
@@ -1782,13 +1783,13 @@ class KeckVncLauncher(object):
                          f"  [session name]  Open VNC session by name",
                          f"  w               Position VNC windows",
                          f"  s               Soundplayer restart",
-                         f"  u               Upload log to Keck",
                          f"  p               Play a local test sound",
                          ]
             lines.extend(morelines)
         if self.api_data is not None and self.args.authonly is False:
             lines.append(f"  i               View extra connection info")
         lines.extend([f"  v               Check if software is up to date",
+                      f"  u               Upload log to Keck",
                       f"  t               List local ports in use",
                       f"  c [port]        Close ssh tunnel on local port",
 #                       f"  proxy           Open SSH for proxy",
@@ -1820,16 +1821,23 @@ class KeckVncLauncher(object):
 
             if cmd == 'q':
                 quit = True
-            elif cmd == 'w':
+            elif cmd == 'l' and self.args.authonly is False:
+                self.sessions_found = self.get_vnc_sessions(self.vncserver,
+                                                            self.instrument,
+                                                            self.kvnc_account,
+                                                            self.args.account,
+                                                            True)
+                self.print_sessions_found()
+            elif cmd == 'w' and self.args.authonly is False:
                 self.position_vnc_windows()
-#             elif cmd == 'proxy':
-#                 self.open_ssh_for_proxy()
-            elif cmd == 'i':
-                self.view_connection_info()
-            elif cmd == 'p':
-                self.play_test_sound()
-            elif cmd == 's':
+            elif cmd == 's' and self.args.authonly is False:
                 self.start_soundplay()
+            elif cmd == 'p' and self.args.authonly is False:
+                self.play_test_sound()
+            elif cmd == 'i' and self.args.authonly is False and self.api_data is not None:
+                self.view_connection_info()
+            elif cmd == 'v':
+                self.check_version()
             elif cmd == 'u':
                 try:
                     self.upload_log()
@@ -1837,17 +1845,8 @@ class KeckVncLauncher(object):
                     self.log.error('  Unable to upload logfile: ' + str(e))
                     trace = traceback.format_exc()
                     self.log.debug(trace)
-            elif cmd == 'l':
-                self.sessions_found = self.get_vnc_sessions(self.vncserver,
-                                                            self.instrument,
-                                                            self.kvnc_account,
-                                                            self.args.account,
-                                                            True)
-                self.print_sessions_found()
             elif cmd == 't':
                 self.list_tunnels()
-            elif cmd == 'v':
-                self.check_version()
             elif cmd in [s.name for s in self.sessions_found]:
                 self.start_vnc_session(cmd)
             elif cmatch is not None:
@@ -2039,7 +2038,10 @@ class KeckVncLauncher(object):
         logfile = Path(logfile_handlers.pop(0).baseFilename)
 
         source = str(logfile)
-        destination = account + '@' + self.vncserver + ':' + logfile.name
+        destination = self.vncserver if self.vncserver is not None\
+                                     else 'mosfire.keck.hawaii.edu'
+        self.log.debug(f"Uploading to: {account}@{destination}:{logfile.name}")
+        destination = account + '@' + destination + ':' + logfile.name
 
         command = ['scp',]
 
@@ -2269,6 +2271,13 @@ class KeckVncLauncher(object):
                 self.log.error('RemoteResize must be set to 0')
                 failcount += 1
 
+        self.log.info(f'Checking TigerVNC command line options')
+        vncargs = self.config.get('vncargs', '')
+        RRsearchcl = re.search('RemoteResize', vncargs)
+        if RRsearchcl is not None:
+            self.log.error('RemoteResize option is not allowed')
+            failcount += 1
+
         return failcount
 
 
@@ -2312,8 +2321,11 @@ class KeckVncLauncher(object):
         # Check if this is an OPENSSH key
         foundopenssh = re.search('BEGIN OPENSSH PRIVATE KEY', contents)
         if foundopenssh:
-            self.log.error(f"Your private key appears to be an OPENSSH key")
-            failcount += 1
+            self.log.warning(f"Your SSH key may or may not be formatted correctly.")
+            self.log.warning(f"If no other tests fail and you can connect to the Keck VNCs,")
+            self.log.warning(f"then you can ignore this message.  If you can not connect,")
+            self.log.warning(f"then try regenerating and uploading your SSH key and make")
+            self.log.warning(f"sure you use the `-m PEM` option when generating the key.")
 
         # Check that there is no passphrase
         foundencrypt = re.search('Proc-Type: \d,ENCRYPTED', contents)
@@ -2453,7 +2465,7 @@ class KeckVncLauncher(object):
         failcount += self.test_yaml_version()
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
-        failcount += self.test_localhost()
+#         failcount += self.test_localhost()
         failcount += self.test_ssh_key_format()
         if self.test_firewall() is None:
             self.log.error('Could not determine if firewall is open')
