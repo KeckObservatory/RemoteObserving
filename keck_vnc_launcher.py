@@ -2271,6 +2271,13 @@ class KeckVncLauncher(object):
                 self.log.error('RemoteResize must be set to 0')
                 failcount += 1
 
+        self.log.info(f'Checking TigerVNC command line options')
+        vncargs = self.config.get('vncargs', '')
+        RRsearchcl = re.search('RemoteResize', vncargs)
+        if RRsearchcl is not None:
+            self.log.error('RemoteResize option is not allowed')
+            failcount += 1
+
         return failcount
 
 
