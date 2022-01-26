@@ -229,6 +229,10 @@ Unlike the previous incarnation of the Keck VNC launch script, this software is 
 
 The user can type commands at the `>` prompt.  The most important is the `q` (quit) command which closes down the SSH tunnels and VNC viewer sessions and exits the app.
 
+## Zoom Meeting Information
+
+Information on the Zoom meeting for nighttime observing (Zoom link, meeting ID, password) will be printed to the terminal above the menu.
+
 ## Opening and Closing Individual VNC Sessions
 
 The user can close individual VNC sessions, by simply closing the VNC viewer window for that session (using whatever UI scheme is used by their local OS).  To reopen a session, just type the name at the command prompt.  For example, if I close `control0`  session and later I want it back, I just type `control0`  in the app command line.
