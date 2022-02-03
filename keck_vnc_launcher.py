@@ -302,7 +302,8 @@ class SSHTunnel(object):
     '''An object to contain information about an SSH tunnel.
     '''
     def __init__(self, server, username, ssh_pkey, remote_port, local_port,
-                 session_name='unknown', ssh_additional_kex=None, timeout=10):
+                 session_name='unknown', ssh_additional_kex=None, timeout=10,
+                 proxy_jump=None):
         self.log = logging.getLogger('KRO')
         self.server = server
         self.username = username
@@ -328,7 +329,10 @@ class SSHTunnel(object):
         # not allocate a pseudo-terminal for the established connection.
 
         forwarding = f"{local_port}:localhost:{remote_port}"
-        cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
+        if proxy_jump is None:
+            cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
+        else:
+            cmd = ['ssh', '-J', f"{username}@{proxy_jump}", f"{username}@{server}", '-L', forwarding, '-N', '-T', '-x']
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -1553,10 +1557,18 @@ class KeckVncLauncher(object):
             self.local_port = self.LOCAL_PORT_START
             return False
 
-        t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
-                      session_name=session_name,
-                      timeout=self.config.get('ssh_timeout', 10),
-                      ssh_additional_kex=self.ssh_additional_kex)
+        if server in ['vm-k1obs.keck.hawaii.edu', 'vm-k2obs.keck.hawaii.edu']:
+            self.log.debug('Using proxy jump to open SSH tunnel')
+            t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
+                          session_name=session_name,
+                          timeout=self.config.get('ssh_timeout', 10),
+                          ssh_additional_kex=self.ssh_additional_kex,
+                          proxy_jump='mosfire.keck.hawaii.edu')
+        else:
+            t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
+                          session_name=session_name,
+                          timeout=self.config.get('ssh_timeout', 10),
+                          ssh_additional_kex=self.ssh_additional_kex)
         self.ssh_tunnels[local_port] = t
         return local_port
 
