@@ -2266,7 +2266,7 @@ class KeckVncLauncher(object):
         tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
         if tigervnc_config_file.exists() is False:
             self.log.error(f'Could not find {tigervnc_config_file}')
-            self.log.error('This file is required for Keck connections')
+            self.log.error('This file is required. See README for details.')
             failcount += 1
             return failcount
 
