@@ -1627,7 +1627,8 @@ class KeckVncLauncher(object):
             cmd.extend(vncargs)
         if self.args.viewonly == True:
             cmd.append('-ViewOnly')
-
+        if self.tigervnc is True:
+            cmd.append(f"-RemoteResize=0")
         if geometry is not None and geometry != '' and geometry_str is not None:
             cmd.append(f'-geometry={geometry_str}')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
