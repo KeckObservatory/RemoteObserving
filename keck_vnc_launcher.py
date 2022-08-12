@@ -1181,6 +1181,7 @@ class KeckVncLauncher(object):
                     'nirc2':    [f'nirc{i}'    for i in range(1,10)],
                     'nirspec':  [f'nspec{i}'   for i in range(1,10)],
                     'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
+                    'kpf':      [f'kpf{i}'     for i in range(1,10)],
                     'k1ao':     ['k1obsao'],
                     'k2ao':     ['k2obsao'],
                     'k1inst':   ['k1insttech'],
@@ -1198,11 +1199,13 @@ class KeckVncLauncher(object):
         accounts['nirc2'].append('nirc2eng')
         accounts['nirspec'].append('nspeceng')
         accounts['kcwi'].append('kcwieng')
+        accounts['kpf'].append('kpfeng')
 
         telescope = {'mosfire': 1,
                      'hires':   1,
                      'osiris':  1,
                      'lris':    1,
+                     'kpf':     1,
                      'k1ao':    1,
                      'k1inst':  1,
                      'k1pcs':   1,
