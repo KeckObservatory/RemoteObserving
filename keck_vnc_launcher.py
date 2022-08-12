@@ -2427,6 +2427,7 @@ class KeckVncLauncher(object):
                                ('hires', 'vm-hires'),
                                ('lris', 'vm-lris'),
                                ('osiris', 'vm-osiris'),
+                               ('kpf', 'kpf'),
                                ('deimos', 'deimos'),
                                ('kcwi', 'vm-kcwi'),
                                ('nirc2', 'vm-nirc2'),
