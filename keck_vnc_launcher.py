@@ -2462,7 +2462,8 @@ class KeckVncLauncher(object):
         '''Check to see if we have the safe_load function in yaml
         '''
         failcount = 0
-        self.log.debug('Chcking yaml version')
+        self.log.debug(f'Checking yaml version: {yaml.__version__}')
+        self.log.debug(f'yaml version must be > 5.1')
         try:
             func = yaml.safe_load
             self.log.debug('yaml.safe_load = {func}')
