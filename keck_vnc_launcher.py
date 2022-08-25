@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.8'
+__version__ = '2.0.9'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -302,7 +302,8 @@ class SSHTunnel(object):
     '''An object to contain information about an SSH tunnel.
     '''
     def __init__(self, server, username, ssh_pkey, remote_port, local_port,
-                 session_name='unknown', ssh_additional_kex=None, timeout=10):
+                 session_name='unknown', ssh_additional_kex=None, timeout=10,
+                 proxy_jump=None):
         self.log = logging.getLogger('KRO')
         self.server = server
         self.username = username
@@ -328,7 +329,10 @@ class SSHTunnel(object):
         # not allocate a pseudo-terminal for the established connection.
 
         forwarding = f"{local_port}:localhost:{remote_port}"
-        cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
+        if proxy_jump is None:
+            cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
+        else:
+            cmd = ['ssh', '-J', f"{username}@{proxy_jump}", f"{username}@{server}", '-L', forwarding, '-N', '-T', '-x']
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -1177,6 +1181,7 @@ class KeckVncLauncher(object):
                     'nirc2':    [f'nirc{i}'    for i in range(1,10)],
                     'nirspec':  [f'nspec{i}'   for i in range(1,10)],
                     'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
+                    'kpf':      [f'kpf{i}'     for i in range(1,10)],
                     'k1ao':     ['k1obsao'],
                     'k2ao':     ['k2obsao'],
                     'k1inst':   ['k1insttech'],
@@ -1194,11 +1199,13 @@ class KeckVncLauncher(object):
         accounts['nirc2'].append('nirc2eng')
         accounts['nirspec'].append('nspeceng')
         accounts['kcwi'].append('kcwieng')
+        accounts['kpf'].append('kpfeng')
 
         telescope = {'mosfire': 1,
                      'hires':   1,
                      'osiris':  1,
                      'lris':    1,
+                     'kpf':     1,
                      'k1ao':    1,
                      'k1inst':  1,
                      'k1pcs':   1,
@@ -1553,10 +1560,18 @@ class KeckVncLauncher(object):
             self.local_port = self.LOCAL_PORT_START
             return False
 
-        t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
-                      session_name=session_name,
-                      timeout=self.config.get('ssh_timeout', 10),
-                      ssh_additional_kex=self.ssh_additional_kex)
+        if server in ['vm-k1obs.keck.hawaii.edu', 'vm-k2obs.keck.hawaii.edu']:
+            self.log.debug('Using proxy jump to open SSH tunnel')
+            t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
+                          session_name=session_name,
+                          timeout=self.config.get('ssh_timeout', 10),
+                          ssh_additional_kex=self.ssh_additional_kex,
+                          proxy_jump='mosfire.keck.hawaii.edu')
+        else:
+            t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
+                          session_name=session_name,
+                          timeout=self.config.get('ssh_timeout', 10),
+                          ssh_additional_kex=self.ssh_additional_kex)
         self.ssh_tunnels[local_port] = t
         return local_port
 
@@ -1615,7 +1630,8 @@ class KeckVncLauncher(object):
             cmd.extend(vncargs)
         if self.args.viewonly == True:
             cmd.append('-ViewOnly')
-
+        if self.tigervnc is True:
+            cmd.append(f"-RemoteResize=0")
         if geometry is not None and geometry != '' and geometry_str is not None:
             cmd.append(f'-geometry={geometry_str}')
         cmd.append(f'{vncprefix}{vncserver}:{port:4d}')
@@ -2254,7 +2270,7 @@ class KeckVncLauncher(object):
         tigervnc_config_file = Path('~/.vnc/default.tigervnc').expanduser()
         if tigervnc_config_file.exists() is False:
             self.log.error(f'Could not find {tigervnc_config_file}')
-            self.log.error('This file is required for Keck connections')
+            self.log.error('This file is required. See README for details.')
             failcount += 1
             return failcount
 
@@ -2411,6 +2427,7 @@ class KeckVncLauncher(object):
                                ('hires', 'vm-hires'),
                                ('lris', 'vm-lris'),
                                ('osiris', 'vm-osiris'),
+                               ('kpf', 'kpf'),
                                ('deimos', 'deimos'),
                                ('kcwi', 'vm-kcwi'),
                                ('nirc2', 'vm-nirc2'),
@@ -2445,7 +2462,8 @@ class KeckVncLauncher(object):
         '''Check to see if we have the safe_load function in yaml
         '''
         failcount = 0
-        self.log.debug('Chcking yaml version')
+        self.log.debug(f'Checking yaml version: {yaml.__version__}')
+        self.log.debug(f'yaml version must be > 5.1')
         try:
             func = yaml.safe_load
             self.log.debug('yaml.safe_load = {func}')

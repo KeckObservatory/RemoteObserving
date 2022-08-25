@@ -64,18 +64,22 @@ We have also tried a 43 inch 4k resolution TV screen (which works out to about 1
 
 ## Computer Recommendations
 
-A number of computer hardware configurations have been tested.  Various intel-based computers running linux, numerous mac laptops and desktops, and even a Raspberry Pi 4.
+A number of computer hardware configurations have been tested.  Various Intel based computers running linux, numerous Mac laptops and desktops (both Intel based and Apple silicon based), and even a Raspberry Pi 4.
 
 This hardware configuration has been tested at Keck HQ and found to work well:  [Intel NUC](https://www.intel.com/content/www/us/en/products/boards-kits/nuc.html), CPU: Intel Core i7-7567U CPU @ 3.50Ghz (dual core), RAM: 16GB
 
 
 # Software Installation
 
+This software depends on a few outside software packages including [Anaconda Python](https://www.anaconda.com/distribution), a VNC Viewer Client (which can be one of several options), and a few command line tools.  **Our installation instructions below should only be taken as an example.**  When dealing with outside packages, users should follow the installation instructions for those packages.
+
+In addition, users will need a basic understanding of command line interactions as individual customizations (e.g. shell choice), differences between operating system versions, and differences in available command line tools may make the details of these examples inaccurate in some cases.
+
 ## Install Software Dependencies
 
 The software has been tested on CentOS/RedHat 7.6, Ubuntu, Raspbian, and macOS.  This software will **not** work under Microsoft Windows as distributed here.
 
-Note: The examples below assuming sudo/root installation for all users and were originally written for Linux (CentOS).  Modify as appropriate for your local OS.
+Note: The examples below assume sudo/root installation for all users and were originally written for Linux (CentOS).  Modify as appropriate for your local OS.
 
 - Install Anaconda python3
     - Download and run the latest [anaconda installer](https://www.anaconda.com/distribution/)
@@ -106,8 +110,8 @@ Note: The examples below assuming sudo/root installation for all users and were 
             sudo yum install wmctrl
             ```
     - **For macOS**: Install a VNC viewer application if needed.
-        - [Tiger VNC](https://tigervnc.org) is recommended as it supports automatic window positioning.
-        - Real VNC's [VNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) also works, but without automatic window positioning (note, this is the free software, you do not need VNC Viewer Plus).
+        - [Tiger VNC](https://tigervnc.org) has the advantage of supporting automatic window positioning, but does not support scaling, and can not enter and exit view only mode interactively.
+        - Real VNC's [VNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) does not support automatic window positioning, but allows window scaling for use on small or high resolution monitors.  In addition, it supports changing modes both interactively and on the command line (e.g. scaling and the toggling of view only mode).  Note: this is the free software, you do not need VNC Viewer Plus.
         - It is also possible to use the built in VNC viewer on macOS, but we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen.
 
 **--> Important! <--** If you are using TigerVNC on either OS, in the `~/.vnc` directory, create a file named `default.tigervnc` with these two lines:
