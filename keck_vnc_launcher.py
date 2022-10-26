@@ -743,7 +743,7 @@ class KeckVncLauncher(object):
         try:
             import requests
             from packaging import version
-            r = requests.get(url)
+            r = requests.get(url, timeout=5)
             findversion = re.search(r"__version__ = '(\d.+)'\n", r.text)
             if findversion is not None:
                 remote_version = version.parse(findversion.group(1))
