@@ -338,6 +338,8 @@ class SSHTunnel(object):
 
         if self.ssh_additional_kex is not None:
             cmd.append('-oKexAlgorithms=' + self.ssh_additional_kex)
+        if self.ssh_additional_keytypes is not None:
+            cmd.append('-oPubkeyAcceptedKeyTypes=' + self.ssh_additional_keytypes)
 
         if ssh_pkey is not None:
             cmd.append('-i')
@@ -484,7 +486,8 @@ class KeckVncLauncher(object):
         self.instrument = None
         self.vncserver = None
         self.ssh_key_valid = False
-        self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
+        self.ssh_additional_kex = '+diffie-hellman-group1-sha1,+ssh-dss,ssh-rsa'
+        self.ssh_additional_keytypes = '+ssh-dss,ssh-rsa'
         self.exit = False
         self.geometry = list()
         self.tigervnc = None
