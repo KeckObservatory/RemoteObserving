@@ -759,6 +759,9 @@ class KeckVncLauncher(object):
                 self.log.warning(f'Your local software (v{__version__}) is behind '
                                  f'the currently available version '
                                  f'(v{remote_version})')
+                if remote_version.base_version == local_version.base_version:
+                    self.log.warning('You may update by running "git pull" in'
+                                     'the directory where the software is installed')
         except ModuleNotFoundError as e:
             self.log.warning("Unable to verify remote version")
             self.log.debug(e)
