@@ -1591,12 +1591,17 @@ class KeckVncLauncher(object):
                           session_name=session_name,
                           timeout=self.config.get('ssh_timeout', 10),
                           ssh_additional_kex=self.ssh_additional_kex,
+                          ssh_additional_hostkeyalgo=self.ssh_additional_hostkeyalgo,
+                          ssh_additional_keytypes=self.ssh_additional_keytypes,
                           proxy_jump='mosfire.keck.hawaii.edu')
         else:
             t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
                           session_name=session_name,
                           timeout=self.config.get('ssh_timeout', 10),
-                          ssh_additional_kex=self.ssh_additional_kex)
+                          ssh_additional_kex=self.ssh_additional_kex,
+                          ssh_additional_hostkeyalgo=self.ssh_additional_hostkeyalgo,
+                          ssh_additional_keytypes=self.ssh_additional_keytypes,
+                          )
         self.ssh_tunnels[local_port] = t
         return local_port
 
@@ -1618,7 +1623,10 @@ class KeckVncLauncher(object):
                      local_port,
                      session_name='proxy',
                      timeout=self.config.get('ssh_timeout', 10),
-                     ssh_additional_kex=self.ssh_additional_kex)
+                     ssh_additional_kex=self.ssh_additional_kex,
+                     ssh_additional_hostkeyalgo=self.ssh_additional_hostkeyalgo,
+                     ssh_additional_keytypes=self.ssh_additional_keytypes,
+                     )
         self.ssh_tunnels[local_port] = t
         return local_port
 
