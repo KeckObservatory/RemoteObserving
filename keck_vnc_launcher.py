@@ -504,8 +504,8 @@ class KeckVncLauncher(object):
         self.vncserver = None
         self.ssh_key_valid = False
         self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
-        self.ssh_additional_hostkeyalgo = 'ssh-rsa,+ssh-dss'
-        self.ssh_additional_keytypes = 'ssh-rsa,+ssh-dss'
+        self.ssh_additional_hostkeyalgo = '+ssh-rsa,+ssh-dss'
+        self.ssh_additional_keytypes = '+ssh-rsa,+ssh-dss'
         self.exit = False
         self.geometry = list()
         self.tigervnc = None
