@@ -2356,7 +2356,7 @@ class KeckVncLauncher(object):
         self.log.info('Checking SSH private key permissions')
         permissions = oct(os.stat(self.ssh_pkey).st_mode)[-3:]
         if permissions != '600':
-            self.log.error('The permissions on your private SSH key ({permissions}) may not be secure')
+            self.log.error(f'The permissions on your private SSH key ({permissions}) may not be secure')
             self.log.error('Please verify that your SSH key is useable normally before trying again')
             failcount += 1
 
