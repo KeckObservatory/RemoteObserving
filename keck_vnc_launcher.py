@@ -743,6 +743,7 @@ class KeckVncLauncher(object):
         try:
             import requests
             from packaging import version
+            self.log.debug("Checking for latest version available on GitHub")
             r = requests.get(url, timeout=5)
             findversion = re.search(r"__version__ = '(\d.+)'\n", r.text)
             if findversion is not None:
@@ -1026,7 +1027,8 @@ class KeckVncLauncher(object):
         #form API url and get data
         url = f'{KRO_API}?key={self.api_key}'
         if account is not False: url += f'&account={self.args.account}'
-        self.log.debug(f'Calling API with URL: {url}')
+        self.log.info(f'Calling KRO API to get account info')
+        self.log.debug(f'Using URL: {url}')
         data = None
         try:
             data = urlopen(url, timeout=10).read().decode('utf8')
