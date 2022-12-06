@@ -28,7 +28,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.9'
+__version__ = '2.0.10'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -302,7 +302,10 @@ class SSHTunnel(object):
     '''An object to contain information about an SSH tunnel.
     '''
     def __init__(self, server, username, ssh_pkey, remote_port, local_port,
-                 session_name='unknown', ssh_additional_kex=None, timeout=10,
+                 session_name='unknown', timeout=10,
+                 ssh_additional_kex=None,
+                 ssh_additional_hostkeyalgo=None,
+                 ssh_additional_keytypes=None,
                  proxy_jump=None):
         self.log = logging.getLogger('KRO')
         self.server = server
@@ -313,6 +316,8 @@ class SSHTunnel(object):
         self.session_name = session_name
         self.remote_connection = f'{username}@{server}:{remote_port}'
         self.ssh_additional_kex = ssh_additional_kex
+        self.ssh_additional_hostkeyalgo = ssh_additional_hostkeyalgo
+        self.ssh_additional_keytypes = ssh_additional_keytypes
 
         address_and_port = f"{username}@{server}:{remote_port}"
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
@@ -338,6 +343,10 @@ class SSHTunnel(object):
 
         if self.ssh_additional_kex is not None:
             cmd.append('-oKexAlgorithms=' + self.ssh_additional_kex)
+        if self.ssh_additional_hostkeyalgo is not None:
+            cmd.append('-oHostKeyAlgorithms=' + self.ssh_additional_hostkeyalgo)
+        if self.ssh_additional_keytypes is not None:
+            cmd.append('-oPubkeyAcceptedKeyTypes=' + self.ssh_additional_keytypes)
 
         if ssh_pkey is not None:
             cmd.append('-i')
@@ -394,7 +403,11 @@ class SSHProxy(object):
     '''An object to contain information about an SSH proxy.
     '''
     def __init__(self, server, username, ssh_pkey, local_port,
-                 session_name='unknown', ssh_additional_kex=None, timeout=10):
+                 session_name='unknown', timeout=10,
+                 ssh_additional_kex=None,
+                 ssh_additional_hostkeyalgo=None,
+                 ssh_additional_keytypes=None,
+                 ):
         self.log = logging.getLogger('KRO')
         self.server = server
         self.username = username
@@ -403,6 +416,8 @@ class SSHProxy(object):
         self.session_name = session_name
         self.remote_connection = f'{username}@{server}'
         self.ssh_additional_kex = ssh_additional_kex
+        self.ssh_additional_hostkeyalgo = ssh_additional_hostkeyalgo
+        self.ssh_additional_keytypes = ssh_additional_keytypes
 
         # We now know everything we need to know in order to establish the
         # tunnel. Build the command line options and start the child process.
@@ -416,6 +431,10 @@ class SSHProxy(object):
 
         if self.ssh_additional_kex is not None:
             cmd.append('-oKexAlgorithms=' + self.ssh_additional_kex)
+        if self.ssh_additional_hostkeyalgo is not None:
+            cmd.append('-oHostKeyAlgorithms=' + self.ssh_additional_hostkeyalgo)
+        if self.ssh_additional_keytypes is not None:
+            cmd.append('-oPubkeyAcceptedKeyTypes=' + self.ssh_additional_keytypes)
 
         if ssh_pkey is not None:
             cmd.append('-i')
@@ -485,6 +504,8 @@ class KeckVncLauncher(object):
         self.vncserver = None
         self.ssh_key_valid = False
         self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
+        self.ssh_additional_hostkeyalgo = '+ssh-dss,ssh-rsa'
+        self.ssh_additional_keytypes = '+ssh-dss,ssh-rsa'
         self.exit = False
         self.geometry = list()
         self.tigervnc = None
@@ -722,7 +743,8 @@ class KeckVncLauncher(object):
         try:
             import requests
             from packaging import version
-            r = requests.get(url)
+            self.log.debug("Checking for latest version available on GitHub")
+            r = requests.get(url, timeout=5)
             findversion = re.search(r"__version__ = '(\d.+)'\n", r.text)
             if findversion is not None:
                 remote_version = version.parse(findversion.group(1))
@@ -738,6 +760,9 @@ class KeckVncLauncher(object):
                 self.log.warning(f'Your local software (v{__version__}) is behind '
                                  f'the currently available version '
                                  f'(v{remote_version})')
+                if remote_version.base_version == local_version.base_version:
+                    self.log.warning('You may update by running "git pull" in '
+                                     'the directory where the software is installed')
         except ModuleNotFoundError as e:
             self.log.warning("Unable to verify remote version")
             self.log.debug(e)
@@ -1002,7 +1027,8 @@ class KeckVncLauncher(object):
         #form API url and get data
         url = f'{KRO_API}?key={self.api_key}'
         if account is not False: url += f'&account={self.args.account}'
-        self.log.debug(f'Calling API with URL: {url}')
+        self.log.info(f'Calling KRO API to get account info')
+        self.log.debug(f'Using URL: {url}')
         data = None
         try:
             data = urlopen(url, timeout=10).read().decode('utf8')
@@ -1253,6 +1279,10 @@ class KeckVncLauncher(object):
 
         if self.ssh_additional_kex is not None:
             command.append('-oKexAlgorithms=' + self.ssh_additional_kex)
+        if self.ssh_additional_hostkeyalgo is not None:
+            command.append('-oHostKeyAlgorithms=' + self.ssh_additional_keytypes)
+        if self.ssh_additional_keytypes is not None:
+            command.append('-oPubkeyAcceptedKeyTypes=' + self.ssh_additional_keytypes)
 
         command.append('-oStrictHostKeyChecking=no')
         command.append(cmd)
@@ -1261,10 +1291,12 @@ class KeckVncLauncher(object):
         proc = subprocess.run(command, timeout=timeout,
                                stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         stdout = proc.stdout.strip().decode()
+        self.log.debug(f'RETURNCODE = {proc.returncode}')
         for line in stdout.split('\n'):
             self.log.debug(f'STDOUT: {line}')
         for line in proc.stderr.strip().decode().split('\n'):
-            self.log.debug(f'STDERR: {line}')
+            if line not in ['', ' ']:
+                self.log.debug(f'STDERR: {line}')
 
         if proc.returncode != 0:
             message = '  command failed with error ' + str(proc.returncode)
@@ -1405,7 +1437,7 @@ class KeckVncLauncher(object):
                     self.log.debug(trace)
                     data = None
 
-                if data is not None and ' ' not in data:
+                if data is not None and ' ' not in data and rc == 0:
                     vncserver = data
                     break
 
@@ -1566,12 +1598,17 @@ class KeckVncLauncher(object):
                           session_name=session_name,
                           timeout=self.config.get('ssh_timeout', 10),
                           ssh_additional_kex=self.ssh_additional_kex,
+                          ssh_additional_hostkeyalgo=self.ssh_additional_hostkeyalgo,
+                          ssh_additional_keytypes=self.ssh_additional_keytypes,
                           proxy_jump='mosfire.keck.hawaii.edu')
         else:
             t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
                           session_name=session_name,
                           timeout=self.config.get('ssh_timeout', 10),
-                          ssh_additional_kex=self.ssh_additional_kex)
+                          ssh_additional_kex=self.ssh_additional_kex,
+                          ssh_additional_hostkeyalgo=self.ssh_additional_hostkeyalgo,
+                          ssh_additional_keytypes=self.ssh_additional_keytypes,
+                          )
         self.ssh_tunnels[local_port] = t
         return local_port
 
@@ -1593,7 +1630,10 @@ class KeckVncLauncher(object):
                      local_port,
                      session_name='proxy',
                      timeout=self.config.get('ssh_timeout', 10),
-                     ssh_additional_kex=self.ssh_additional_kex)
+                     ssh_additional_kex=self.ssh_additional_kex,
+                     ssh_additional_hostkeyalgo=self.ssh_additional_hostkeyalgo,
+                     ssh_additional_keytypes=self.ssh_additional_keytypes,
+                     )
         self.ssh_tunnels[local_port] = t
         return local_port
 
@@ -2320,7 +2360,7 @@ class KeckVncLauncher(object):
         self.log.info('Checking SSH private key permissions')
         permissions = oct(os.stat(self.ssh_pkey).st_mode)[-3:]
         if permissions != '600':
-            self.log.error('The permissions on your private SSH key ({permissions}) may not be secure')
+            self.log.error(f'The permissions on your private SSH key ({permissions}) may not be secure')
             self.log.error('Please verify that your SSH key is useable normally before trying again')
             failcount += 1
 
