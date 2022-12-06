@@ -1291,10 +1291,12 @@ class KeckVncLauncher(object):
         proc = subprocess.run(command, timeout=timeout,
                                stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         stdout = proc.stdout.strip().decode()
+        self.log.debug(f'RETURNCODE = {proc.returncode}')
         for line in stdout.split('\n'):
             self.log.debug(f'STDOUT: {line}')
         for line in proc.stderr.strip().decode().split('\n'):
-            self.log.debug(f'STDERR: {line}')
+            if line not in ['', ' ']:
+                self.log.debug(f'STDERR: {line}')
 
         if proc.returncode != 0:
             message = '  command failed with error ' + str(proc.returncode)
@@ -1435,7 +1437,7 @@ class KeckVncLauncher(object):
                     self.log.debug(trace)
                     data = None
 
-                if data is not None and ' ' not in data:
+                if data is not None and ' ' not in data and rc == 0:
                     vncserver = data
                     break
 
