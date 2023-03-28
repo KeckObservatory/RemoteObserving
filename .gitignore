@@ -3,3 +3,5 @@ __pycache__/
 logs/
 build
 dist
+.DS_Store
+*.bbprojectd
