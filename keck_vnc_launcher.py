@@ -735,23 +735,20 @@ class KeckVncLauncher(object):
 
 
     def check_version(self):
-        '''Compare the version of the local software against that available on
-        GitHub.
+        '''Compare the version of the local software against releases available
+        on GitHub.
         '''
-        url = ('https://raw.githubusercontent.com/KeckObservatory/'
-               'RemoteObserving/master/keck_vnc_launcher.py')
+        url = 'https://api.github.com/repos/KeckObservatory/RemoteObserving/releases'
         try:
             import requests
             from packaging import version
             self.log.debug("Checking for latest version available on GitHub")
             r = requests.get(url, timeout=5)
-            findversion = re.search(r"__version__ = '(\d.+)'\n", r.text)
-            if findversion is not None:
-                remote_version = version.parse(findversion.group(1))
-                local_version = version.parse(__version__)
-            else:
-                self.log.warning(f'Unable to determine software version on GitHub')
-                return
+            result = r.json()
+            remote_version = version.parse(result[0]['name'])
+            self.log.debug(f'Retrieved remote release version: {remote_version}')
+            local_version = version.parse(__version__)
+
             if remote_version == local_version:
                 self.log.info(f'Your software is up to date (v{__version__})')
             elif remote_version < local_version:
