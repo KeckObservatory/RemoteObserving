@@ -1423,7 +1423,7 @@ class KeckVncLauncher(object):
         else:
             self.log.info(f"Determining VNC server for '{self.args.account}' (via SSH)")
             vncserver = None
-            for server in ['svncserver1.keck.hawaii.edu', 'svncserver2.keck.hawaii.edu']:
+            for server in self.servers_to_try:
                 cmd = f'kvncinfo -server -I {instrument}'
 
                 try:
