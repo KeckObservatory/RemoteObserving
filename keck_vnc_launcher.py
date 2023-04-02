@@ -1828,6 +1828,7 @@ class KeckVncLauncher(object):
         line_length = 50
         lines = [f"-"*(line_length),
                  f"          Keck Remote Observing (v{__version__})",
+                 f"          Currently connected to: {self.args.account}",
                  f"                     MENU",
                  f"-"*(line_length)]
 
