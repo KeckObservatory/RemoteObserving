@@ -1351,31 +1351,25 @@ class KeckVncLauncher(object):
         self.ssh_key_valid = False
         cmd = 'whoami'
 
-        # Find a server in the servers_to_try list with is not an svncserverN
-        server = None
-        for s in self.servers_to_try:
-            if s not in ['svncserver1', 'svncserver2']:
-                server = s
-        # If we can't find one, just use the first in the list
-        if server is None:
-            server = self.servers_to_try[0]
-
-        account = self.kvnc_account
-
-        try:
-            data, rc = self.do_ssh_cmd(cmd, server, account)
-        except subprocess.TimeoutExpired:
-            self.log.error('  Timed out validating SSH key.')
-            self.log.error('  SSH timeouts may be due to network instability.')
-            self.log.error('  Please retry to see if the problem is intermittant.')
-            data = None
-            rc = None
-        except Exception as e:
-            self.log.error('  Failed: ' + str(e))
-            trace = traceback.format_exc()
-            self.log.debug(trace)
-            data = None
-            rc = None
+        data = None
+        rc = None
+        for server in self.servers_to_try:
+            try:
+                data, rc = self.do_ssh_cmd(cmd, server, self.kvnc_account)
+            except subprocess.TimeoutExpired:
+                self.log.error('  Timed out validating SSH key.')
+                self.log.error('  SSH timeouts may be due to network instability.')
+                self.log.error('  Please retry to see if the problem is intermittant.')
+                data = None
+                rc = None
+            except Exception as e:
+                self.log.error('  Failed: ' + str(e))
+                trace = traceback.format_exc()
+                self.log.debug(trace)
+                data = None
+                rc = None
+            if data is not None:
+                break
 
         #NOTE: The 'whoami' test can fail if the kvnc account has a .cshrc 
         #that produces other output.  Other ssh cmds would be invalid too.
