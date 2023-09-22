@@ -15,7 +15,6 @@ import re
 import socket
 import subprocess
 import sys
-from telnetlib import Telnet
 from threading import Thread
 import time
 import traceback
@@ -184,92 +183,6 @@ def is_local_port_in_use_socket(port):
 
 
 is_local_port_in_use = is_local_port_in_use_socket
-
-
-##-------------------------------------------------------------------------
-## Define Firewall Function
-##-------------------------------------------------------------------------
-def do_firewall_command(firewall_address, firewall_port, firewall_user,
-                        authpass, selection):
-    '''Interact with the firewall to authenticate or deauthenticate.
-    
-    The selection value is the response to the firewall's query after
-    authenticating past the username and password steps.
-    '''
-    log = logging.getLogger('KRO')
-
-    if selection == 1:
-        log.info(f'Authenticating through firewall as:')
-        log.info(f' {firewall_user}@{firewall_address}:{firewall_port}')
-    elif selection == 2:
-        log.info('Closing firewall hole')
-
-    tn = Telnet(firewall_address, int(firewall_port))
-
-    # Find Username Prompt
-    user_prompt = tn.read_until(b"User: ", timeout=5).decode('ascii')
-    for line in user_prompt.split('\n'):
-        line = line.strip().strip('\n')
-        log.debug(f"Firewall says: {line}")
-    if user_prompt[-6:] != 'User: ':
-        log.error('Got unexpected response from firewall:')
-        log.error(user_prompt)
-        raise KROException('Got unexpected response from firewall')
-    log.debug(f'Sending response: {firewall_user}')
-    tn.write(f'{firewall_user}\n'.encode('ascii'))
-
-    # Find Password Prompt
-    password_prompt = tn.read_until(b"password: ", timeout=5).decode('ascii')
-    for line in password_prompt.split('\n'):
-        line = line.strip().strip('\n')
-        log.debug(f"Firewall says: {line}")
-    if password_prompt[-10:] != 'password: ':
-        log.error('Got unexpected response from firewall:')
-        log.error(password_prompt)
-        raise KROException('Got unexpected response from firewall')
-    log.debug(f'Sending response: (value hidden from log)')
-    tn.write(f'{authpass}\n'.encode('ascii'))
-
-    # Is Password Accepted?
-    password_response = tn.read_until(b"Enter your choice: ", timeout=5).decode('ascii')
-    for line in password_response.split('\n'):
-        line = line.strip().strip('\n')
-        log.debug(f"Firewall says: {line}")
-    if re.search('Access denied - wrong user name or password', password_response):
-        log.error('Incorrect password entered.')
-        return False
-
-    # If Password is Correct, continue with authentication process
-    if password_response[-19:] != 'Enter your choice: ':
-        log.error('Got unexpected response from firewall:')
-        log.error(password_response)
-        log.error('')
-        log.error('Please try again. If this reoccurs, create a support ticket at:')
-        log.error('https://keckobservatory.atlassian.net/servicedesk/customer/portals')
-        log.error('and be sure to attach the log file.')
-        return False
-
-    log.debug(f'Sending response: {selection}')
-    tn.write(f'{selection}\n'.encode('ascii'))
-
-    result = tn.read_all().decode('ascii')
-    for line in result.split('\n'):
-        line = line.strip().strip('\n')
-        log.debug(f"Firewall says: {line}")
-
-    # Check for standard exits
-    if selection == 1:
-        if re.search('User authorized for standard services', result):
-            log.info('User authorized for standard services')
-        else:
-            log.error(result)
-    elif selection == 2:
-        if re.search('User was signed off from all services', result):
-            log.info('User was signed off from all services')
-        else:
-            log.error(result)
-
-    return result
 
 
 ##-------------------------------------------------------------------------
@@ -565,8 +478,6 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Run tests
         if self.args.test is True:
-            # On test, always cleanup firewall
-            self.config['firewall_cleanup'] = True
             self.test_all()
             self.exit_app()
 
@@ -584,43 +495,10 @@ class KeckVncLauncher(object):
         if self.api_key:
             self.get_api_data(self.api_key, self.args.account)
             if self.api_data is None:
-                if self.firewall_defined is True:
-                    self.log.info('Firewall info detected in config.  Trying alternate method.')
-                else:
-                    self.exit_app('API method failed.')
+                self.exit_app('API query failed.')
 
         ##---------------------------------------------------------------------
-        ## Authenticate Through Firewall (or Disconnect)
-        if self.firewall_requested == True:
-            self.firewall_opened = self.test_firewall()
-        else:
-            self.firewall_opened = False
-
-        # Do we need to interact with the firewall?
-        need_password = self.config.get('firewall_cleanup', False)
-        if self.firewall_requested == True \
-            and self.firewall_opened == False \
-            and self.firewall_pass == None:
-            need_password = True
-
-        if need_password == True:
-            while self.firewall_pass is None:
-                firewall_pass = getpass(f"Password for firewall authentication: ")
-                firewall_pass = firewall_pass.strip()
-                if firewall_pass != '':
-                    self.firewall_pass = firewall_pass
-
-        if self.firewall_requested == True and self.firewall_opened == False:
-            try:
-                self.firewall_opened = self.open_firewall(self.firewall_pass)
-            except:
-                self.log.error('Unable to authenticate through firewall')
-                trace = traceback.format_exc()
-                self.log.debug(trace)
-
-            if self.firewall_opened == False:
-                self.exit_app('Authentication failure!')
-
+        ## Open web proxy if requested
         if self.config.get('proxy_port', None) is not None and\
            self.config.get('proxy_server', None) is not None:
             self.open_ssh_for_proxy()
@@ -684,9 +562,7 @@ class KeckVncLauncher(object):
             if self.api_data is not None:
                 self.view_connection_info()
 
-        if self.args.authonly is False or\
-           self.config.get('firewall_cleanup', False) or\
-           self.is_proxy_open():
+        if self.args.authonly is False or self.is_proxy_open():
             ##---------------------------------------------------------------------
             ## Wait for quit signal, then all done
             atexit.register(self.exit_app, msg="App exit")
@@ -947,37 +823,11 @@ class KeckVncLauncher(object):
     def check_config(self):
         '''Do some basic checks on the configuration.
         '''
-        self.firewall_requested = False
-        self.firewall_defined = False
 
-        #check firewall config first
-        self.firewall_address = self.config.get('firewall_address', None)
-        self.firewall_user = self.config.get('firewall_user', None)
-        self.firewall_port = self.config.get('firewall_port', None)
-
-        if self.firewall_address is not None and \
-           self.firewall_user is not None and \
-           self.firewall_port is not None:
-            self.firewall_requested = True
-            self.firewall_defined = True
-
-        elif self.firewall_address is not None or \
-             self.firewall_user is not None or \
-             self.firewall_port is not None:
-            self.log.warning("Incomplete firewall configuration detected:")
-            if self.firewall_address is None:
-                self.log.warning("firewall_address not set")
-            if self.firewall_user is None:
-                self.log.warning("firewall_user not set")
-            if self.firewall_port is None:
-                self.log.warning("firewall_port not set")
-
-        #check API key config (This will take priority later on)
+        #check API key config
         self.api_key = self.config.get('api_key', None)
         if self.api_key is None:
-            self.log.warning("API key is not set.")
-            if self.firewall_defined is True:
-                self.log.info('Firewall config detected. Trying alternate method.')
+            self.log.error("API key is not set.")
         else:
             self.firewall_requested = True
 
@@ -1066,35 +916,13 @@ class KeckVncLauncher(object):
             self.log.error(f'Invalid status code returned from API: {code}')
             return
 
-        #get firewall info
-        fw = data.get('firewall')
-        if fw is None:
-            self.log.error(f'Could not determine get firewall info from API')
-            return
-        fw_ip   = fw.get('ip')
-        fw_port = fw.get('telnetport')
-        fw_user = fw.get('username')
-        fw_pass = fw.get('pwd')
-        if    fw_ip   is None \
-           or fw_user is None \
-           or fw_port is None \
-           or fw_pass is None:
-            self.log.error(f'Could not determine firewall info from API')
-            return
-
-        #if firewall info successful, overwrite what we might have defined in config
-        self.firewall_address = fw_ip
-        self.firewall_port    = fw_port
-        self.firewall_user    = fw_user
-        self.firewall_pass    = fw_pass
-
         #all good
         self.api_data = data
         self.log.debug('API call was successful')
 
 
     ##-------------------------------------------------------------------------
-    ## Open and Close the firewall
+    ## Test if the firewall is open to us
     ##-------------------------------------------------------------------------
     def test_firewall(self):
         ''' Return True if the sshuser firewall hole is open; otherwise
@@ -1139,20 +967,6 @@ class KeckVncLauncher(object):
             # authentication will be required.
             self.log.info('firewall is unknown')
             return False
-
-
-    def open_firewall(self, authpass):
-        '''Simple wrapper to open firewall.
-        '''
-        return do_firewall_command(self.firewall_address, self.firewall_port,
-                                   self.firewall_user, authpass, 1)
-
-
-    def close_firewall(self, authpass):
-        '''Simple wrapper to close firewall.
-        '''
-        return do_firewall_command(self.firewall_address, self.firewall_port,
-                                   self.firewall_user, authpass, 2)
 
 
     ##-------------------------------------------------------------------------
@@ -2402,40 +2216,6 @@ class KeckVncLauncher(object):
         return failcount
 
 
-    def test_firewall_authentication(self):
-        '''Test:
-        - Must authenticate through the firewall successfully.
-        '''
-        failcount = 0
-        self.log.info('Testing firewall authentication')
-        self.firewall_opened = False
-        if self.firewall_requested == True:
-            if self.firewall_pass is None:
-                self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
-            try:
-                self.firewall_opened = self.open_firewall(self.firewall_pass)
-            except ConnectionRefusedError as e:
-                self.log.error(f'Connection Refused')
-                self.log.debug(e)
-                self.log.error('Unable to communicate with WMKO firewall on the standard port')
-                self.log.info('Testing http authentication')
-                import requests
-                r = requests.get(f'http://{self.firewall_address}:900')
-                got_auth_page = re.match('<html><head><title>Authentication Form</title></head>', r.text)
-                if got_auth_page is not None:
-                    self.log.info('You may be able to authenticate via http. Go to:')
-                    self.log.info(f'http://{self.firewall_address}:900')
-                    self.log.info('in a browser to authenticate.  Then run this script again.')
-                else:
-                    self.log.error('The http authentication route is also inaccessible')
-            if self.firewall_opened is False:
-                self.log.error('Failed to open firewall')
-                failcount += 1
-                self.exit_app('Authentication failure! Must be able to authenticate to finish tests.')
-
-        return failcount
-
-
     def test_ssh_key(self):
         '''Test:
         - Must succeed in validating the SSH key.
@@ -2521,7 +2301,6 @@ class KeckVncLauncher(object):
             self.log.error('Could not determine if firewall is open')
             failcount += 1
         failcount += self.test_api()
-        failcount += self.test_firewall_authentication()
         failcount += self.test_ssh_key()
         failcount += self.test_basic_connectivity()
 
