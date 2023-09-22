@@ -27,7 +27,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.13'
+__version__ = '2.1.0'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi'
 SESSION_NAMES = ('control0', 'control1', 'control2',
