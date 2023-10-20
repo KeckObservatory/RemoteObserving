@@ -18,7 +18,7 @@ import sys
 from threading import Thread
 import time
 import traceback
-from urllib.request import urlopen
+import requests
 import warnings
 import yaml
 
@@ -872,14 +872,16 @@ class KeckVncLauncher(object):
         self.api_data = None
 
         #form API url and get data
-        url = f'{KRO_API}?key={self.api_key}'
-        if account is not False: url += f'&account={self.args.account}'
+        params = {'key': f'{self.api_key}'}
+        if account is not False: params['account'] = f'{self.args.account}'
         self.log.info(f'Calling KRO API to get account info')
-        self.log.debug(f'Using URL: {url}')
+        self.log.debug(f'Using URL: {KRO_API} with {params}')
         data = None
         try:
-            data = urlopen(url, timeout=60).read().decode('utf8')
-            data = json.loads(data)
+            data = requests.post(KRO_API, data=params, timeout=60)
+            data = json.loads(data.text)
+            for key in data.keys():
+                self.log.debug(f"  Got data for {key}")
         except Exception as e:
             self.log.error(f'Could not get data from API.')
             self.log.error(str(e))
