@@ -878,7 +878,7 @@ class KeckVncLauncher(object):
         self.log.debug(f'Using URL: {url}')
         data = None
         try:
-            data = urlopen(url, timeout=10).read().decode('utf8')
+            data = urlopen(url, timeout=60).read().decode('utf8')
             data = json.loads(data)
         except Exception as e:
             self.log.error(f'Could not get data from API.')
