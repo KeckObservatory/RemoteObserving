@@ -138,15 +138,20 @@ def create_logger(args):
         log.info("EXITING APP\n")
         sys.exit(1)
 
+    # Set up formats
+    logFormat_no_time = logging.Formatter(' %(levelname)8s: %(message)s')
+    logFormat_no_time.converter = time.gmtime
+    logFormat_with_time = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
+    logFormat_with_time.converter = time.gmtime
+
     #stream/console handler
     logConsoleHandler = logging.StreamHandler()
     if args.verbose is True:
         logConsoleHandler.setLevel(logging.DEBUG)
+        logConsoleHandler.setFormatter(logFormat_with_time)
     else:
         logConsoleHandler.setLevel(logging.INFO)
-    logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
-    logFormat.converter = time.gmtime
-    logConsoleHandler.setFormatter(logFormat)
+        logConsoleHandler.setFormatter(logFormat_no_time)
     log.addHandler(logConsoleHandler)
 
     #file handler (full debug logging)
@@ -154,9 +159,7 @@ def create_logger(args):
     logFile = Path(f'logs/keck-remote-log-utc-{ymd}.txt')
     logFileHandler = logging.FileHandler(logFile)
     logFileHandler.setLevel(logging.DEBUG)
-    logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
-    logFormat.converter = time.gmtime
-    logFileHandler.setFormatter(logFormat)
+    logFileHandler.setFormatter(logFormat_with_time)
     log.addHandler(logFileHandler)
 
 
