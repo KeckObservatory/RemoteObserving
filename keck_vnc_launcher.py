@@ -874,8 +874,8 @@ class KeckVncLauncher(object):
         self.api_data = None
 
         #form API url and get data
-        params = {'key': f'{self.api_key}'}
-        if account is not False: params['account'] = f'{self.args.account}'
+        params = {'key': f'{self.api_key}',
+                  'account': f"{account}"}
         self.log.info(f'Calling KRO API to get account info')
         self.log.debug(f'Using URL: {KRO_API} with {params}')
         data = None
