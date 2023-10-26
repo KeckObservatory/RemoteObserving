@@ -133,7 +133,7 @@ def create_logger(args):
         Path('logs/').mkdir(parents=True, exist_ok=True)
     except PermissionError as error:
         print(str(error))
-        print(f"ERROR: Unable to create logger at {logFile}")
+        print(f"ERROR: Unable to create logger at logs/")
         print("Make sure you have write access to this directory.\n")
         log.info("EXITING APP\n")
         sys.exit(1)
