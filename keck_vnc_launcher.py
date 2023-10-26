@@ -499,8 +499,7 @@ class KeckVncLauncher(object):
 
         ##---------------------------------------------------------------------
         ## Open web proxy if requested
-        if self.config.get('proxy_port', None) is not None and\
-           self.config.get('proxy_server', None) is not None:
+        if self.config.get('proxy_port', None) is not None:
             self.open_ssh_for_proxy()
 
 
@@ -1432,7 +1431,7 @@ class KeckVncLauncher(object):
             self.log.warning(f'Port 8080 is in use, not starting proxy connection')
             return
         self.log.info(f'Opening SSH for proxy to port 8080')
-        t = SSHProxy(self.config.get('proxy_server'),
+        t = SSHProxy(self.args.account,
                      self.kvnc_account, self.ssh_pkey,
                      local_port,
                      session_name='proxy',
