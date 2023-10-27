@@ -108,10 +108,19 @@ def create_parser():
 
     ## Change default behavior if no account is given.
     if args.account == '':
-        ## Assume authonly if the vncserver and vncports are not specified
-        if args.vncserver is None and args.vncports is None:
-            args.authonly = True
-        args.account = 'hires1'
+        ## Message user to specify an instrument account
+        print()
+        print("    ----------------------------------------------------------------")
+        print("    Due to updates to Keck's internal security systems, we no longer")
+        print("    support running start_keck_viewers without an instrument account")
+        print("    argument.")
+        print()
+        print("    If you wish to authenticate through the firewall without opening")
+        print("    VNC sessions, run start_keck_viewers with an instrument account")
+        print("    and the --authonly flag.")
+        print("    ----------------------------------------------------------------")
+        print()
+        sys.exit(0)
 
     return args
 
