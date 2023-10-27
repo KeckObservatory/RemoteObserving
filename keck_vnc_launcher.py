@@ -1432,7 +1432,7 @@ class KeckVncLauncher(object):
             self.log.warning(f'Port 8080 is in use, not starting proxy connection')
             return
         self.log.info(f'Opening SSH for proxy to port 8080')
-        t = SSHProxy(self.args.account,
+        t = SSHProxy(self.api_data.get('vncserver'),
                      self.kvnc_account, self.ssh_pkey,
                      local_port,
                      session_name='proxy',
