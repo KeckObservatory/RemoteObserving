@@ -410,12 +410,10 @@ class KeckVncLauncher(object):
         self.config = None
         self.log = None
         self.sound = None
-        self.firewall_pass = None
         self.ssh_tunnels = dict()
         self.vnc_threads = list()
         self.vnc_processes = list()
         self.firewall_requested = False
-        self.firewall_opened = False
         self.instrument = None
         self.vncserver = None
         self.ssh_key_valid = False
@@ -1987,15 +1985,6 @@ class KeckVncLauncher(object):
 
         self.close_ssh_threads()
 
-        close_requested = self.config.get('firewall_cleanup', False)
-        if close_requested == True and self.firewall_requested == True:
-            try:
-                self.close_firewall(self.firewall_pass)
-            except:
-                self.log.error('Unable to close the firewall hole!')
-        else:
-            self.log.info('Leaving firewall authentication unchanged.')
-
         #close vnc sessions
         self.kill_vnc_processes()
 
@@ -2042,46 +2031,19 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def test_config_format(self):
         '''Test:
-        - The config file has a valid firewall_address specified
-        - The config file has a valid firewall_port specified
-        - The config file has a valid firewall_user specified
+        - The config file has a valid api_key specified
         - The config file has a valid ssh_pkey path specified
         - The config file has a valid vncviewer executable path specified
         '''
         import socket
         failcount = 0
 
-        #API must be defined if firewall info was not defined.
+        #API must be defined
         self.log.info('Checking config file: api_key')
         api_key = self.config.get('api_key', None)
         if api_key in [None, '']:
             self.log.error(f'api_key should be specified')
             failcount += 1
-
-        #Check firewall config if api_key not defined
-        if api_key  in [None, '']:            
-            self.log.info('Checking config file: firewall_address')
-            firewall_address = self.config.get('firewall_address', None)
-            if firewall_address is None:
-                self.log.error(f"No firewall address found")
-                failcount += 1
-            try:
-                socket.inet_aton(firewall_address)
-            except OSError:
-                self.log.error(f'firewall_address: "{firewall_address}" is invalid')
-                failcount += 1
-
-            self.log.info('Checking config file: firewall_port')
-            firewall_port = self.config.get('firewall_port', None)
-            if isinstance(int(firewall_port), int) is False:
-                self.log.error(f'firewall_port: "{firewall_port}" is invalid')
-                failcount += 1
-
-            self.log.info('Checking config file: firewall_user')
-            firewall_user = self.config.get('firewall_user', None)
-            if firewall_user in [None, '']:
-                self.log.error(f'firewall_user must be specified if you are outside the WMKO network')
-                failcount += 1
 
         self.log.info('Checking config file: ssh_pkey')
         ssh_pkey = self.config.get('ssh_pkey', '~/.ssh/id_rsa')
