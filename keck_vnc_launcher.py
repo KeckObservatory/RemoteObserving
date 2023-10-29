@@ -4,7 +4,7 @@
 import os
 import argparse
 import atexit
-from datetime import datetime
+from datetime import datetime, timedelta
 from getpass import getpass
 import json
 import logging
@@ -887,10 +887,14 @@ class KeckVncLauncher(object):
         self.log.debug(f'Using URL: {KRO_API} with {params}')
         data = None
         try:
+            tick = datetime.now()
             data = requests.post(KRO_API, data=params, timeout=60)
             data = json.loads(data.text)
             for key in data.keys():
-                self.log.debug(f"  Got data for {key}")
+                self.log.debug(f"  Got data for {key}: {data[key]}")
+            tock = datetime.now()
+            duration = (tock-tick).total_seconds()
+            self.log.debug(f'API call took {duration:.1f} s')
         except Exception as e:
             self.log.error(f'Could not get data from API.')
             self.log.error(str(e))
