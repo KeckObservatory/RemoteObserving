@@ -443,11 +443,6 @@ class KeckVncLauncher(object):
         self.default_sessions = []
         self.sessions_found = []
 
-        #default servers to try at Keck
-        servers = ['kcwi', 'mosfire']#, 'deimos', 'osiris']
-        domain = '.keck.hawaii.edu'
-        self.servers_to_try = [f"{server}{domain}" for server in servers]
-
         #local port start (can be overridden by config file)
         self.LOCAL_PORT_START = 5901
 
@@ -1112,14 +1107,6 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def get_vnc_server(self, account, instrument):
         '''Determine the VNC server to connect to given the instrument.
-        
-        Note that while this nominally cycles through all the servers in the
-        servers_to_try list, it is only reliably correct when connecting to a
-        solaris machine such as svncserver1 or svncserver2. The kvnc.cfg file
-        that those access at Keck is shared and up to date. The kvnc.cfg file
-        accessed by the linux instrument machines is deployed via KROOT and may
-        be out of date. As of this writing (July 2, 2020), ESI is incorrect on
-        those machines, but other instruments return a correct server.
         '''
 
         #cmd line option
@@ -1137,25 +1124,6 @@ class KeckVncLauncher(object):
             vncserver = self.api_data.get('vncserver')
             if not vncserver:
                 self.log.error(f'Could not determine VNC server from API')
-
-        #SSH Route
-        else:
-            self.log.info(f"Determining VNC server for '{self.args.account}' (via SSH)")
-            vncserver = None
-            for server in self.servers_to_try:
-                cmd = f'kvncinfo -server -I {instrument}'
-
-                try:
-                    data, rc = self.do_ssh_cmd(cmd, server, account)
-                except Exception as e:
-                    self.log.error('  Failed: ' + str(e))
-                    trace = traceback.format_exc()
-                    self.log.debug(trace)
-                    data = None
-
-                if data is not None and ' ' not in data and rc == 0:
-                    vncserver = data
-                    break
 
         if vncserver:
             self.log.info(f"Got VNC server: '{vncserver}'")
