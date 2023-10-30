@@ -512,7 +512,6 @@ class KeckVncLauncher(object):
         if self.config.get('proxy_port', None) is not None:
             self.open_ssh_for_proxy()
 
-
         if self.args.authonly is False:
             ##-----------------------------------------------------------------
             ## Determine sessions to open
@@ -523,15 +522,6 @@ class KeckVncLauncher(object):
             self.instrument, self.tel = self.determine_instrument(self.args.account)
             if self.instrument is None:
                 self.exit_app(f'Invalid instrument account: "{self.args.account}"')
-
-            ##-----------------------------------------------------------------
-            ## Validate ssh key
-            self.validate_ssh_key()
-            if self.ssh_key_valid == False:
-                self.log.error(f"\n\n\tCould not validate SSH key.\n\t"\
-                               f"Contact {supportEmail} "\
-                               f"for other options to connect remotely.\n")
-                self.exit_app()
 
             ##-----------------------------------------------------------------
             ## Determine VNC server
@@ -937,54 +927,6 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Test if the firewall is open to us
-    ##-------------------------------------------------------------------------
-    def test_firewall(self):
-        ''' Return True if the sshuser firewall hole is open; otherwise
-        return False. Also return False if the test cannot be performed.
-        '''
-        self.log.info('Checking whether firewall is open')
-
-        # Use netcat if specified:
-        # The netcat test is more rigorous, in that it attempts to contact
-        # an ssh daemon that should be available to us after opening the
-        # firewall hole. The ping check is a reasonable fallback and was
-        # the traditional way the old mainland observing script would confirm
-        # the firewall status.
-        netcat = self.config.get('netcat', None)
-        if netcat is not None:
-            cmd = netcat.split()
-            for server in self.servers_to_try:
-                server_and_port = [server, '22']
-                self.log.debug(f'firewall test: {" ".join(cmd+server_and_port)}')
-                netcat_result = subprocess.run(cmd+server_and_port, timeout=5,
-                                               stdout=subprocess.PIPE,
-                                               stderr=subprocess.PIPE)
-                self.log.debug(f'  return code: {netcat_result.returncode}')
-                up = (netcat_result.returncode == 0)
-                if up is True:
-                    self.log.info('firewall is open')
-                    return True
-            self.log.info('firewall is closed')
-            return False
-
-        # Use ping if no netcat is specified
-        if self.ping_cmd is not None:
-            for server in self.servers_to_try:
-                up = self.ping(server, wait=1)
-                if up is True:
-                    self.log.info('firewall is open')
-                    return True
-            self.log.info('firewall is closed')
-            return False
-        else:
-            # No way to check the firewall status. Assume it is closed,
-            # authentication will be required.
-            self.log.info('firewall is unknown')
-            return False
-
-
-    ##-------------------------------------------------------------------------
     ## Get sessions to open
     ##-------------------------------------------------------------------------
     def get_sessions_requested(self, args):
@@ -1163,52 +1105,6 @@ class KeckVncLauncher(object):
                 stdout = '\n'.join(lines)
 
         return stdout, proc.returncode
-
-
-    ##-------------------------------------------------------------------------
-    ## Validate ssh key on remote vnc server
-    ##-------------------------------------------------------------------------
-    def validate_ssh_key(self):
-        '''Issue a simple command and check response as a check to see if the
-        SSH key is valid.
-        '''
-        if self.ssh_key_valid == True:
-            return
-
-        self.log.info(f"Validating ssh key...")
-
-        self.ssh_key_valid = False
-        cmd = 'whoami'
-
-        data = None
-        rc = None
-        for server in self.servers_to_try:
-            try:
-                data, rc = self.do_ssh_cmd(cmd, server, self.kvnc_account)
-            except subprocess.TimeoutExpired:
-                self.log.error('  Timed out validating SSH key.')
-                self.log.error('  SSH timeouts may be due to network instability.')
-                self.log.error('  Please retry to see if the problem is intermittant.')
-                data = None
-                rc = None
-            except Exception as e:
-                self.log.error('  Failed: ' + str(e))
-                trace = traceback.format_exc()
-                self.log.debug(trace)
-                data = None
-                rc = None
-            if data is not None:
-                break
-
-        #NOTE: The 'whoami' test can fail if the kvnc account has a .cshrc 
-        #that produces other output.  Other ssh cmds would be invalid too.
-        #If API data exists, we don't get data via ssh, so just check ret code.
-        if data == self.kvnc_account \
-            or (self.api_data is not None and rc == 0):
-            self.ssh_key_valid = True
-            self.log.info("  SSH key OK")
-        else:
-            self.log.error("  SSH key invalid")
 
 
     ##-------------------------------------------------------------------------
@@ -2195,19 +2091,6 @@ class KeckVncLauncher(object):
         return failcount
 
 
-    def test_ssh_key(self):
-        '''Test:
-        - Must succeed in validating the SSH key.
-        '''
-        failcount = 0
-        self.validate_ssh_key()
-        if self.ssh_key_valid is False:
-            self.log.error('Failed to validate SSH key')
-            failcount += 1
-
-        return failcount
-
-
     def test_basic_connectivity(self):
         '''Test:
         - Successfully connect to the listed servers at Keck and get a valid
@@ -2276,11 +2159,7 @@ class KeckVncLauncher(object):
         failcount += self.test_tigervnc()
 #         failcount += self.test_localhost()
         failcount += self.test_ssh_key_format()
-        if self.test_firewall() is None:
-            self.log.error('Could not determine if firewall is open')
-            failcount += 1
         failcount += self.test_api()
-        failcount += self.test_ssh_key()
         failcount += self.test_basic_connectivity()
 
         if failcount == 0:
