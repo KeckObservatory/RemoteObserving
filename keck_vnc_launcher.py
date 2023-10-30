@@ -5,7 +5,6 @@ import os
 import argparse
 import atexit
 from datetime import datetime, timedelta
-from getpass import getpass
 import json
 import logging
 import os
@@ -19,7 +18,6 @@ from threading import Thread
 import time
 import traceback
 import requests
-import warnings
 import yaml
 
 ## Import local modules
