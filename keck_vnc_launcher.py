@@ -1074,10 +1074,6 @@ class KeckVncLauncher(object):
         if vncserver:
             self.log.info(f"Got VNC server: '{vncserver}'")
 
-        # Temporary hack for KCWI
-        if vncserver == 'vm-kcwivnc':
-            vncserver = 'kcwi'
-
         if vncserver is not None and 'keck.hawaii.edu' not in vncserver:
             vncserver += '.keck.hawaii.edu'
 
