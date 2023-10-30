@@ -1725,8 +1725,7 @@ class KeckVncLauncher(object):
         logfile = Path(logfile_handlers.pop(0).baseFilename)
 
         source = str(logfile)
-        destination = self.vncserver if self.vncserver is not None\
-                                     else 'mosfire.keck.hawaii.edu'
+        destination = self.vncserver
         self.log.debug(f"Uploading to: {account}@{destination}:{logfile.name}")
         destination = account + '@' + destination + ':' + logfile.name
 
@@ -1932,22 +1931,6 @@ class KeckVncLauncher(object):
         return failcount
 
 
-    def test_localhost(self):
-        '''The localhost needs to be defined (e.g. 127.0.0.1)
-        '''
-        failcount = 0
-        self.log.info('Checking localhost')
-        if self.ping_cmd is None:
-            self.log.warning('No ping command defined.  Unable to test localhost.')
-            return 0
-        if self.ping('localhost') is False:
-            self.log.error(f"localhost appears not to be configured")
-            self.log.error(f"Your /etc/hosts file may need to be updated")
-            failcount += 1
-
-        return failcount
-
-
     def test_ssh_key_format(self):
         '''The SSH key must be RSA and must not use a passphrase
         '''
@@ -2009,18 +1992,22 @@ class KeckVncLauncher(object):
         '''Test:
         - Successfully connect to the listed servers at Keck and get a valid
         response from an SSH command.
+        - Now that the access list os limited to the destination instrument, we
+        only check connection to kcwi as that is the instrument used in the
+        `test_api` step.
         '''
         failcount = 0
-        servers_and_results = [('mosfire', 'vm-mosfire'),
-                               ('hires', 'vm-hires'),
-                               ('lris', 'vm-lris'),
-                               ('osiris', 'vm-osiris'),
-                               ('kpf', 'kpf'),
-                               ('deimos', 'deimos'),
-                               ('kcwi', 'vm-kcwi'),
-                               ('nirc2', 'vm-nirc2'),
-                               ('nires', 'vm-nires'),
-                               ('nirspec', 'vm-nirspec')]
+#         servers_and_results = [('mosfire', 'vm-mosfire'),
+#                                ('hires', 'vm-hires'),
+#                                ('lris', 'vm-lris'),
+#                                ('osiris', 'vm-osiris'),
+#                                ('kpf', 'kpf'),
+#                                ('deimos', 'deimos'),
+#                                ('kcwi', 'vm-kcwi'),
+#                                ('nirc2', 'vm-nirc2'),
+#                                ('nires', 'vm-nires'),
+#                                ('nirspec', 'vm-nirspec')]
+        servers_and_results = [('kcwi', 'vm-kcwi')]
         for server, result in servers_and_results:
             self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
             tick = datetime.now()
@@ -2071,7 +2058,6 @@ class KeckVncLauncher(object):
         failcount += self.test_yaml_version()
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
-#         failcount += self.test_localhost()
         failcount += self.test_ssh_key_format()
         failcount += self.test_api()
         failcount += self.test_basic_connectivity()
