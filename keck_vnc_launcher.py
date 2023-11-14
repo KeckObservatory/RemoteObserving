@@ -814,6 +814,12 @@ class KeckVncLauncher(object):
                   'account': f"{account}"}
         self.log.info(f'Calling KRO API to get account info')
         self.log.debug(f'Using URL: {KRO_API} with {params}')
+        print()
+        print("-------------------------------------------------------------")
+        print("Please note: the initial connection to the Keck KRO API may")
+        print("take up to 1 minute to complete.")
+        print("-------------------------------------------------------------")
+        print()
         data = None
         try:
             tick = datetime.now()
