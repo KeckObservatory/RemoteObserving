@@ -822,7 +822,7 @@ class KeckVncLauncher(object):
         data = None
         try:
             tick = datetime.now()
-            data = requests.post(KRO_API, data=params, timeout=60)
+            data = requests.post(KRO_API, data=params, timeout=90)
             data = json.loads(data.text)
             for key in data.keys():
                 self.log.debug(f"  Got data for {key}: {data[key]}")
