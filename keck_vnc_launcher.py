@@ -606,7 +606,6 @@ class KeckVncLauncher(object):
         '''
         url = 'https://api.github.com/repos/KeckObservatory/RemoteObserving/releases'
         try:
-            import requests
             from packaging import version
             self.log.debug("Checking for latest version available on GitHub")
             r = requests.get(url, timeout=5)
@@ -1857,7 +1856,6 @@ class KeckVncLauncher(object):
         - The config file has a valid ssh_pkey path specified
         - The config file has a valid vncviewer executable path specified
         '''
-        import socket
         failcount = 0
 
         #API must be defined
