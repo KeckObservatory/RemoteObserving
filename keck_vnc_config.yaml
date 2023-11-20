@@ -5,7 +5,6 @@
 ##   Observer Homepage at https://www2.keck.hawaii.edu/inst/PILogin/homepage.php
 ##   Click on 'Manage your Remote Observing SSH key', follow the instructions
 ##   and paste your API key here when you have uploaded your SSH key. 
-##   If this is being run inside of the Keck network, comment out this line.
 api_key: ''
 
 
@@ -96,14 +95,6 @@ default_sessions: ['control0', 'control1', 'control2', 'telstatus']
 #window_positions: [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3]]
 
 
-## Firewall Cleanup
-##   If the firewall authentication has been performed, should the script
-##   de-authenticate when it exits? This is generally not required; the
-##   firewall authorization will automatically expire after 24 hours. Set this
-##   option to True to close the firewall hole when the script exits.
-firewall_cleanup: False
-
-
 ## Firewall check
 ##   This is done using ping by default.  However, the netcat test is more
 ##   rigorous, in that it attempts to contact an ssh daemon that should be
@@ -121,15 +112,3 @@ firewall_cleanup: False
 ##   Sometimes extending the SSH timeout can eliminate failures for slow
 ##   machines or during internet slow downs.
 #ssh_timeout: 30
-
-
-## Firewall Connection Info:
-##   If you are not using the "api_key" defined above and are outside of the Keck 
-##   network and need to authenticate through the Keck firewall, fill out the 
-##   appropriate IP address, port, and username which will be used to authenticate. 
-##   If this is being run inside of the Keck network, comment out these lines.
-#firewall_address: ???.???.???.???
-#firewall_port: ???
-#firewall_user: ???
-
-

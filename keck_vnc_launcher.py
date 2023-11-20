@@ -4,8 +4,7 @@
 import os
 import argparse
 import atexit
-from datetime import datetime
-from getpass import getpass
+from datetime import datetime, timedelta
 import json
 import logging
 import os
@@ -15,12 +14,10 @@ import re
 import socket
 import subprocess
 import sys
-from telnetlib import Telnet
 from threading import Thread
 import time
 import traceback
-from urllib.request import urlopen
-import warnings
+import requests
 import yaml
 
 ## Import local modules
@@ -28,9 +25,9 @@ import soundplay
 
 
 ## Module vars
-__version__ = '2.0.13'
+__version__ = '3.0.0'
 supportEmail = 'remote-observing@keck.hawaii.edu'
-KRO_API = 'https://www2.keck.hawaii.edu/inst/kroApi.php'
+KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi'
 SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
                  'telanalys', 'telstatus')
@@ -109,10 +106,19 @@ def create_parser():
 
     ## Change default behavior if no account is given.
     if args.account == '':
-        ## Assume authonly if the vncserver and vncports are not specified
-        if args.vncserver is None and args.vncports is None:
-            args.authonly = True
-        args.account = 'hires1'
+        ## Message user to specify an instrument account
+        print()
+        print("    ----------------------------------------------------------------")
+        print("    Due to updates to Keck's internal security systems, we no longer")
+        print("    support running start_keck_viewers without an instrument account")
+        print("    argument.")
+        print()
+        print("    If you wish to authenticate through the firewall without opening")
+        print("    VNC sessions, run start_keck_viewers with an instrument account")
+        print("    and the --authonly flag.")
+        print("    ----------------------------------------------------------------")
+        print()
+        sys.exit(0)
 
     return args
 
@@ -134,20 +140,25 @@ def create_logger(args):
         Path('logs/').mkdir(parents=True, exist_ok=True)
     except PermissionError as error:
         print(str(error))
-        print(f"ERROR: Unable to create logger at {logFile}")
+        print(f"ERROR: Unable to create logger at logs/")
         print("Make sure you have write access to this directory.\n")
         log.info("EXITING APP\n")
         sys.exit(1)
+
+    # Set up formats
+    logFormat_no_time = logging.Formatter(' %(levelname)8s: %(message)s')
+    logFormat_no_time.converter = time.gmtime
+    logFormat_with_time = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
+    logFormat_with_time.converter = time.gmtime
 
     #stream/console handler
     logConsoleHandler = logging.StreamHandler()
     if args.verbose is True:
         logConsoleHandler.setLevel(logging.DEBUG)
+        logConsoleHandler.setFormatter(logFormat_with_time)
     else:
         logConsoleHandler.setLevel(logging.INFO)
-    logFormat = logging.Formatter(' %(levelname)8s: %(message)s')
-    logFormat.converter = time.gmtime
-    logConsoleHandler.setFormatter(logFormat)
+        logConsoleHandler.setFormatter(logFormat_no_time)
     log.addHandler(logConsoleHandler)
 
     #file handler (full debug logging)
@@ -155,9 +166,7 @@ def create_logger(args):
     logFile = Path(f'logs/keck-remote-log-utc-{ymd}.txt')
     logFileHandler = logging.FileHandler(logFile)
     logFileHandler.setLevel(logging.DEBUG)
-    logFormat = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
-    logFormat.converter = time.gmtime
-    logFileHandler.setFormatter(logFormat)
+    logFileHandler.setFormatter(logFormat_with_time)
     log.addHandler(logFileHandler)
 
 
@@ -184,92 +193,6 @@ def is_local_port_in_use_socket(port):
 
 
 is_local_port_in_use = is_local_port_in_use_socket
-
-
-##-------------------------------------------------------------------------
-## Define Firewall Function
-##-------------------------------------------------------------------------
-def do_firewall_command(firewall_address, firewall_port, firewall_user,
-                        authpass, selection):
-    '''Interact with the firewall to authenticate or deauthenticate.
-    
-    The selection value is the response to the firewall's query after
-    authenticating past the username and password steps.
-    '''
-    log = logging.getLogger('KRO')
-
-    if selection == 1:
-        log.info(f'Authenticating through firewall as:')
-        log.info(f' {firewall_user}@{firewall_address}:{firewall_port}')
-    elif selection == 2:
-        log.info('Closing firewall hole')
-
-    tn = Telnet(firewall_address, int(firewall_port))
-
-    # Find Username Prompt
-    user_prompt = tn.read_until(b"User: ", timeout=5).decode('ascii')
-    for line in user_prompt.split('\n'):
-        line = line.strip().strip('\n')
-        log.debug(f"Firewall says: {line}")
-    if user_prompt[-6:] != 'User: ':
-        log.error('Got unexpected response from firewall:')
-        log.error(user_prompt)
-        raise KROException('Got unexpected response from firewall')
-    log.debug(f'Sending response: {firewall_user}')
-    tn.write(f'{firewall_user}\n'.encode('ascii'))
-
-    # Find Password Prompt
-    password_prompt = tn.read_until(b"password: ", timeout=5).decode('ascii')
-    for line in password_prompt.split('\n'):
-        line = line.strip().strip('\n')
-        log.debug(f"Firewall says: {line}")
-    if password_prompt[-10:] != 'password: ':
-        log.error('Got unexpected response from firewall:')
-        log.error(password_prompt)
-        raise KROException('Got unexpected response from firewall')
-    log.debug(f'Sending response: (value hidden from log)')
-    tn.write(f'{authpass}\n'.encode('ascii'))
-
-    # Is Password Accepted?
-    password_response = tn.read_until(b"Enter your choice: ", timeout=5).decode('ascii')
-    for line in password_response.split('\n'):
-        line = line.strip().strip('\n')
-        log.debug(f"Firewall says: {line}")
-    if re.search('Access denied - wrong user name or password', password_response):
-        log.error('Incorrect password entered.')
-        return False
-
-    # If Password is Correct, continue with authentication process
-    if password_response[-19:] != 'Enter your choice: ':
-        log.error('Got unexpected response from firewall:')
-        log.error(password_response)
-        log.error('')
-        log.error('Please try again. If this reoccurs, create a support ticket at:')
-        log.error('https://keckobservatory.atlassian.net/servicedesk/customer/portals')
-        log.error('and be sure to attach the log file.')
-        return False
-
-    log.debug(f'Sending response: {selection}')
-    tn.write(f'{selection}\n'.encode('ascii'))
-
-    result = tn.read_all().decode('ascii')
-    for line in result.split('\n'):
-        line = line.strip().strip('\n')
-        log.debug(f"Firewall says: {line}")
-
-    # Check for standard exits
-    if selection == 1:
-        if re.search('User authorized for standard services', result):
-            log.info('User authorized for standard services')
-        else:
-            log.error(result)
-    elif selection == 2:
-        if re.search('User was signed off from all services', result):
-            log.info('User was signed off from all services')
-        else:
-            log.error(result)
-
-    return result
 
 
 ##-------------------------------------------------------------------------
@@ -494,12 +417,10 @@ class KeckVncLauncher(object):
         self.config = None
         self.log = None
         self.sound = None
-        self.firewall_pass = None
         self.ssh_tunnels = dict()
         self.vnc_threads = list()
         self.vnc_processes = list()
         self.firewall_requested = False
-        self.firewall_opened = False
         self.instrument = None
         self.vncserver = None
         self.ssh_key_valid = False
@@ -511,7 +432,6 @@ class KeckVncLauncher(object):
         self.tigervnc = None
         self.vncviewer_has_geometry = None
         self.api_data = None
-        self.ping_cmd = None
 
         self.args = args
         self.log = logging.getLogger('KRO')
@@ -519,11 +439,6 @@ class KeckVncLauncher(object):
         #default start sessions
         self.default_sessions = []
         self.sessions_found = []
-
-        #default servers to try at Keck
-        servers = ['kcwi', 'mosfire']#, 'deimos', 'osiris']
-        domain = '.keck.hawaii.edu'
-        self.servers_to_try = [f"{server}{domain}" for server in servers]
 
         #local port start (can be overridden by config file)
         self.LOCAL_PORT_START = 5901
@@ -551,7 +466,6 @@ class KeckVncLauncher(object):
         self.log_system_info()
         self.test_yaml_version()
         self.check_version()
-        self.get_ping_cmd()
         if self.args.authonly is False:
             self.get_display_info()
 
@@ -565,8 +479,6 @@ class KeckVncLauncher(object):
         ##---------------------------------------------------------------------
         ## Run tests
         if self.args.test is True:
-            # On test, always cleanup firewall
-            self.config['firewall_cleanup'] = True
             self.test_all()
             self.exit_app()
 
@@ -584,47 +496,12 @@ class KeckVncLauncher(object):
         if self.api_key:
             self.get_api_data(self.api_key, self.args.account)
             if self.api_data is None:
-                if self.firewall_defined is True:
-                    self.log.info('Firewall info detected in config.  Trying alternate method.')
-                else:
-                    self.exit_app('API method failed.')
+                self.exit_app('API query failed.')
 
         ##---------------------------------------------------------------------
-        ## Authenticate Through Firewall (or Disconnect)
-        if self.firewall_requested == True:
-            self.firewall_opened = self.test_firewall()
-        else:
-            self.firewall_opened = False
-
-        # Do we need to interact with the firewall?
-        need_password = self.config.get('firewall_cleanup', False)
-        if self.firewall_requested == True \
-            and self.firewall_opened == False \
-            and self.firewall_pass == None:
-            need_password = True
-
-        if need_password == True:
-            while self.firewall_pass is None:
-                firewall_pass = getpass(f"Password for firewall authentication: ")
-                firewall_pass = firewall_pass.strip()
-                if firewall_pass != '':
-                    self.firewall_pass = firewall_pass
-
-        if self.firewall_requested == True and self.firewall_opened == False:
-            try:
-                self.firewall_opened = self.open_firewall(self.firewall_pass)
-            except:
-                self.log.error('Unable to authenticate through firewall')
-                trace = traceback.format_exc()
-                self.log.debug(trace)
-
-            if self.firewall_opened == False:
-                self.exit_app('Authentication failure!')
-
-        if self.config.get('proxy_port', None) is not None and\
-           self.config.get('proxy_server', None) is not None:
+        ## Open web proxy if requested
+        if self.config.get('proxy_port', None) is not None:
             self.open_ssh_for_proxy()
-
 
         if self.args.authonly is False:
             ##-----------------------------------------------------------------
@@ -636,15 +513,6 @@ class KeckVncLauncher(object):
             self.instrument, self.tel = self.determine_instrument(self.args.account)
             if self.instrument is None:
                 self.exit_app(f'Invalid instrument account: "{self.args.account}"')
-
-            ##-----------------------------------------------------------------
-            ## Validate ssh key
-            self.validate_ssh_key()
-            if self.ssh_key_valid == False:
-                self.log.error(f"\n\n\tCould not validate SSH key.\n\t"\
-                               f"Contact {supportEmail} "\
-                               f"for other options to connect remotely.\n")
-                self.exit_app()
 
             ##-----------------------------------------------------------------
             ## Determine VNC server
@@ -684,9 +552,7 @@ class KeckVncLauncher(object):
             if self.api_data is not None:
                 self.view_connection_info()
 
-        if self.args.authonly is False or\
-           self.config.get('firewall_cleanup', False) or\
-           self.is_proxy_open():
+        if self.args.authonly is False or self.is_proxy_open():
             ##---------------------------------------------------------------------
             ## Wait for quit signal, then all done
             atexit.register(self.exit_app, msg="App exit")
@@ -740,7 +606,6 @@ class KeckVncLauncher(object):
         '''
         url = 'https://api.github.com/repos/KeckObservatory/RemoteObserving/releases'
         try:
-            import requests
             from packaging import version
             self.log.debug("Checking for latest version available on GitHub")
             r = requests.get(url, timeout=5)
@@ -769,58 +634,6 @@ class KeckVncLauncher(object):
         except Exception as e:
             self.log.warning("Unable to verify remote version")
             self.log.debug(e)
-
-
-    def get_ping_cmd(self):
-        '''Assemble the local ping command.
-        '''
-        # Figure out local ping command
-        try:
-            ping = subprocess.check_output(['which', 'ping'])
-            ping = ping.decode()
-            ping = ping.strip()
-            self.ping_cmd = [ping]
-        except subprocess.CalledProcessError as e:
-            self.log.error("Ping command not available")
-            self.log.error(e)
-            return None
-
-        os = platform.system()
-        os = os.lower()
-        # Ping once, wait up to 2 seconds for a response.
-        if os == 'linux':
-            self.ping_cmd.extend(['-c', '1', '-w', 'wait'])
-        elif os == 'darwin':
-            self.ping_cmd.extend(['-c', '1', '-W', 'wait000'])
-        else:
-            # Don't understand how ping works on this platform.
-            self.ping_cmd = None
-        self.log.debug(f'Got ping command: {self.ping_cmd[:-2]}')
-
-
-    def ping(self, address, wait=5):
-        '''Ping a server to determine if it is accessible.
-        '''
-        if self.ping_cmd is None:
-            self.log.warning('No ping command defined')
-            return None
-        # Run ping
-        ping_cmd = [x.replace('wait', f'{int(wait)}') for x in self.ping_cmd]
-        ping_cmd.append(address)
-        self.log.debug(' '.join(ping_cmd))
-        output = subprocess.run(ping_cmd,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        if output.returncode != 0:
-            self.log.debug("Ping command failed")
-            self.log.debug(f"STDOUT: {output.stdout.decode()}")
-            self.log.debug(f"STDERR: {output.stderr.decode()}")
-            return False
-        else:
-            self.log.debug("Ping command succeeded")
-            self.log.debug(f"STDOUT: {output.stdout.decode()}")
-            self.log.debug(f"STDERR: {output.stderr.decode()}")
-            return True
 
 
     def get_display_info(self):
@@ -947,37 +760,11 @@ class KeckVncLauncher(object):
     def check_config(self):
         '''Do some basic checks on the configuration.
         '''
-        self.firewall_requested = False
-        self.firewall_defined = False
 
-        #check firewall config first
-        self.firewall_address = self.config.get('firewall_address', None)
-        self.firewall_user = self.config.get('firewall_user', None)
-        self.firewall_port = self.config.get('firewall_port', None)
-
-        if self.firewall_address is not None and \
-           self.firewall_user is not None and \
-           self.firewall_port is not None:
-            self.firewall_requested = True
-            self.firewall_defined = True
-
-        elif self.firewall_address is not None or \
-             self.firewall_user is not None or \
-             self.firewall_port is not None:
-            self.log.warning("Incomplete firewall configuration detected:")
-            if self.firewall_address is None:
-                self.log.warning("firewall_address not set")
-            if self.firewall_user is None:
-                self.log.warning("firewall_user not set")
-            if self.firewall_port is None:
-                self.log.warning("firewall_port not set")
-
-        #check API key config (This will take priority later on)
+        #check API key config
         self.api_key = self.config.get('api_key', None)
         if self.api_key is None:
-            self.log.warning("API key is not set.")
-            if self.firewall_defined is True:
-                self.log.info('Firewall config detected. Trying alternate method.')
+            self.log.error("API key is not set.")
         else:
             self.firewall_requested = True
 
@@ -1022,14 +809,27 @@ class KeckVncLauncher(object):
         self.api_data = None
 
         #form API url and get data
-        url = f'{KRO_API}?key={self.api_key}'
-        if account is not False: url += f'&account={self.args.account}'
-        self.log.info(f'Calling KRO API to get account info')
-        self.log.debug(f'Using URL: {url}')
+        params = {'key': f'{self.api_key}',
+                  'account': f"{account}"}
+        tick = datetime.now()
+        tick_str = tick.strftime("%H:%M:%S")
+        self.log.info(f'Calling KRO API at {tick_str} to get account info')
+        self.log.debug(f'Using URL: {KRO_API} with {params}')
+        print()
+        print("-------------------------------------------------------------")
+        print("Please note: the initial connection to the Keck KRO API may")
+        print("take up to 1 minute to complete.")
+        print("-------------------------------------------------------------")
+        print()
         data = None
         try:
-            data = urlopen(url, timeout=10).read().decode('utf8')
-            data = json.loads(data)
+            data = requests.post(KRO_API, data=params, timeout=90)
+            data = json.loads(data.text)
+            for key in data.keys():
+                self.log.debug(f"  Got data for {key}: {data[key]}")
+            tock = datetime.now()
+            duration = (tock-tick).total_seconds()
+            self.log.debug(f'API call took {duration:.1f} s')
         except Exception as e:
             self.log.error(f'Could not get data from API.')
             self.log.error(str(e))
@@ -1066,93 +866,9 @@ class KeckVncLauncher(object):
             self.log.error(f'Invalid status code returned from API: {code}')
             return
 
-        #get firewall info
-        fw = data.get('firewall')
-        if fw is None:
-            self.log.error(f'Could not determine get firewall info from API')
-            return
-        fw_ip   = fw.get('ip')
-        fw_port = fw.get('telnetport')
-        fw_user = fw.get('username')
-        fw_pass = fw.get('pwd')
-        if    fw_ip   is None \
-           or fw_user is None \
-           or fw_port is None \
-           or fw_pass is None:
-            self.log.error(f'Could not determine firewall info from API')
-            return
-
-        #if firewall info successful, overwrite what we might have defined in config
-        self.firewall_address = fw_ip
-        self.firewall_port    = fw_port
-        self.firewall_user    = fw_user
-        self.firewall_pass    = fw_pass
-
         #all good
         self.api_data = data
         self.log.debug('API call was successful')
-
-
-    ##-------------------------------------------------------------------------
-    ## Open and Close the firewall
-    ##-------------------------------------------------------------------------
-    def test_firewall(self):
-        ''' Return True if the sshuser firewall hole is open; otherwise
-        return False. Also return False if the test cannot be performed.
-        '''
-        self.log.info('Checking whether firewall is open')
-
-        # Use netcat if specified:
-        # The netcat test is more rigorous, in that it attempts to contact
-        # an ssh daemon that should be available to us after opening the
-        # firewall hole. The ping check is a reasonable fallback and was
-        # the traditional way the old mainland observing script would confirm
-        # the firewall status.
-        netcat = self.config.get('netcat', None)
-        if netcat is not None:
-            cmd = netcat.split()
-            for server in self.servers_to_try:
-                server_and_port = [server, '22']
-                self.log.debug(f'firewall test: {" ".join(cmd+server_and_port)}')
-                netcat_result = subprocess.run(cmd+server_and_port, timeout=5,
-                                               stdout=subprocess.PIPE,
-                                               stderr=subprocess.PIPE)
-                self.log.debug(f'  return code: {netcat_result.returncode}')
-                up = (netcat_result.returncode == 0)
-                if up is True:
-                    self.log.info('firewall is open')
-                    return True
-            self.log.info('firewall is closed')
-            return False
-
-        # Use ping if no netcat is specified
-        if self.ping_cmd is not None:
-            for server in self.servers_to_try:
-                up = self.ping(server, wait=1)
-                if up is True:
-                    self.log.info('firewall is open')
-                    return True
-            self.log.info('firewall is closed')
-            return False
-        else:
-            # No way to check the firewall status. Assume it is closed,
-            # authentication will be required.
-            self.log.info('firewall is unknown')
-            return False
-
-
-    def open_firewall(self, authpass):
-        '''Simple wrapper to open firewall.
-        '''
-        return do_firewall_command(self.firewall_address, self.firewall_port,
-                                   self.firewall_user, authpass, 1)
-
-
-    def close_firewall(self, authpass):
-        '''Simple wrapper to close firewall.
-        '''
-        return do_firewall_command(self.firewall_address, self.firewall_port,
-                                   self.firewall_user, authpass, 2)
 
 
     ##-------------------------------------------------------------------------
@@ -1337,64 +1053,10 @@ class KeckVncLauncher(object):
 
 
     ##-------------------------------------------------------------------------
-    ## Validate ssh key on remote vnc server
-    ##-------------------------------------------------------------------------
-    def validate_ssh_key(self):
-        '''Issue a simple command and check response as a check to see if the
-        SSH key is valid.
-        '''
-        if self.ssh_key_valid == True:
-            return
-
-        self.log.info(f"Validating ssh key...")
-
-        self.ssh_key_valid = False
-        cmd = 'whoami'
-
-        data = None
-        rc = None
-        for server in self.servers_to_try:
-            try:
-                data, rc = self.do_ssh_cmd(cmd, server, self.kvnc_account)
-            except subprocess.TimeoutExpired:
-                self.log.error('  Timed out validating SSH key.')
-                self.log.error('  SSH timeouts may be due to network instability.')
-                self.log.error('  Please retry to see if the problem is intermittant.')
-                data = None
-                rc = None
-            except Exception as e:
-                self.log.error('  Failed: ' + str(e))
-                trace = traceback.format_exc()
-                self.log.debug(trace)
-                data = None
-                rc = None
-            if data is not None:
-                break
-
-        #NOTE: The 'whoami' test can fail if the kvnc account has a .cshrc 
-        #that produces other output.  Other ssh cmds would be invalid too.
-        #If API data exists, we don't get data via ssh, so just check ret code.
-        if data == self.kvnc_account \
-            or (self.api_data is not None and rc == 0):
-            self.ssh_key_valid = True
-            self.log.info("  SSH key OK")
-        else:
-            self.log.error("  SSH key invalid")
-
-
-    ##-------------------------------------------------------------------------
     ## Determine VNC Server
     ##-------------------------------------------------------------------------
     def get_vnc_server(self, account, instrument):
         '''Determine the VNC server to connect to given the instrument.
-        
-        Note that while this nominally cycles through all the servers in the
-        servers_to_try list, it is only reliably correct when connecting to a
-        solaris machine such as svncserver1 or svncserver2. The kvnc.cfg file
-        that those access at Keck is shared and up to date. The kvnc.cfg file
-        accessed by the linux instrument machines is deployed via KROOT and may
-        be out of date. As of this writing (July 2, 2020), ESI is incorrect on
-        those machines, but other instruments return a correct server.
         '''
 
         #cmd line option
@@ -1413,31 +1075,8 @@ class KeckVncLauncher(object):
             if not vncserver:
                 self.log.error(f'Could not determine VNC server from API')
 
-        #SSH Route
-        else:
-            self.log.info(f"Determining VNC server for '{self.args.account}' (via SSH)")
-            vncserver = None
-            for server in self.servers_to_try:
-                cmd = f'kvncinfo -server -I {instrument}'
-
-                try:
-                    data, rc = self.do_ssh_cmd(cmd, server, account)
-                except Exception as e:
-                    self.log.error('  Failed: ' + str(e))
-                    trace = traceback.format_exc()
-                    self.log.debug(trace)
-                    data = None
-
-                if data is not None and ' ' not in data and rc == 0:
-                    vncserver = data
-                    break
-
         if vncserver:
             self.log.info(f"Got VNC server: '{vncserver}'")
-
-        # Temporary hack for KCWI
-        if vncserver == 'vm-kcwivnc':
-            vncserver = 'kcwi'
 
         if vncserver is not None and 'keck.hawaii.edu' not in vncserver:
             vncserver += '.keck.hawaii.edu'
@@ -1609,14 +1248,15 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def open_ssh_for_proxy(self):
         local_port = int(self.config.get('proxy_port'))
+        proxy_server = self.api_data.get('vncserver')
         if self.is_proxy_open() is True:
             self.log.warning(f'SSH proxy already open on port 8080')
             return
         if is_local_port_in_use(local_port) is True:
             self.log.warning(f'Port 8080 is in use, not starting proxy connection')
             return
-        self.log.info(f'Opening SSH for proxy to port 8080')
-        t = SSHProxy(self.config.get('proxy_server'),
+        self.log.info(f'Opening SSH to {proxy_server} for proxy to port 8080')
+        t = SSHProxy(proxy_server,
                      self.kvnc_account, self.ssh_pkey,
                      local_port,
                      session_name='proxy',
@@ -2086,8 +1726,7 @@ class KeckVncLauncher(object):
         logfile = Path(logfile_handlers.pop(0).baseFilename)
 
         source = str(logfile)
-        destination = self.vncserver if self.vncserver is not None\
-                                     else 'mosfire.keck.hawaii.edu'
+        destination = self.vncserver
         self.log.debug(f"Uploading to: {account}@{destination}:{logfile.name}")
         destination = account + '@' + destination + ':' + logfile.name
 
@@ -2169,15 +1808,6 @@ class KeckVncLauncher(object):
 
         self.close_ssh_threads()
 
-        close_requested = self.config.get('firewall_cleanup', False)
-        if close_requested == True and self.firewall_requested == True:
-            try:
-                self.close_firewall(self.firewall_pass)
-            except:
-                self.log.error('Unable to close the firewall hole!')
-        else:
-            self.log.info('Leaving firewall authentication unchanged.')
-
         #close vnc sessions
         self.kill_vnc_processes()
 
@@ -2224,46 +1854,18 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def test_config_format(self):
         '''Test:
-        - The config file has a valid firewall_address specified
-        - The config file has a valid firewall_port specified
-        - The config file has a valid firewall_user specified
+        - The config file has a valid api_key specified
         - The config file has a valid ssh_pkey path specified
         - The config file has a valid vncviewer executable path specified
         '''
-        import socket
         failcount = 0
 
-        #API must be defined if firewall info was not defined.
+        #API must be defined
         self.log.info('Checking config file: api_key')
         api_key = self.config.get('api_key', None)
         if api_key in [None, '']:
             self.log.error(f'api_key should be specified')
             failcount += 1
-
-        #Check firewall config if api_key not defined
-        if api_key  in [None, '']:            
-            self.log.info('Checking config file: firewall_address')
-            firewall_address = self.config.get('firewall_address', None)
-            if firewall_address is None:
-                self.log.error(f"No firewall address found")
-                failcount += 1
-            try:
-                socket.inet_aton(firewall_address)
-            except OSError:
-                self.log.error(f'firewall_address: "{firewall_address}" is invalid')
-                failcount += 1
-
-            self.log.info('Checking config file: firewall_port')
-            firewall_port = self.config.get('firewall_port', None)
-            if isinstance(int(firewall_port), int) is False:
-                self.log.error(f'firewall_port: "{firewall_port}" is invalid')
-                failcount += 1
-
-            self.log.info('Checking config file: firewall_user')
-            firewall_user = self.config.get('firewall_user', None)
-            if firewall_user in [None, '']:
-                self.log.error(f'firewall_user must be specified if you are outside the WMKO network')
-                failcount += 1
 
         self.log.info('Checking config file: ssh_pkey')
         ssh_pkey = self.config.get('ssh_pkey', '~/.ssh/id_rsa')
@@ -2329,22 +1931,6 @@ class KeckVncLauncher(object):
         return failcount
 
 
-    def test_localhost(self):
-        '''The localhost needs to be defined (e.g. 127.0.0.1)
-        '''
-        failcount = 0
-        self.log.info('Checking localhost')
-        if self.ping_cmd is None:
-            self.log.warning('No ping command defined.  Unable to test localhost.')
-            return 0
-        if self.ping('localhost') is False:
-            self.log.error(f"localhost appears not to be configured")
-            self.log.error(f"Your /etc/hosts file may need to be updated")
-            failcount += 1
-
-        return failcount
-
-
     def test_ssh_key_format(self):
         '''The SSH key must be RSA and must not use a passphrase
         '''
@@ -2402,69 +1988,26 @@ class KeckVncLauncher(object):
         return failcount
 
 
-    def test_firewall_authentication(self):
-        '''Test:
-        - Must authenticate through the firewall successfully.
-        '''
-        failcount = 0
-        self.log.info('Testing firewall authentication')
-        self.firewall_opened = False
-        if self.firewall_requested == True:
-            if self.firewall_pass is None:
-                self.firewall_pass = getpass(f"\nPassword for firewall authentication: ")
-            try:
-                self.firewall_opened = self.open_firewall(self.firewall_pass)
-            except ConnectionRefusedError as e:
-                self.log.error(f'Connection Refused')
-                self.log.debug(e)
-                self.log.error('Unable to communicate with WMKO firewall on the standard port')
-                self.log.info('Testing http authentication')
-                import requests
-                r = requests.get(f'http://{self.firewall_address}:900')
-                got_auth_page = re.match('<html><head><title>Authentication Form</title></head>', r.text)
-                if got_auth_page is not None:
-                    self.log.info('You may be able to authenticate via http. Go to:')
-                    self.log.info(f'http://{self.firewall_address}:900')
-                    self.log.info('in a browser to authenticate.  Then run this script again.')
-                else:
-                    self.log.error('The http authentication route is also inaccessible')
-            if self.firewall_opened is False:
-                self.log.error('Failed to open firewall')
-                failcount += 1
-                self.exit_app('Authentication failure! Must be able to authenticate to finish tests.')
-
-        return failcount
-
-
-    def test_ssh_key(self):
-        '''Test:
-        - Must succeed in validating the SSH key.
-        '''
-        failcount = 0
-        self.validate_ssh_key()
-        if self.ssh_key_valid is False:
-            self.log.error('Failed to validate SSH key')
-            failcount += 1
-
-        return failcount
-
-
     def test_basic_connectivity(self):
         '''Test:
         - Successfully connect to the listed servers at Keck and get a valid
         response from an SSH command.
+        - Now that the access list os limited to the destination instrument, we
+        only check connection to kcwi as that is the instrument used in the
+        `test_api` step.
         '''
         failcount = 0
-        servers_and_results = [('mosfire', 'vm-mosfire'),
-                               ('hires', 'vm-hires'),
-                               ('lris', 'vm-lris'),
-                               ('osiris', 'vm-osiris'),
-                               ('kpf', 'kpf'),
-                               ('deimos', 'deimos'),
-                               ('kcwi', 'vm-kcwi'),
-                               ('nirc2', 'vm-nirc2'),
-                               ('nires', 'vm-nires'),
-                               ('nirspec', 'vm-nirspec')]
+#         servers_and_results = [('mosfire', 'vm-mosfire'),
+#                                ('hires', 'vm-hires'),
+#                                ('lris', 'vm-lris'),
+#                                ('osiris', 'vm-osiris'),
+#                                ('kpf', 'kpf'),
+#                                ('deimos', 'deimos'),
+#                                ('kcwi', 'vm-kcwi'),
+#                                ('nirc2', 'vm-nirc2'),
+#                                ('nires', 'vm-nires'),
+#                                ('nirspec', 'vm-nirspec')]
+        servers_and_results = [('kcwi', 'vm-kcwi')]
         for server, result in servers_and_results:
             self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
             tick = datetime.now()
@@ -2515,14 +2058,8 @@ class KeckVncLauncher(object):
         failcount += self.test_yaml_version()
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
-#         failcount += self.test_localhost()
         failcount += self.test_ssh_key_format()
-        if self.test_firewall() is None:
-            self.log.error('Could not determine if firewall is open')
-            failcount += 1
         failcount += self.test_api()
-        failcount += self.test_firewall_authentication()
-        failcount += self.test_ssh_key()
         failcount += self.test_basic_connectivity()
 
         if failcount == 0:
