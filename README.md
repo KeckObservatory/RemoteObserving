@@ -83,11 +83,6 @@ Note: The examples below assume sudo/root installation for all users and were or
 
 - Install python3
     - If you are using Anaconda, download and run the latest [anaconda installer](https://www.anaconda.com/download)
-    - If you are using Anaconda, you can create an "environment" for remote observing by running:
-    ```
-    conda env create -f environment.yaml
-    ```
-    This will mean you have a python configuration named "KRO" specifically for Keck Remote Observing. The `start_keck_viewers` script will automatically attempt to use this if it exists.
     - If needed, add python3 to user path (example below for `~/.bashrc` with one possible python install path):
     ```
     export PATH=/usr/local/anaconda3-7/bin:$PATH
@@ -142,11 +137,12 @@ RemoteResize=0
     cp keck_vnc_config.yaml local_config.yaml
     ```
 
-- Create a KRO [conda environment](https://docs.conda.io/projects/conda/en/latest/user-guide/concepts/environments.html) using the provided environment.yaml file:
+- If you are using anaconda python, you can create a KRO [conda environment](https://docs.conda.io/projects/conda/en/latest/user-guide/concepts/environments.html) using the provided environment.yaml file:
     ```
     cd ~/RemoteObserving
     conda env create -f environment.yaml
     ```
+    This will mean you have a python configuration named "KRO" specifically for  Keck Remote Observing. The `start_keck_viewers` script will automatically attempt to use this if it exists.
 
 - (optional) Add VNC start script to path:
     ```
