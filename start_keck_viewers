@@ -1,14 +1,14 @@
 #!/bin/bash -i
 
-#get script dir (so we know full path to keck_vnc_launcher.py)
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
 # If we're using conda python
 if [ "$CONDA_PREFIX" != "" ]; then
     # NOTE: The KRO environment is created with:
     #       conda env create -f environment.yaml
     CONDA_BASE=$(conda info --base)
     source $CONDA_BASE/etc/profile.d/conda.sh
+
+    #get script dir (so we know full path to keck_vnc_launcher.py)
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
     # Launch the script
     if [ -e $CONDA_BASE/envs/KRO/bin/python3 ]; then
@@ -30,5 +30,5 @@ else
     echo "and the correct numbered account."
 
     # just try whatever is in the path and hope it works
-    python3 $DIR/keck_vnc_launcher.py $@
+    python3 keck_vnc_launcher.py $@
 fi
