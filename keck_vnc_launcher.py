@@ -246,7 +246,7 @@ class SSHTunnel(object):
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
 
-        if re.match('svncserver\d.keck.hawaii.edu', server) is not None:
+        if re.match(r'svncserver\d.keck.hawaii.edu', server) is not None:
             self.log.debug('Extending timeout for svncserver connections')
             timeout = 60
 
@@ -670,11 +670,11 @@ class KeckVncLauncher(object):
             for line in stderr.split('\n'):
                 self.log.debug(f"xdpyinfo: {line}")
             return None
-        find_nscreens = re.search('number of screens:\s+(\d+)', stdout)
+        find_nscreens = re.search(r'number of screens:\s+(\d+)', stdout)
         nscreens = int(find_nscreens.group(1)) if find_nscreens is not None else 1
         self.log.debug(f'Number of screens = {nscreens}')
 
-        find_dimensions = re.findall('dimensions:\s+(\d+)x(\d+)', stdout)
+        find_dimensions = re.findall(r'dimensions:\s+(\d+)x(\d+)', stdout)
         if len(find_dimensions) == 0:
             self.log.debug(f'Could not find screen dimensions')
             return None
@@ -724,11 +724,11 @@ class KeckVncLauncher(object):
         configok = True
         lines = contents.split('\n')
         for line in lines:
-            if re.match('^([\w_]+):[\w\d\'\"]', line):
+            if re.match(r'^([\w_]+):[\w\d\'\"]', line):
                 self.log.error(f'The format of the config is "keyword: value"')
                 self.log.error(f'A space is missing in line: {line}')
                 configok = False
-            if re.match('^\s([\w_]+):\s?[\w\d\'\"]', line):
+            if re.match(r'^\s([\w_]+):\s?[\w\d\'\"]', line):
                 self.log.error(f'The format of the config is "keyword: value"')
                 self.log.error(f'There is a leading space in line: {line}')
                 configok = False
@@ -799,7 +799,7 @@ class KeckVncLauncher(object):
         for line in output.split('\n'):
             if line.strip('\n') != '':
                 self.log.debug(f"  {line}")
-            version_match = re.search('(\d+\.\d+\.\d+)', line)
+            version_match = re.search(r'(\d+\.\d+\.\d+)', line)
             if version_match is not None:
                 self.log.info(f'Matched VNC version pattern: {version_match.group(0)}')
                 break
@@ -977,7 +977,7 @@ class KeckVncLauncher(object):
 
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
-        if re.match('svncserver\d.keck.hawaii.edu', server) is not None:
+        if re.match(r'svncserver\d.keck.hawaii.edu', server) is not None:
             self.log.debug('Extending timeout for svncserver connections')
             timeout = 60
 
@@ -1962,7 +1962,7 @@ class KeckVncLauncher(object):
             self.log.warning(f"sure you use the `-m PEM` option when generating the key.")
 
         # Check that there is no passphrase
-        foundencrypt = re.search('Proc-Type: \d,ENCRYPTED', contents)
+        foundencrypt = re.search(r'Proc-Type: \d,ENCRYPTED', contents)
         if foundencrypt:
             self.log.error(f"Your private key appears to require a passphrase.  This is not supported.")
             failcount += 1
