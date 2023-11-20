@@ -822,8 +822,15 @@ class KeckVncLauncher(object):
         print("-------------------------------------------------------------")
         print()
         data = None
+
         try:
             data = requests.post(KRO_API, data=params, timeout=90)
+        except Exception as e:
+            self.log.error(f'Could not get data from API.')
+            self.log.error(str(e))
+            return
+        try:
+            self.log.debug(data.text)
             data = json.loads(data.text)
             for key in data.keys():
                 self.log.debug(f"  Got data for {key}: {data[key]}")
@@ -831,7 +838,7 @@ class KeckVncLauncher(object):
             duration = (tock-tick).total_seconds()
             self.log.debug(f'API call took {duration:.1f} s')
         except Exception as e:
-            self.log.error(f'Could not get data from API.')
+            self.log.error(f'Could not parse data from API.')
             self.log.error(str(e))
             return
         if data is None:
