@@ -811,7 +811,9 @@ class KeckVncLauncher(object):
         #form API url and get data
         params = {'key': f'{self.api_key}',
                   'account': f"{account}"}
-        self.log.info(f'Calling KRO API to get account info')
+        tick = datetime.now()
+        tick_str = tick.strftime("%H:%M:%S")
+        self.log.info(f'Calling KRO API at {tick_str} to get account info')
         self.log.debug(f'Using URL: {KRO_API} with {params}')
         print()
         print("-------------------------------------------------------------")
@@ -821,7 +823,6 @@ class KeckVncLauncher(object):
         print()
         data = None
         try:
-            tick = datetime.now()
             data = requests.post(KRO_API, data=params, timeout=90)
             data = json.loads(data.text)
             for key in data.keys():
