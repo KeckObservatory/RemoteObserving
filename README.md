@@ -71,7 +71,7 @@ This hardware configuration has been tested at Keck HQ and found to work well:  
 
 # Software Installation
 
-This software depends on a few outside software packages including [Anaconda Python](https://www.anaconda.com/distribution), a VNC Viewer Client (which can be one of several options), and a few command line tools.  **Our installation instructions below should only be taken as an example.**  When dealing with outside packages, users should follow the installation instructions for those packages.
+This software depends on a few outside software packages including python (we recommend the [Anaconda Python](https://www.anaconda.com/) installer), a VNC Viewer Client (which can be one of several options), and a few command line tools.  **Our installation instructions below should only be taken as an example.**  When dealing with outside packages, users should follow the installation instructions for those packages.
 
 In addition, users will need a basic understanding of command line interactions as individual customizations (e.g. shell choice), differences between operating system versions, and differences in available command line tools may make the details of these examples inaccurate in some cases.
 
@@ -81,9 +81,14 @@ The software has been tested on CentOS/RedHat 7.6, Ubuntu, Raspbian, and macOS. 
 
 Note: The examples below assume sudo/root installation for all users and were originally written for Linux (CentOS).  Modify as appropriate for your local OS.
 
-- Install Anaconda python3
-    - Download and run the latest [anaconda installer](https://www.anaconda.com/distribution/)
-    - Add python3 to user path (example below for `~/.bashrc` with typical python install path):
+- Install python3
+    - If you are using Anaconda, download and run the latest [anaconda installer](https://www.anaconda.com/download)
+    - If you are using Anaconda, you can create an "environment" for remote observing by running:
+    ```
+    conda env create -f environment.yaml
+    ```
+    This will mean you have a python configuration named "KRO" specifically for Keck Remote Observing. The `start_keck_viewers` script will automatically attempt to use this if it exists.
+    - If needed, add python3 to user path (example below for `~/.bashrc` with one possible python install path):
     ```
     export PATH=/usr/local/anaconda3-7/bin:$PATH
     ```
