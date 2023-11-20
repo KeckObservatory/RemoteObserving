@@ -801,7 +801,7 @@ class KeckVncLauncher(object):
                 self.log.debug(f"  {line}")
             version_match = re.search(r'(\d+\.\d+\.\d+)', line)
             if version_match is not None:
-                self.log.info(f'Matched VNC version pattern: {version_match.group(0)}')
+                self.log.debug(f'Matched VNC version pattern: {version_match.group(0)}')
                 break
 
     def get_api_data(self, api_key, account):
