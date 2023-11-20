@@ -184,10 +184,10 @@ Only after your SSH key is successfully installed at Keck, you can test your sys
 
 **--> Important! <--** SSH Keys are deployed on a time window based on your scheduled observing dates.  This window is roughly several days before and a few days after observing.  Check your Keck SSH Key Management page for exact deployment times.  If you need to connect outside this window, contact your SA.
 
-From the directory where the Keck VNC software is installed (e.g. `~/RemoteObserving/`), run:
+From the directory where the Keck VNC software is installed (e.g. `~/RemoteObserving/`), run the software with an instrument account (e.g. `mosfire9` or use an account you will be using in the future) and the `--test` option:
 
 ```
-./start_keck_viewers --test
+./start_keck_viewers mosfire9 --test
 ```
 
 This should print out a report which indicates that all tests passed. Make sure there are no test failures.

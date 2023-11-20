@@ -4,7 +4,7 @@
 import os
 import argparse
 import atexit
-from datetime import datetime, timedelta
+import datetime
 import json
 import logging
 import os
@@ -162,7 +162,12 @@ def create_logger(args):
     log.addHandler(logConsoleHandler)
 
     #file handler (full debug logging)
-    ymd = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    try:
+        # Works with latest python versions (>=3.12)
+        ymd = datetime.datetime.now(datetime.UTC).strftime('%Y%m%d_%H%M%S')
+    except:
+        # Works with older pyhon versions (>=3.9)
+        ymd = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
     logFile = Path(f'logs/keck-remote-log-utc-{ymd}.txt')
     logFileHandler = logging.FileHandler(logFile)
     logFileHandler.setLevel(logging.DEBUG)
@@ -811,7 +816,7 @@ class KeckVncLauncher(object):
         #form API url and get data
         params = {'key': f'{self.api_key}',
                   'account': f"{account}"}
-        tick = datetime.now()
+        tick = datetime.datetime.now()
         tick_str = tick.strftime("%H:%M:%S")
         self.log.info(f'Calling KRO API at {tick_str} to get account info')
         self.log.debug(f'Using URL: {KRO_API} with {params}')
@@ -834,7 +839,7 @@ class KeckVncLauncher(object):
             data = json.loads(data.text)
             for key in data.keys():
                 self.log.debug(f"  Got data for {key}: {data[key]}")
-            tock = datetime.now()
+            tock = datetime.datetime.now()
             duration = (tock-tick).total_seconds()
             self.log.debug(f'API call took {duration:.1f} s')
         except Exception as e:
@@ -1986,7 +1991,7 @@ class KeckVncLauncher(object):
         '''
         failcount = 0
         self.log.info(f'Testing SSH to {self.kvnc_account}@{self.vncserver}')
-        tick = datetime.now()
+        tick = datetime.datetime.now()
 
         output, rc = self.do_ssh_cmd('hostname', f'{self.vncserver}',
                                     self.kvnc_account)
@@ -1995,7 +2000,7 @@ class KeckVncLauncher(object):
             # Just try a second time
             output, rc = self.do_ssh_cmd('hostname', f'{self.vncserver}',
                                         self.kvnc_account)
-        tock = datetime.now()
+        tock = datetime.datetime.now()
         elapsedtime = (tock-tick).total_seconds()
         self.log.debug(f'Got hostname "{output}" from {self.vncserver} after {elapsedtime:.1f}s')
         if output in [None, '']:
