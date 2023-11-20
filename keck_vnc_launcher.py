@@ -4,7 +4,7 @@
 import os
 import argparse
 import atexit
-from datetime import datetime, timedelta
+import datetime
 import json
 import logging
 import os
@@ -25,9 +25,9 @@ import soundplay
 
 
 ## Module vars
-__version__ = '3.0.0'
+__version__ = '3.0.1'
 supportEmail = 'remote-observing@keck.hawaii.edu'
-KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi'
+KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi/'
 SESSION_NAMES = ('control0', 'control1', 'control2',
                  'analysis0', 'analysis1', 'analysis2',
                  'telanalys', 'telstatus')
@@ -162,7 +162,12 @@ def create_logger(args):
     log.addHandler(logConsoleHandler)
 
     #file handler (full debug logging)
-    ymd = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    try:
+        # Works with latest python versions (>=3.12)
+        ymd = datetime.datetime.now(datetime.UTC).strftime('%Y%m%d_%H%M%S')
+    except:
+        # Works with older pyhon versions (>=3.9)
+        ymd = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
     logFile = Path(f'logs/keck-remote-log-utc-{ymd}.txt')
     logFileHandler = logging.FileHandler(logFile)
     logFileHandler.setLevel(logging.DEBUG)
@@ -246,7 +251,7 @@ class SSHTunnel(object):
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
 
-        if re.match('svncserver\d.keck.hawaii.edu', server) is not None:
+        if re.match(r'svncserver\d.keck.hawaii.edu', server) is not None:
             self.log.debug('Extending timeout for svncserver connections')
             timeout = 60
 
@@ -477,12 +482,6 @@ class KeckVncLauncher(object):
             self.get_vncviewer_properties()
 
         ##---------------------------------------------------------------------
-        ## Run tests
-        if self.args.test is True:
-            self.test_all()
-            self.exit_app()
-
-        ##---------------------------------------------------------------------
         # Verify Tiger VNC Config
         if self.args.authonly is False:
             if self.test_tigervnc() > 0:
@@ -498,6 +497,25 @@ class KeckVncLauncher(object):
             if self.api_data is None:
                 self.exit_app('API query failed.')
 
+        ##-----------------------------------------------------------------
+        ## Determine instrument
+        self.instrument, self.tel = self.determine_instrument(self.args.account)
+        if self.instrument is None:
+            self.exit_app(f'Invalid instrument account: "{self.args.account}"')
+
+        ##-----------------------------------------------------------------
+        ## Determine VNC server
+        self.vncserver = self.get_vnc_server(self.kvnc_account,
+                                             self.instrument)
+        if self.vncserver is None:
+            self.exit_app("Could not determine VNC server.")
+
+        ##---------------------------------------------------------------------
+        ## Run tests
+        if self.args.test is True:
+            self.test_all()
+            self.exit_app()
+
         ##---------------------------------------------------------------------
         ## Open web proxy if requested
         if self.config.get('proxy_port', None) is not None:
@@ -507,19 +525,6 @@ class KeckVncLauncher(object):
             ##-----------------------------------------------------------------
             ## Determine sessions to open
             self.sessions_requested = self.get_sessions_requested(self.args)
-
-            ##-----------------------------------------------------------------
-            ## Determine instrument
-            self.instrument, self.tel = self.determine_instrument(self.args.account)
-            if self.instrument is None:
-                self.exit_app(f'Invalid instrument account: "{self.args.account}"')
-
-            ##-----------------------------------------------------------------
-            ## Determine VNC server
-            self.vncserver = self.get_vnc_server(self.kvnc_account,
-                                                 self.instrument)
-            if self.vncserver is None:
-                self.exit_app("Could not determine VNC server.")
 
             ##-----------------------------------------------------------------
             ## Determine VNC Sessions
@@ -670,11 +675,11 @@ class KeckVncLauncher(object):
             for line in stderr.split('\n'):
                 self.log.debug(f"xdpyinfo: {line}")
             return None
-        find_nscreens = re.search('number of screens:\s+(\d+)', stdout)
+        find_nscreens = re.search(r'number of screens:\s+(\d+)', stdout)
         nscreens = int(find_nscreens.group(1)) if find_nscreens is not None else 1
         self.log.debug(f'Number of screens = {nscreens}')
 
-        find_dimensions = re.findall('dimensions:\s+(\d+)x(\d+)', stdout)
+        find_dimensions = re.findall(r'dimensions:\s+(\d+)x(\d+)', stdout)
         if len(find_dimensions) == 0:
             self.log.debug(f'Could not find screen dimensions')
             return None
@@ -724,11 +729,11 @@ class KeckVncLauncher(object):
         configok = True
         lines = contents.split('\n')
         for line in lines:
-            if re.match('^([\w_]+):[\w\d\'\"]', line):
+            if re.match(r'^([\w_]+):[\w\d\'\"]', line):
                 self.log.error(f'The format of the config is "keyword: value"')
                 self.log.error(f'A space is missing in line: {line}')
                 configok = False
-            if re.match('^\s([\w_]+):\s?[\w\d\'\"]', line):
+            if re.match(r'^\s([\w_]+):\s?[\w\d\'\"]', line):
                 self.log.error(f'The format of the config is "keyword: value"')
                 self.log.error(f'There is a leading space in line: {line}')
                 configok = False
@@ -799,9 +804,9 @@ class KeckVncLauncher(object):
         for line in output.split('\n'):
             if line.strip('\n') != '':
                 self.log.debug(f"  {line}")
-            version_match = re.search('(\d+\.\d+\.\d+)', line)
+            version_match = re.search(r'(\d+\.\d+\.\d+)', line)
             if version_match is not None:
-                self.log.info(f'Matched VNC version pattern: {version_match.group(0)}')
+                self.log.debug(f'Matched VNC version pattern: {version_match.group(0)}')
                 break
 
     def get_api_data(self, api_key, account):
@@ -811,7 +816,7 @@ class KeckVncLauncher(object):
         #form API url and get data
         params = {'key': f'{self.api_key}',
                   'account': f"{account}"}
-        tick = datetime.now()
+        tick = datetime.datetime.now()
         tick_str = tick.strftime("%H:%M:%S")
         self.log.info(f'Calling KRO API at {tick_str} to get account info')
         self.log.debug(f'Using URL: {KRO_API} with {params}')
@@ -822,16 +827,23 @@ class KeckVncLauncher(object):
         print("-------------------------------------------------------------")
         print()
         data = None
+
         try:
             data = requests.post(KRO_API, data=params, timeout=90)
+        except Exception as e:
+            self.log.error(f'Could not get data from API.')
+            self.log.error(str(e))
+            return
+        try:
+            self.log.debug(data.text)
             data = json.loads(data.text)
             for key in data.keys():
                 self.log.debug(f"  Got data for {key}: {data[key]}")
-            tock = datetime.now()
+            tock = datetime.datetime.now()
             duration = (tock-tick).total_seconds()
             self.log.debug(f'API call took {duration:.1f} s')
         except Exception as e:
-            self.log.error(f'Could not get data from API.')
+            self.log.error(f'Could not parse data from API.')
             self.log.error(str(e))
             return
         if data is None:
@@ -977,7 +989,7 @@ class KeckVncLauncher(object):
 
         output = None
         self.log.debug(f'Trying SSH connect to {server} as {account}:')
-        if re.match('svncserver\d.keck.hawaii.edu', server) is not None:
+        if re.match(r'svncserver\d.keck.hawaii.edu', server) is not None:
             self.log.debug('Extending timeout for svncserver connections')
             timeout = 60
 
@@ -1962,29 +1974,11 @@ class KeckVncLauncher(object):
             self.log.warning(f"sure you use the `-m PEM` option when generating the key.")
 
         # Check that there is no passphrase
-        foundencrypt = re.search('Proc-Type: \d,ENCRYPTED', contents)
+        foundencrypt = re.search(r'Proc-Type: \d,ENCRYPTED', contents)
         if foundencrypt:
             self.log.error(f"Your private key appears to require a passphrase.  This is not supported.")
             failcount += 1
         
-        return failcount
-
-
-    def test_api(self):
-        '''Test:
-        - If api_key is set, must get valid response.
-        '''
-        if self.api_key is None:
-            self.log.warning("API key is not defined.  Unable to test API.")
-            return 0
-
-        failcount = 0    
-        #todo: jriley: need ability to bypass account param in API call
-        self.get_api_data(self.api_key, 'kcwi1')
-        if self.api_data is None:
-            self.log.error(f'Could not get a valid reponse from API.')
-            failcount += 1
-
         return failcount
 
 
@@ -1993,42 +1987,30 @@ class KeckVncLauncher(object):
         - Successfully connect to the listed servers at Keck and get a valid
         response from an SSH command.
         - Now that the access list os limited to the destination instrument, we
-        only check connection to kcwi as that is the instrument used in the
-        `test_api` step.
+        only check connection to the VNC server for that instrument
         '''
         failcount = 0
-#         servers_and_results = [('mosfire', 'vm-mosfire'),
-#                                ('hires', 'vm-hires'),
-#                                ('lris', 'vm-lris'),
-#                                ('osiris', 'vm-osiris'),
-#                                ('kpf', 'kpf'),
-#                                ('deimos', 'deimos'),
-#                                ('kcwi', 'vm-kcwi'),
-#                                ('nirc2', 'vm-nirc2'),
-#                                ('nires', 'vm-nires'),
-#                                ('nirspec', 'vm-nirspec')]
-        servers_and_results = [('kcwi', 'vm-kcwi')]
-        for server, result in servers_and_results:
-            self.log.info(f'Testing SSH to {self.kvnc_account}@{server}.keck.hawaii.edu')
-            tick = datetime.now()
+        self.log.info(f'Testing SSH to {self.kvnc_account}@{self.vncserver}')
+        tick = datetime.datetime.now()
 
-            output, rc = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
+        output, rc = self.do_ssh_cmd('hostname', f'{self.vncserver}',
+                                    self.kvnc_account)
+        if output is None:
+            # On timeout, the result returned by do_ssh_cmd is None
+            # Just try a second time
+            output, rc = self.do_ssh_cmd('hostname', f'{self.vncserver}',
                                         self.kvnc_account)
-            if output is None:
-                # On timeout, the result returned by do_ssh_cmd is None
-                # Just try a second time
-                output, rc = self.do_ssh_cmd('hostname', f'{server}.keck.hawaii.edu',
-                                            self.kvnc_account)
-            tock = datetime.now()
-            elapsedtime = (tock-tick).total_seconds()
-            self.log.debug(f'Got hostname "{output}" from {server} after {elapsedtime:.1f}s')
-            if output in [None, '']:
-                self.log.error(f'Failed to connect to {server}')
+        tock = datetime.datetime.now()
+        elapsedtime = (tock-tick).total_seconds()
+        self.log.debug(f'Got hostname "{output}" from {self.vncserver} after {elapsedtime:.1f}s')
+        if output in [None, '']:
+            self.log.error(f'Failed to connect to {self.vncserver}')
+            failcount += 1
+        else:
+            shortname = self.vncserver.split('.')[0]
+            if output.strip() not in [shortname, f"vm-{shortname}"]:
+                self.log.error(f'Got invalid response from {self.vncserver}')
                 failcount += 1
-            else:
-                if output.strip() not in [server, result]:
-                    self.log.error(f'Got invalid response from {server}')
-                    failcount += 1
 
         return failcount
 
@@ -2059,7 +2041,6 @@ class KeckVncLauncher(object):
         failcount += self.test_config_format()
         failcount += self.test_tigervnc()
         failcount += self.test_ssh_key_format()
-        failcount += self.test_api()
         failcount += self.test_basic_connectivity()
 
         if failcount == 0:
