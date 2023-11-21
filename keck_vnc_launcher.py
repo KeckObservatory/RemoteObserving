@@ -1260,7 +1260,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def open_ssh_for_proxy(self):
         local_port = int(self.config.get('proxy_port'))
-        proxy_server = self.api_data.get('vncserver')
+        proxy_server = self.vncserver
         if self.is_proxy_open() is True:
             self.log.warning(f'SSH proxy already open on port 8080')
             return
