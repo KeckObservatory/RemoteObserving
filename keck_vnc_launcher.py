@@ -25,7 +25,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '3.0.1'
+__version__ = '3.0.2'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi/'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -1260,7 +1260,7 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     def open_ssh_for_proxy(self):
         local_port = int(self.config.get('proxy_port'))
-        proxy_server = self.api_data.get('vncserver')
+        proxy_server = self.vncserver
         if self.is_proxy_open() is True:
             self.log.warning(f'SSH proxy already open on port 8080')
             return
