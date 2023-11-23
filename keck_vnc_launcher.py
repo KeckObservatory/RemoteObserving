@@ -91,8 +91,8 @@ def create_parser():
     ## add options
     parser.add_argument("-c", "--config", dest="config", type=str,
         help="Path to local configuration file.")
-    parser.add_argument("--vncserver", type=str,
-        help="Name of VNC server to connect to.  Takes precedence over all.")
+#     parser.add_argument("--vncserver", type=str,
+#         help="Name of VNC server to connect to.  Takes precedence over all.")
     parser.add_argument( '--vncports', nargs='+', type=str,
         help="Numerical list of VNC ports to connect to.  Takes precedence over all.")
 
@@ -1070,22 +1070,19 @@ class KeckVncLauncher(object):
     def get_vnc_server(self, account, instrument):
         '''Determine the VNC server to connect to given the instrument.
         '''
-
-        #cmd line option
-        if self.args.vncserver is not None:
-            self.log.info("Using VNC server defined on command line")
-            vncserver = self.args.vncserver
-
-        # Manual override for PCS
-        elif instrument in ['k1pcs', 'k2pcs']:
-            vncserver = f"vm-{instrument}"
+        vncserver = None
 
         #API Route
-        elif self.api_data:
+        if self.api_data:
             self.log.info(f"Determining VNC server for '{self.args.account}' (via API)")
-            vncserver = self.api_data.get('vncserver')
-            if not vncserver:
+            vncserver = self.api_data.get('vncserver', None)
+            if vncserver is None:
                 self.log.error(f'Could not determine VNC server from API')
+
+        #cmd line option
+#         if self.args.vncserver is not None:
+#             self.log.info("Using VNC server defined on command line")
+#             vncserver = self.args.vncserver
 
         if vncserver:
             self.log.info(f"Got VNC server: '{vncserver}'")
