@@ -2005,14 +2005,16 @@ class KeckVncLauncher(object):
             failcount += 1
         else:
             basename = self.vncserver.split('.')[0]
-            shortname = basename.strip('vm-')
-            valid_responses = [shortname, f"vm-{shortname}"]
-            if shortname == 'svncserver1':
+            if basename[:3] == 'vm-':
+                basename = basename[3:]
+            valid_responses = [basename, f"vm-{basename}"]
+            if basename == 'svncserver1':
                 valid_responses.append('kaalualu')
-            elif shortname == 'svncserver1':
+            elif basename == 'svncserver1':
                 valid_responses.append('ohaiula')
             if output.strip() not in valid_responses:
                 self.log.error(f'Got invalid response from {self.vncserver}')
+                self.log.debug(f"  valid_responses: {valid_responses}")
                 failcount += 1
 
         return failcount
