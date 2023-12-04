@@ -25,7 +25,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '3.0.2'
+__version__ = '3.0.3'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi/'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -91,8 +91,8 @@ def create_parser():
     ## add options
     parser.add_argument("-c", "--config", dest="config", type=str,
         help="Path to local configuration file.")
-    parser.add_argument("--vncserver", type=str,
-        help="Name of VNC server to connect to.  Takes precedence over all.")
+#     parser.add_argument("--vncserver", type=str,
+#         help="Name of VNC server to connect to.  Takes precedence over all.")
     parser.add_argument( '--vncports', nargs='+', type=str,
         help="Numerical list of VNC ports to connect to.  Takes precedence over all.")
 
@@ -1070,22 +1070,19 @@ class KeckVncLauncher(object):
     def get_vnc_server(self, account, instrument):
         '''Determine the VNC server to connect to given the instrument.
         '''
-
-        #cmd line option
-        if self.args.vncserver is not None:
-            self.log.info("Using VNC server defined on command line")
-            vncserver = self.args.vncserver
-
-        # Manual override for PCS
-        elif instrument in ['k1pcs', 'k2pcs']:
-            vncserver = f"vm-{instrument}"
+        vncserver = None
 
         #API Route
-        elif self.api_data:
+        if self.api_data:
             self.log.info(f"Determining VNC server for '{self.args.account}' (via API)")
-            vncserver = self.api_data.get('vncserver')
-            if not vncserver:
+            vncserver = self.api_data.get('vncserver', None)
+            if vncserver is None:
                 self.log.error(f'Could not determine VNC server from API')
+
+        #cmd line option
+#         if self.args.vncserver is not None:
+#             self.log.info("Using VNC server defined on command line")
+#             vncserver = self.args.vncserver
 
         if vncserver:
             self.log.info(f"Got VNC server: '{vncserver}'")
@@ -2007,9 +2004,17 @@ class KeckVncLauncher(object):
             self.log.error(f'Failed to connect to {self.vncserver}')
             failcount += 1
         else:
-            shortname = self.vncserver.split('.')[0]
-            if output.strip() not in [shortname, f"vm-{shortname}"]:
+            basename = self.vncserver.split('.')[0]
+            if basename[:3] == 'vm-':
+                basename = basename[3:]
+            valid_responses = [basename, f"vm-{basename}"]
+            if basename == 'svncserver1':
+                valid_responses.append('kaalualu')
+            elif basename == 'svncserver1':
+                valid_responses.append('ohaiula')
+            if output.strip() not in valid_responses:
                 self.log.error(f'Got invalid response from {self.vncserver}')
+                self.log.debug(f"  valid_responses: {valid_responses}")
                 failcount += 1
 
         return failcount
