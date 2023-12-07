@@ -16,10 +16,10 @@ if [ "$CONDA_PREFIX" != "" ]; then
     if [ -e $CONDA_BASE/envs/KRO/bin/python3 ]; then
         echo "Launching using conda KRO environment"
         conda activate KRO
-        $CONDA_BASE/envs/KRO/bin/python3 $DIR/keck_vnc_launcher.py $@
+        $CONDA_BASE/envs/KRO/bin/python3 $DIR/keck_vnc_launcher.py -c $DIR/local_config.yaml $@
     else
         echo "Launching using conda current environment"
-        $CONDA_BASE/bin/python3 $DIR/keck_vnc_launcher.py $@
+        $CONDA_BASE/bin/python3 $DIR/keck_vnc_launcher.py -c $DIR/local_config.yaml $@
     fi
 else
     echo "We are unable to determine the correct python version to run the"
