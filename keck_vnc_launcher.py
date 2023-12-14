@@ -230,7 +230,7 @@ class SSHTunnel(object):
     '''An object to contain information about an SSH tunnel.
     '''
     def __init__(self, server, username, ssh_pkey, remote_port, local_port,
-                 session_name='unknown', timeout=10,
+                 session_name='unknown', timeout=10, verbose=False,
                  ssh_additional_kex=None,
                  ssh_additional_hostkeyalgo=None,
                  ssh_additional_keytypes=None,
@@ -268,6 +268,9 @@ class SSHTunnel(object):
             cmd = ['ssh', '-J', f"{username}@{proxy_jump}", f"{username}@{server}", '-L', forwarding, '-N', '-T', '-x']
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
+        if verbose == True:
+            cmd.append('-v')
+            cmd.append('-v')
 
         if self.ssh_additional_kex is not None:
             cmd.append('-oKexAlgorithms=' + self.ssh_additional_kex)
@@ -1235,6 +1238,7 @@ class KeckVncLauncher(object):
             self.log.debug('Using proxy jump to open SSH tunnel')
             t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
                           session_name=session_name,
+                          verbose = self.args.verbose,
                           timeout=self.config.get('ssh_timeout', 10),
                           ssh_additional_kex=self.ssh_additional_kex,
                           ssh_additional_hostkeyalgo=self.ssh_additional_hostkeyalgo,
@@ -1243,6 +1247,7 @@ class KeckVncLauncher(object):
         else:
             t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
                           session_name=session_name,
+                          verbose = self.args.verbose,
                           timeout=self.config.get('ssh_timeout', 10),
                           ssh_additional_kex=self.ssh_additional_kex,
                           ssh_additional_hostkeyalgo=self.ssh_additional_hostkeyalgo,
