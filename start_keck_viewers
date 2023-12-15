@@ -1,26 +1,27 @@
 #!/bin/bash -i
 
 # If we're using conda python
-if [ "$CONDA_PREFIX" != "" ]; then
-    # NOTE: The KRO environment is created with:
-    #       conda env create -f environment.yaml
+CONDAEXE=$(which conda)
+echo "CONDAEXE:   $CONDAEXE"
+
+if [ "$CONDAEXE" != "" ]; then
     CONDA_BASE=$(conda info --base)
-    echo "Found CONDA_BASE=$CONDA_BASE"
+    echo "CONDA_BASE: $CONDA_BASE"
     source $CONDA_BASE/etc/profile.d/conda.sh
 
-    #get script dir (so we know full path to keck_vnc_launcher.py)
-    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-    echo "Found DIR=$DIR"
+    KROLINE=$(conda info --envs | grep KRO)
+    echo "KROLINE:    $KROLINE"
 
-    # Launch the script
-    if [ -e $CONDA_BASE/envs/KRO/bin/python3 ]; then
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+    echo "DIR:        $DIR"
+
+    if [ "$KROLINE" != "" ]; then
         echo "Launching using conda KRO environment"
         conda activate KRO
-        $CONDA_BASE/envs/KRO/bin/python3 $DIR/keck_vnc_launcher.py -c $DIR/local_config.yaml $@
     else
         echo "Launching using conda current environment"
-        $CONDA_BASE/bin/python3 $DIR/keck_vnc_launcher.py -c $DIR/local_config.yaml $@
     fi
+    python3 $DIR/keck_vnc_launcher.py -c $DIR/local_config.yaml $@
 else
     echo "We are unable to determine the correct python version to run the"
     echo "Remote Observing software.  We will now try a generic python3 call,"
