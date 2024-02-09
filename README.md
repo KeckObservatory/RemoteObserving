@@ -112,7 +112,10 @@ Note: The examples below assume sudo/root installation for all users and were or
     - **For macOS**: Install a VNC viewer application if needed.
         - [Tiger VNC](https://tigervnc.org) has the advantage of supporting automatic window positioning, but does not support scaling, and can not enter and exit view only mode interactively.
         - Real VNC's [VNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) does not support automatic window positioning, but allows window scaling for use on small or high resolution monitors.  In addition, it supports changing modes both interactively and on the command line (e.g. scaling and the toggling of view only mode).  Note: this is the free software, you do not need VNC Viewer Plus.
-        - It is also possible to use the built in VNC viewer on macOS, but we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen.
+        - Both Tiger VNC and Real VNC have the viewers available for install via the macOS [Homebrew package manager](https://brew.sh). This provides the same software as is available from the download links above, but may be an easier install for users who already use homebrew.
+            - To install Real VNC Viewer: `brew install vnc-viewer`
+            - To install Tiger VNC Viewer: `brew install tigervnc-viewer`
+        - It is also possible to use the built in VNC viewer on macOS.  The example configuration file has an example setup for this in the "VNC Viewer Command" section for users who want to try it.  Be aware, however, that we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen, so if you see that problem, please try another VNC Viewer client.
 
 **--> Important! <--** If you are using TigerVNC on either OS, in the `~/.vnc` directory, create a file named `default.tigervnc` with these two lines:
 ```
