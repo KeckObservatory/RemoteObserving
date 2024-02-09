@@ -25,7 +25,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '3.0.3'
+__version__ = '3.0.4'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi/'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -768,7 +768,7 @@ class KeckVncLauncher(object):
 
         #check API key config
         self.api_key = self.config.get('api_key', None)
-        if self.api_key is None:
+        if self.api_key in [None, '']:
             self.log.error("API key is not set.")
         else:
             self.firewall_requested = True
