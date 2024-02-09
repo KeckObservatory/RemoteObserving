@@ -768,7 +768,7 @@ class KeckVncLauncher(object):
 
         #check API key config
         self.api_key = self.config.get('api_key', None)
-        if self.api_key is None:
+        if self.api_key in [None, '']:
             self.log.error("API key is not set.")
         else:
             self.firewall_requested = True
