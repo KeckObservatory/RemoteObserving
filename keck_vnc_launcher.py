@@ -290,8 +290,8 @@ class SSHTunnel(object):
         self.command = ' '.join(cmd)
         self.log.debug(f'ssh command: {self.command}')
         self.proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
-                                     stdout=subprocess.DEVNULL,
-                                     stderr=subprocess.DEVNULL)
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
 
         # Having started the process let's make sure it's actually running.
         # First try polling,  then confirm the requested local port is in use.
@@ -322,6 +322,20 @@ class SSHTunnel(object):
     def close(self):
         '''Close this SSH tunnel
         '''
+        self.log.debug(f" Communicating with SSH tunnel for local port {self.local_port}: {self.session_name}")
+        try:
+            stdout, stderr = self.proc.communicate(timeout=15)
+        except TimeoutExpired:
+            self.proc.kill()
+            stdout, stderr = proc.communicate()
+        try:
+            stdout = stdout.decode()
+            stderr = stderr.decode()
+        except Exception as e:
+            self.log.debug(f"Failed to decode")
+        self.log.debug(f" STDOUT: {stdout}")
+        self.log.debug(f" STDERR: {stderr}")
+
         self.log.info(f" Closing SSH tunnel for local port {self.local_port}: {self.session_name}")
         self.proc.kill()
 
