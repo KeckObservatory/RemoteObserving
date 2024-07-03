@@ -234,6 +234,7 @@ class SSHTunnel(object):
                  ssh_additional_kex=None,
                  ssh_additional_hostkeyalgo=None,
                  ssh_additional_keytypes=None,
+                 ssh_command='ssh',
                  proxy_jump=None):
         self.log = logging.getLogger('KRO')
         self.server = server
@@ -263,9 +264,9 @@ class SSHTunnel(object):
 
         forwarding = f"{local_port}:localhost:{remote_port}"
         if proxy_jump is None:
-            cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
+            cmd = [ssh_command, server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
         else:
-            cmd = ['ssh', '-J', f"{username}@{proxy_jump}", f"{username}@{server}", '-L', forwarding, '-N', '-T', '-x']
+            cmd = [ssh_command, '-J', f"{username}@{proxy_jump}", f"{username}@{server}", '-L', forwarding, '-N', '-T', '-x']
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -335,6 +336,7 @@ class SSHProxy(object):
                  ssh_additional_kex=None,
                  ssh_additional_hostkeyalgo=None,
                  ssh_additional_keytypes=None,
+                 ssh_command='ssh',
                  ):
         self.log = logging.getLogger('KRO')
         self.server = server
@@ -353,7 +355,7 @@ class SSHProxy(object):
         # the login process not execute any commands and that the server does
         # not allocate a pseudo-terminal for the established connection.
 
-        cmd = ['ssh', server, '-l', username, '-N', '-T', '-x', '-D', f"{local_port}"]
+        cmd = [ssh_command, server, '-l', username, '-N', '-T', '-x', '-D', f"{local_port}"]
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -421,6 +423,7 @@ class KeckVncLauncher(object):
         #init vars we need to shutdown app properly
         self.config = None
         self.log = None
+        self.ssh_command = 'ssh'
         self.sound = None
         self.ssh_tunnels = dict()
         self.vnc_threads = list()
@@ -467,19 +470,19 @@ class KeckVncLauncher(object):
         self.log.debug(f"Command: {' '.join(sys.argv)}")
 
         ##---------------------------------------------------------------------
+        ## Read configuration
+        self.get_config()
+        self.check_config()
+        if self.args.authonly is False:
+            self.get_vncviewer_properties()
+
+        ##---------------------------------------------------------------------
         ## Log basic system info
         self.log_system_info()
         self.test_yaml_version()
         self.check_version()
         if self.args.authonly is False:
             self.get_display_info()
-
-        ##---------------------------------------------------------------------
-        ## Read configuration
-        self.get_config()
-        self.check_config()
-        if self.args.authonly is False:
-            self.get_vncviewer_properties()
 
         ##---------------------------------------------------------------------
         # Verify Tiger VNC Config
@@ -594,9 +597,9 @@ class KeckVncLauncher(object):
             self.log.debug(trace)
 
         try:
-            whereisssh = subprocess.check_output(['which', 'ssh'])
+            whereisssh = subprocess.check_output(['which', self.ssh_command])
             self.log.debug(f'SSH command is {whereisssh.decode().strip()}')
-            sshversion = subprocess.check_output(['ssh', '-V'],
+            sshversion = subprocess.check_output([self.ssh_command, '-V'],
                                     stderr=subprocess.STDOUT)
             self.log.debug(f'SSH version is {sshversion.decode().strip()}')
         except:
@@ -744,7 +747,7 @@ class KeckVncLauncher(object):
         # open file a second time to properly read config
         config = yaml.load(open(file), Loader=yaml.FullLoader)
 
-        for key in ['ssh_pkey', 'vncviewer', 'soundplayer', 'aplay']:
+        for key in ['ssh_path', 'ssh_pkey', 'vncviewer', 'soundplayer', 'aplay']:
             if key in config.keys():
                 config[key] = os.path.expanduser(config[key])
                 config[key] = os.path.expandvars(config[key])
@@ -757,6 +760,7 @@ class KeckVncLauncher(object):
         self.config = config
 
         # Load some values
+        self.ssh_command = self.config.get('ssh_path', 'ssh')
         self.ssh_pkey = self.config.get('ssh_pkey', None)
         lps = self.config.get('local_port_start', None)
         self.local_port = self.LOCAL_PORT_START if lps is None else lps
@@ -993,7 +997,7 @@ class KeckVncLauncher(object):
             self.log.debug('Extending timeout for svncserver connections')
             timeout = 60
 
-        command = ['ssh', server, '-l', account, '-T', '-x']
+        command = [self.ssh_command, server, '-l', account, '-T', '-x']
         if self.args.verbose is True:
             command.append('-v')
             command.append('-v')
@@ -1234,6 +1238,7 @@ class KeckVncLauncher(object):
         if server in ['vm-k1obs.keck.hawaii.edu', 'vm-k2obs.keck.hawaii.edu']:
             self.log.debug('Using proxy jump to open SSH tunnel')
             t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
+                          ssh_command=self.ssh_command,
                           session_name=session_name,
                           timeout=self.config.get('ssh_timeout', 10),
                           ssh_additional_kex=self.ssh_additional_kex,
@@ -1242,6 +1247,7 @@ class KeckVncLauncher(object):
                           proxy_jump='mosfire.keck.hawaii.edu')
         else:
             t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
+                          ssh_command=self.ssh_command,
                           session_name=session_name,
                           timeout=self.config.get('ssh_timeout', 10),
                           ssh_additional_kex=self.ssh_additional_kex,
@@ -1268,6 +1274,7 @@ class KeckVncLauncher(object):
         t = SSHProxy(proxy_server,
                      self.kvnc_account, self.ssh_pkey,
                      local_port,
+                     ssh_command=self.ssh_command,
                      session_name='proxy',
                      timeout=self.config.get('ssh_timeout', 10),
                      ssh_additional_kex=self.ssh_additional_kex,
