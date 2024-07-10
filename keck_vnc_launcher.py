@@ -136,11 +136,12 @@ def create_logger(args):
         return
 
     #create log file and log dir if not exist
+    log_path = Path(__file__).parent / 'logs'
     try:
-        Path('logs/').mkdir(parents=True, exist_ok=True)
+        log_path.mkdir(parents=True, exist_ok=True)
     except PermissionError as error:
         print(str(error))
-        print(f"ERROR: Unable to create logger at logs/")
+        print(f"ERROR: Unable to create logger at {log_path}")
         print("Make sure you have write access to this directory.\n")
         log.info("EXITING APP\n")
         sys.exit(1)
@@ -168,7 +169,7 @@ def create_logger(args):
     except:
         # Works with older pyhon versions (>=3.9)
         ymd = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    logFile = Path(f'logs/keck-remote-log-utc-{ymd}.txt')
+    logFile = log_path / f'keck-remote-log-utc-{ymd}.txt'
     logFileHandler = logging.FileHandler(logFile)
     logFileHandler.setLevel(logging.DEBUG)
     logFileHandler.setFormatter(logFormat_with_time)
