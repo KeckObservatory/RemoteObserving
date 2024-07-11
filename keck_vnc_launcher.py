@@ -433,9 +433,9 @@ class KeckVncLauncher(object):
         self.instrument = None
         self.vncserver = None
         self.ssh_key_valid = False
-        self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
-        self.ssh_additional_hostkeyalgo = '+ssh-dss,ssh-rsa'
-        self.ssh_additional_keytypes = '+ssh-dss,ssh-rsa'
+        self.ssh_additional_kex = None
+        self.ssh_additional_hostkeyalgo = None
+        self.ssh_additional_keytypes = None
         self.exit = False
         self.geometry = list()
         self.tigervnc = None
