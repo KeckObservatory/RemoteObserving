@@ -1963,21 +1963,6 @@ class KeckVncLauncher(object):
         with open(self.ssh_pkey, 'r') as f:
             contents = f.read()
 
-        # Check if this is an RSA key
-#         foundrsa = re.search('BEGIN RSA PRIVATE KEY', contents)
-#         if not foundrsa:
-#             self.log.error(f"Your private key does not appear to be an RSA key")
-#             failcount += 1
-
-        # Check if this is an OPENSSH key
-        foundopenssh = re.search('BEGIN OPENSSH PRIVATE KEY', contents)
-        if foundopenssh:
-            self.log.warning(f"Your SSH key may or may not be formatted correctly.")
-            self.log.warning(f"If no other tests fail and you can connect to the Keck VNCs,")
-            self.log.warning(f"then you can ignore this message.  If you can not connect,")
-            self.log.warning(f"then try regenerating and uploading your SSH key and make")
-            self.log.warning(f"sure you use the `-m PEM` option when generating the key.")
-
         # Check that there is no passphrase
         foundencrypt = re.search(r'Proc-Type: \d,ENCRYPTED', contents)
         if foundencrypt:

@@ -45,10 +45,8 @@ The schedule is filled based on your remote observing request, but this is a man
 - Generate ssh public/private key pair **(do not set a passphrase)**
     ```
     cd ~/.ssh
-    ssh-keygen -t rsa -b 4096
+    ssh-keygen -t ed25519
     ```
-
-- Make sure that the resulting key is an RSA key.  The **private** key should have a first line which looks like `-----BEGIN RSA PRIVATE KEY-----` (it should not be an OPENSSH key).  If you do get an OPENSSH key (we've seen this on macOS and Ubuntu Linux), try generating the key with the `-m PEM` option: `ssh-keygen -t rsa -b 4096 -m PEM`
 
 - Upload your **public** key file at your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php). Click on "Manage Your Remote Observing SSH Key" and follow the instructions.
 
