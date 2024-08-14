@@ -91,8 +91,8 @@ def create_parser():
     ## add options
     parser.add_argument("-c", "--config", dest="config", type=str,
         help="Path to local configuration file.")
-#     parser.add_argument("--vncserver", type=str,
-#         help="Name of VNC server to connect to.  Takes precedence over all.")
+    parser.add_argument("--vncserver", type=str,
+        help="Name of VNC server to connect to.  Takes precedence over all.")
     parser.add_argument( '--vncports', nargs='+', type=str,
         help="Numerical list of VNC ports to connect to.  Takes precedence over all.")
 
@@ -252,10 +252,6 @@ class SSHTunnel(object):
         address_and_port = f"{username}@{server}:{remote_port}"
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
-
-        if re.match(r'svncserver\d.keck.hawaii.edu', server) is not None:
-            self.log.debug('Extending timeout for svncserver connections')
-            timeout = 60
 
         # We now know everything we need to know in order to establish the
         # tunnel. Build the command line options and start the child process.
@@ -1085,9 +1081,9 @@ class KeckVncLauncher(object):
                 self.log.error(f'Could not determine VNC server from API')
 
         #cmd line option
-#         if self.args.vncserver is not None:
-#             self.log.info("Using VNC server defined on command line")
-#             vncserver = self.args.vncserver
+        if self.args.vncserver is not None:
+            self.log.info("Using VNC server defined on command line")
+            vncserver = self.args.vncserver
 
         if vncserver:
             self.log.info(f"Got VNC server: '{vncserver}'")
