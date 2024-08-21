@@ -19,6 +19,10 @@ import time
 import traceback
 import requests
 import yaml
+try:
+    import socketio
+except ModuleNotFoundError:
+    socketio = None
 
 ## Import local modules
 import soundplay
@@ -411,6 +415,37 @@ class SSHProxy(object):
         return f"SSH tunnel for {address_and_port} on local port {self.local_port}."
 
 
+
+##-------------------------------------------------------------------------
+## ODAP
+##-------------------------------------------------------------------------
+class ODAP(object):
+    '''An object to contain information about an ODAP process.
+    '''
+    def __init__(self, ODAP_directory):
+        self.log = logging.getLogger('KRO')
+        here = Path('__file__').parent
+        cmd = [sys.executable, f'{here}/odap_cli.py',
+               '--directory', f'{ODAP_directory}',
+               'requestExistingFiles', '1',
+               ]
+        self.command = ' '.join(cmd)
+        self.log.debug(f'ODAP command: {self.command}')
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                     stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL)
+
+    def close(self):
+        '''Close this SSH tunnel
+        '''
+        self.log.info(f" Closing ODAP connection")
+        self.proc.kill()
+
+
+    def __str__(self):
+        return f"ODAP: {self.command}"
+
+
 ##-------------------------------------------------------------------------
 ## Define Keck VNC Launcher
 ##-------------------------------------------------------------------------
@@ -437,6 +472,7 @@ class KeckVncLauncher(object):
         self.tigervnc = None
         self.vncviewer_has_geometry = None
         self.api_data = None
+        self.ODAP_process = None
 
         self.args = args
         self.log = logging.getLogger('KRO')
@@ -520,6 +556,20 @@ class KeckVncLauncher(object):
         ## Open web proxy if requested
         if self.config.get('proxy_port', None) is not None:
             self.open_ssh_for_proxy()
+
+        ##-----------------------------------------------------------------
+        ## Launch ODAP
+        ODAP_directory = self.config.get('ODAP_directory', None)
+        if socketio is None:
+            self.log.warning('Could not import socketio, not starting ODAP')
+        elif ODAP_directory is None:
+            self.log.debug('ODAP_directory is not defined, not starting ODAP')
+        else:
+            ODAP_destination = Path(ODAP_directory).expanduser()
+            if ODAP_destination.exists() is False:
+                self.log.warning(f'{ODAP_destination} does not exist, not starting ODAP')
+            else:
+                self.run_odap(ODAP_directory)
 
         if self.args.authonly is False:
             ##-----------------------------------------------------------------
@@ -1286,6 +1336,20 @@ class KeckVncLauncher(object):
         names = [self.ssh_tunnels[p].session_name for p in self.ssh_tunnels.keys()]
         return ('proxy' in names)
 
+    ##-------------------------------------------------------------------------
+    ## Run ODAP
+    ##-------------------------------------------------------------------------
+    def run_odap(self, ODAP_directory):
+        # Modify the config.live.ini file with hash
+        with open('config.ini', 'r') as base_config:
+            contents = base_config.read()
+        with open('config.live.ini', 'w') as live_config:
+            live_config.write(contents)
+            live_config.write(f'hash={self.api_key}\n')
+        # Launch the ODAP CLI process
+        self.log.info(f'Starting ODAP process')
+        self.ODAP_process = ODAP(ODAP_directory)
+
 
     ##-------------------------------------------------------------------------
     ## Start VNC session
@@ -1823,6 +1887,11 @@ class KeckVncLauncher(object):
 
         #close vnc sessions
         self.kill_vnc_processes()
+
+        if self.ODAP_process is not None:
+            self.ODAP_process.close()
+            live_config_file = Path('config.live.ini')
+            if live_config_file.exists(): live_config_file.unlink()
 
         self.log.info("EXITING APP\n")
         sys.exit(1)

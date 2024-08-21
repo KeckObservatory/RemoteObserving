@@ -6,3 +6,5 @@ dist
 .DS_Store
 *.bbprojectd
 *.yaml
+*.log
+/config.live.ini
