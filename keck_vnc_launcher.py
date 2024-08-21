@@ -1345,9 +1345,10 @@ class KeckVncLauncher(object):
                 self.log.warning(f'{ODAP_destination} does not exist, not starting ODAP')
             else:
                 # Modify the config.live.ini file with hash
-                with open('config.ini', 'r') as base_config:
+                p = Path(__file__).parent
+                with open(p / 'config.ini', 'r') as base_config:
                     contents = base_config.read()
-                with open('config.live.ini', 'w') as live_config:
+                with open(p / 'config.live.ini', 'w') as live_config:
                     live_config.write(contents)
                     live_config.write(f'hash={self.api_key}\n')
                 # Launch the ODAP CLI process
@@ -1894,7 +1895,7 @@ class KeckVncLauncher(object):
 
         if self.ODAP_process is not None:
             self.ODAP_process.close()
-            live_config_file = Path('config.live.ini')
+            live_config_file = Path(__file__).parent / 'config.live.ini'
             if live_config_file.exists(): live_config_file.unlink()
 
         self.log.info("EXITING APP\n")
