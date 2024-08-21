@@ -1348,7 +1348,9 @@ class KeckVncLauncher(object):
                 p = Path(__file__).parent
                 with open(p / 'config.ini', 'r') as base_config:
                     contents = base_config.read()
-                with open(p / 'config.live.ini', 'w') as live_config:
+                config_live_file = p / 'config.live.ini'
+                if config_live_file.exists(): config_live_file.unlink()
+                with open(config_live_file, 'w') as live_config:
                     live_config.write(contents)
                     live_config.write(f'hash={self.api_key}\n')
                 # Launch the ODAP CLI process
