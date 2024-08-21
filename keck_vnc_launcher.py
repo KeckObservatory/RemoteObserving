@@ -427,7 +427,9 @@ class ODAP(object):
         here = Path('__file__').parent
         cmd = [sys.executable, f'{here}/odap_cli.py',
                '--directory', f'{ODAP_directory}',
-               'requestExistingFiles', '1',
+               '--requestExistingFiles', '1',
+               '--streamFile', '1',
+               '--ofname', '1',
                ]
         self.command = ' '.join(cmd)
         self.log.debug(f'ODAP command: {self.command}')
