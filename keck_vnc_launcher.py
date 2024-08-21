@@ -422,14 +422,14 @@ class SSHProxy(object):
 class ODAP(object):
     '''An object to contain information about an ODAP process.
     '''
-    def __init__(self, ODAP_directory):
+    def __init__(self, ODAP_directory, ofname=True):
         self.log = logging.getLogger('KRO')
         here = Path('__file__').parent
         cmd = [sys.executable, f'{here}/odap_cli.py',
                '--directory', f'{ODAP_directory}',
                '--requestExistingFiles', '1',
                '--streamFile', '1',
-               '--ofname', '1',
+               '--ofname', f'{int(ofname)}',
                ]
         self.command = ' '.join(cmd)
         self.log.debug(f'ODAP command: {self.command}')
@@ -562,16 +562,8 @@ class KeckVncLauncher(object):
         ##-----------------------------------------------------------------
         ## Launch ODAP
         ODAP_directory = self.config.get('ODAP_directory', None)
-        if socketio is None:
-            self.log.warning('Could not import socketio, not starting ODAP')
-        elif ODAP_directory is None:
-            self.log.debug('ODAP_directory is not defined, not starting ODAP')
-        else:
-            ODAP_destination = Path(ODAP_directory).expanduser()
-            if ODAP_destination.exists() is False:
-                self.log.warning(f'{ODAP_destination} does not exist, not starting ODAP')
-            else:
-                self.run_odap(ODAP_directory)
+        if ODAP_directory is not None:
+            self.run_odap(ODAP_directory)
 
         if self.args.authonly is False:
             ##-----------------------------------------------------------------
@@ -1342,15 +1334,25 @@ class KeckVncLauncher(object):
     ## Run ODAP
     ##-------------------------------------------------------------------------
     def run_odap(self, ODAP_directory):
-        # Modify the config.live.ini file with hash
-        with open('config.ini', 'r') as base_config:
-            contents = base_config.read()
-        with open('config.live.ini', 'w') as live_config:
-            live_config.write(contents)
-            live_config.write(f'hash={self.api_key}\n')
-        # Launch the ODAP CLI process
-        self.log.info(f'Starting ODAP process')
-        self.ODAP_process = ODAP(ODAP_directory)
+        ofname = self.config.get('ODAP_ofname', None)
+        if socketio is None:
+            self.log.warning('Could not import socketio, not starting ODAP')
+        elif ODAP_directory is None:
+            self.log.debug('ODAP_directory is not defined, not starting ODAP')
+        else:
+            ODAP_destination = Path(ODAP_directory).expanduser()
+            if ODAP_destination.exists() is False:
+                self.log.warning(f'{ODAP_destination} does not exist, not starting ODAP')
+            else:
+                # Modify the config.live.ini file with hash
+                with open('config.ini', 'r') as base_config:
+                    contents = base_config.read()
+                with open('config.live.ini', 'w') as live_config:
+                    live_config.write(contents)
+                    live_config.write(f'hash={self.api_key}\n')
+                # Launch the ODAP CLI process
+                self.log.info(f'Starting ODAP process')
+                self.ODAP_process = ODAP(ODAP_directory, ofname=ofname)
 
 
     ##-------------------------------------------------------------------------
