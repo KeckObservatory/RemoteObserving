@@ -81,6 +81,9 @@ def create_parser():
     parser.add_argument("-v", "--verbose", dest="verbose",
         default=False, action="store_true",
         help="Be verbose.")
+    parser.add_argument("-d", "--data", dest="data",
+        default=False, action="store_true",
+        help="Stream science data to your local machine?")
     for name in SESSION_NAMES:
         parser.add_argument(f"--{name}",
             dest=name,
@@ -424,18 +427,28 @@ class ODAP(object):
     '''
     def __init__(self, ODAP_directory, ofname=True):
         self.log = logging.getLogger('KRO')
-        here = Path('__file__').parent
+        here = Path(__file__).parent
+        print(here)
+        ODAP_destination = Path(ODAP_directory).expanduser()
         cmd = [sys.executable, f'{here}/odap_cli.py',
-               '--directory', f'{ODAP_directory}',
+               '--directory', f'{ODAP_destination}',
                '--requestExistingFiles', '1',
                '--streamFile', '1',
                '--ofname', f'{int(ofname)}',
                ]
         self.command = ' '.join(cmd)
-        self.log.debug(f'ODAP command: {self.command}')
-        self.proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
-                                     stdout=subprocess.DEVNULL,
-                                     stderr=subprocess.DEVNULL)
+        self.log.info(f'Starting ODAP process')
+        self.log.info(f'  {self.command}')
+        self.log.info(f'  Downloading data to: {ODAP_destination}')
+        try:
+            self.proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
+        except Exception as e:
+            self.log.error(e)
+        self.log.info(f'  PID = {self.proc.pid}')
+        if self.proc.returncode is not None:
+            self.log.warning('ODAP process failed')
 
     def close(self):
         '''Close this SSH tunnel
@@ -474,7 +487,7 @@ class KeckVncLauncher(object):
         self.tigervnc = None
         self.vncviewer_has_geometry = None
         self.api_data = None
-        self.ODAP_process = None
+        self.ODAP = None
 
         self.args = args
         self.log = logging.getLogger('KRO')
@@ -562,7 +575,7 @@ class KeckVncLauncher(object):
         ##-----------------------------------------------------------------
         ## Launch ODAP
         ODAP_directory = self.config.get('ODAP_directory', None)
-        if ODAP_directory is not None:
+        if ODAP_directory is not None and self.args.data is True:
             self.run_odap(ODAP_directory)
 
         if self.args.authonly is False:
@@ -1354,8 +1367,7 @@ class KeckVncLauncher(object):
                     live_config.write(contents)
                     live_config.write(f'hash={self.api_key}\n')
                 # Launch the ODAP CLI process
-                self.log.info(f'Starting ODAP process')
-                self.ODAP_process = ODAP(ODAP_directory, ofname=ofname)
+                self.ODAP = ODAP(ODAP_directory, ofname=ofname)
 
 
     ##-------------------------------------------------------------------------
@@ -1895,8 +1907,8 @@ class KeckVncLauncher(object):
         #close vnc sessions
         self.kill_vnc_processes()
 
-        if self.ODAP_process is not None:
-            self.ODAP_process.close()
+        if self.ODAP is not None:
+            self.ODAP.close()
             live_config_file = Path(__file__).parent / 'config.live.ini'
             if live_config_file.exists(): live_config_file.unlink()
 

@@ -1,3 +1,6 @@
+from pathlib import Path
+import datetime
+
 import argparse
 import pdb
 import os
@@ -13,10 +16,34 @@ from collections import deque
 
 import socketio.exceptions
 
-CONFIG_PATH = 'config.live.ini'
-logging.config.fileConfig(CONFIG_PATH)
-logger = logging.getLogger(__name__)
-logger.info('starting odap_cli')
+p = Path(__file__).parent
+CONFIG_PATH = p / 'config.live.ini'
+
+## Create logger object
+logger = logging.getLogger('ODAP')
+log_path = Path(__file__).parent / 'logs'
+# Set up formats
+logFormat_with_time = logging.Formatter('%(asctime)s UT - %(levelname)s: %(message)s')
+logFormat_with_time.converter = time.gmtime
+logConsoleHandler = logging.StreamHandler()
+logConsoleHandler.setLevel(logging.INFO)
+logConsoleHandler.setFormatter(logFormat_with_time)
+logger.addHandler(logConsoleHandler)
+#file handler (full debug logging)
+try:
+    # Works with latest python versions (>=3.12)
+    ymd = datetime.datetime.now(datetime.UTC).strftime('%Y%m%d_%H%M%S')
+except:
+    # Works with older pyhon versions (>=3.9)
+    ymd = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+logFile = log_path / f'keck-odap-log-utc-{ymd}.txt'
+logFileHandler = logging.FileHandler(logFile)
+logFileHandler.setLevel(logging.DEBUG)
+logFileHandler.setFormatter(logFormat_with_time)
+logger.addHandler(logFileHandler)
+
+logger.info('ODAP log setup compelte')
+
 config = configparser.ConfigParser()
 config.read(CONFIG_PATH)
 defaultDir = os.getcwd()
@@ -86,12 +113,11 @@ url = config['socketio']['url']
 socketio_path = config['socketio']['socketio_path']
 reconnection_attempts = int(config['socketio']['reconnection_attempts'])
 reconnection_delay = int(config['socketio']['reconnection_delay'])
-socLogger = logger if bool(int(config['socketio']['soc_logger'])) else False
 
 soc = socketio.Client(reconnection_attempts=reconnection_attempts,
                       reconnection_delay=reconnection_delay,
-                      logger=socLogger, 
-                      engineio_logger=socLogger)
+                      logger=logger, 
+                      engineio_logger=logger)
 
 queue = deque()
 
