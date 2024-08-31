@@ -112,3 +112,47 @@ default_sessions: ['control0', 'control1', 'control2', 'telstatus']
 ##   Sometimes extending the SSH timeout can eliminate failures for slow
 ##   machines or during internet slow downs.
 #ssh_timeout: 30
+
+
+## SSH Timeout
+##   Sometimes extending the SSH timeout can eliminate failures for slow
+##   machines or during internet slow downs.
+
+
+## Socketio Configuration: 
+socketio:
+  url: https://www3.keck.hawaii.edu/
+  socketio_path: wsapp/socket.io
+  soc_logger: 1 # Turn on for more logs
+  reconnection_attempts: 0 # Number of reconnection attempts before exiting. 0 means infinite
+  reconnection_delay: 1 # Delay in seconds between reconnection attempts
+queue: # Number of workers to use for the download queue. Each worker runs on a separate thread. One is probably fine. 
+  workers: 1
+# Logging configuration begin
+loggers:
+  version: 1
+  disable_existing_loggers: False
+  formatters:
+    simple:
+      format: "%(asctime)s %(filename)s %(levelname)s %(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
+  handlers:
+    console:
+        class: logging.StreamHandler
+        level: DEBUG # Valid levels are DEBUG, INFO, WARNING, ERROR, CRITICAL
+        formatter: simple
+        stream: ext://sys.stdout
+    file:
+      class: logging.FileHandler
+      level: DEBUG 
+      formatter: simple
+      filename: 'odap_cli.log'
+      mode: a
+  loggers:
+    odap_cli:
+      level: DEBUG
+      handlers: [console, file]
+      propagate: no
+  root:
+    level: DEBUG 
+    handlers: [console]
