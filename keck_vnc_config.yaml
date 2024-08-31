@@ -146,7 +146,7 @@ loggers:
       class: logging.FileHandler
       level: DEBUG 
       formatter: simple
-      filename: 'odap_cli.log'
+      filename: './logs/odap_cli.log'
       mode: a
   loggers:
     odap_cli:

@@ -1,6 +1,5 @@
 import argparse
-import pdb
-import os
+from pathlib import Path, PurePath
 import sys
 import socketio
 import signal
@@ -13,20 +12,28 @@ from collections import deque
 
 import socketio.exceptions
 
-CONFIG_PATH = 'keck_vnc_config.yaml'
+CONFIG_PATH = 'local_config.yaml'
 with open(CONFIG_PATH) as f:
     config = yaml.safe_load(f)
-defaultDir = os.getcwd()
+defaultDir = Path.cwd()
 
+#create log file and log dir if not exist
+try:
+    Path('logs/').mkdir(parents=True, exist_ok=True)
+except PermissionError as error:
+    print(str(error))
+    print(f"ERROR: Unable to create logger at logs/")
+    print("Make sure you have write access to this directory.\n")
+    sys.exit(1)
 logging.config.dictConfig(config['loggers'])
 logger = logging.getLogger('odap_cli')
 logger.info('starting odap_cli')
 
 def dir_path(string):
-    if os.path.isdir(string):
+    if Path(string).is_dir():
         return string
     else:
-        os.makedirs(string)
+        Path(string).mkdir(parents=True, exist_ok=True)
 
 parser = argparse.ArgumentParser(description="Setup websocket client")
 parser.add_argument('--dir', type=dir_path, required=False, default=defaultDir,
@@ -153,8 +160,7 @@ def send_previous_data(data):
         ofname = row.get('ofname')
         if not filename:
             continue
-        dlname = os.path.join(directory, row.get(fnkey))
-        if os.path.exists(dlname):
+        if Path(directory, row.get(fnkey)).exists():
             logger.debug(f'{filename} ({ofname}) already exists in {directory}')
             continue 
         logger.info(f"{filename} ({ofname}) added to queue")
@@ -163,10 +169,10 @@ def send_previous_data(data):
 @soc.on('receive_new_file')
 def receive_new_file(data):
     filename = data['metadata'].get(fnkey, data['metadata'].get('filename'))
-    filename = os.path.basename(filename)
+    filename = PurePath(filename)
     instrument = data['metadata'].get('instrument')
     logger.info(f'saving {instrument} file {filename} to {directory}')
-    dlname = os.path.join(directory, filename)
+    dlname = Path(directory, filename)
     logger.debug(f'starting file write {dlname}')
     with open(dlname, 'wb') as f:
         f.write(data['data_bytes'])
@@ -189,7 +195,7 @@ def session_data_callback(*data):
 
 def process_row(name, row):
     filename = row.get(fnkey, row.get('koaid', 'unknown'))
-    fileExists = os.path.exists(os.path.join(directory, filename))
+    fileExists = Path(directory, filename).exists()
     if fileExists:
         logger.debug(f'{filename} already exists in {directory}')
         return 
