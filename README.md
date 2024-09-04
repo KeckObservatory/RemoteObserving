@@ -264,6 +264,17 @@ in this example, we see that there are the usual 4 VNC sessions for MOSFIRE.
 
 The `u` command will copy your local log file to a Keck computer.  This will only be useful if the software has established SSH connections to Keck, so it will not help in the case of catastrophic problems.  If you upload a log, you need to tell Keck Staff when you upload it and tell them which instrument you are logged in to and when you uploaded it.  These logs are not permanently stored and may be overwritten by other users, so if you want your log examined for issues, notify Keck Staff promptly.
 
+## Running the Observer Data Access Portal (ODAP)
+
+The ODAP command line interface subscribes the user's pc to recieve files shortly after they are written to disk. Should the user's semids be scheduled for that night, lev0 data will be transmitted to their harddrive (lev1 is currently under development). For more details on how to use odap run `python odap_cli.py --help`. ODAP is meant to run on a separate terminal from the VNC launchers. An example of its use is as follows:
+
+```
+mkdir data
+python odap_cli.py --dir data --lev0 --instruments KPF 
+```
+
+ODAP Logs are written in `./logs/odap_cli.log` and provide connection event details, file created/downloaded messages, etc. 
+
 # Troubleshooting Common Problems
 
 Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.

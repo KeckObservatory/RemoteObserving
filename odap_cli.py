@@ -25,9 +25,6 @@ except PermissionError as error:
     print(f"ERROR: Unable to create logger at logs/")
     print("Make sure you have write access to this directory.\n")
     sys.exit(1)
-logging.config.dictConfig(config['loggers'])
-logger = logging.getLogger('odap_cli')
-logger.info('starting odap_cli')
 
 def dir_path(string):
     if Path(string).is_dir():
@@ -53,16 +50,6 @@ parser.add_argument('--instruments', type=str.upper, required=False, default=Non
 parser.add_argument('--file-extension', type=str, required=False, default=None,
                     help='Data streaming is constrained to files with the file extension(s) listed (separated by commas).')
 
-def log_exit(name=None):
-    def inner(func):
-        def wrapper(*args, **kwargs):
-            nme = name if name else args[0]
-            logger.info(f'entering {nme}')
-            result = func(*args, **kwargs)
-            logger.info(f'exiting {nme}')
-            return result 
-        return wrapper 
-    return inner 
 
 def signal_handler(sig, frame):
     logger.info("exiting threads")
@@ -78,8 +65,22 @@ signal.signal(signal.SIGINT, sigint_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
 
+logging.config.dictConfig(config['loggers'])
+logger = logging.getLogger('odap_cli')
+
+def log_exit(name=None):
+    def inner(func):
+        def wrapper(*args, **kwargs):
+            nme = name if name else args[0]
+            logger.info(f'entering {nme}')
+            result = func(*args, **kwargs)
+            logger.info(f'exiting {nme}')
+            return result 
+        return wrapper 
+    return inner 
 # Parse arguments
 args = parser.parse_args()
+logger.info('starting odap_cli')
 directory = args.dir
 instrumentsStr = args.instruments
 
