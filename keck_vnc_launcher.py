@@ -428,17 +428,22 @@ class ODAP(object):
     def __init__(self, ODAP_directory, ofname=True):
         self.log = logging.getLogger('KRO')
         here = Path(__file__).parent
-        print(here)
         ODAP_destination = Path(ODAP_directory).expanduser()
-        cmd = [sys.executable, f'{here}/odap_cli.py',
+        cmd = ['xterm', '-e', sys.executable, f'{here}/odap_cli.py',
                '--directory', f'{ODAP_destination}',
                '--requestExistingFiles', '1',
                '--streamFile', '1',
                '--ofname', f'{int(ofname)}',
                ]
+#         cmd = [sys.executable, f'{here}/odap_cli.py',
+#                '--directory', f'{ODAP_destination}',
+#                '--requestExistingFiles', '1',
+#                '--streamFile', '1',
+#                '--ofname', f'{int(ofname)}',
+#                ]
         self.command = ' '.join(cmd)
         self.log.info(f'Starting ODAP process')
-        self.log.info(f'  {self.command}')
+        self.log.debug(f'  {self.command}')
         self.log.info(f'  Downloading data to: {ODAP_destination}')
         try:
             self.proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
