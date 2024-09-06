@@ -2,7 +2,9 @@ name: KRO
 channels:
   - conda-forge
 dependencies:
-  - python>=3.7
+  - python>=3.9
   - pyyaml
   - requests
   - packaging
+  - python-socketio=5.11.3
+  - websocket-client
