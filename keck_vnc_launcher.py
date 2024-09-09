@@ -492,6 +492,8 @@ class KeckVncLauncher(object):
         self.tigervnc = None
         self.vncviewer_has_geometry = None
         self.api_data = None
+
+        self.ODAP_enabled = False
         self.ODAP = None
 
         self.args = args
@@ -579,9 +581,10 @@ class KeckVncLauncher(object):
 
         ##-----------------------------------------------------------------
         ## Launch ODAP
-        ODAP_directory = self.config.get('ODAP_directory', None)
-        if ODAP_directory is not None and self.args.data is True:
-            self.run_odap(ODAP_directory)
+        
+        self.ODAP_enabled = self.ODAP_directory is not None and self.args.data is True
+        if self.ODAP_enabled:
+            self.run_odap(self.ODAP_directory)
 
         if self.args.authonly is False:
             ##-----------------------------------------------------------------
@@ -823,6 +826,7 @@ class KeckVncLauncher(object):
         self.ssh_pkey = self.config.get('ssh_pkey', None)
         lps = self.config.get('local_port_start', None)
         self.local_port = self.LOCAL_PORT_START if lps is None else lps
+        self.ODAP_directory = self.config.get('ODAP_directory', None)
 
 
     def check_config(self):
@@ -1575,6 +1579,10 @@ class KeckVncLauncher(object):
                          f"  p               Play a local test sound",
                          ]
             lines.extend(morelines)
+        if self.ODAP_enabled is True:
+            ODAP_lines = [f"  d               Stream data via ODAP",
+                          f"  k               Kill ODAP process",]
+            lines.extend(ODAP_lines)
         if self.api_data is not None and self.args.authonly is False:
             lines.append(f"  i               View extra connection info")
         lines.extend([f"  v               Check if software is up to date",
@@ -1636,6 +1644,10 @@ class KeckVncLauncher(object):
                     self.log.debug(trace)
             elif cmd == 't':
                 self.list_tunnels()
+            elif cmd == 'd':
+                self.run_odap(self.ODAP_directory)
+            elif cmd == 'k':
+                self.exit_odap()
             elif cmd in [s.name for s in self.sessions_found]:
                 self.start_vnc_session(cmd)
             elif cmatch is not None:
@@ -1890,6 +1902,13 @@ class KeckVncLauncher(object):
     ##-------------------------------------------------------------------------
     ## Common app exit point
     ##-------------------------------------------------------------------------
+    def exit_odap(self):
+        if self.ODAP is not None:
+            self.ODAP.close()
+            live_config_file = Path(__file__).parent / 'config.live.ini'
+            if live_config_file.exists(): live_config_file.unlink()
+
+
     def exit_app(self, msg=None):
         '''Exit the app
         '''
@@ -1912,10 +1931,7 @@ class KeckVncLauncher(object):
         #close vnc sessions
         self.kill_vnc_processes()
 
-        if self.ODAP is not None:
-            self.ODAP.close()
-            live_config_file = Path(__file__).parent / 'config.live.ini'
-            if live_config_file.exists(): live_config_file.unlink()
+        self.exit_odap()
 
         self.log.info("EXITING APP\n")
         sys.exit(1)
