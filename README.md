@@ -45,10 +45,8 @@ The schedule is filled based on your remote observing request, but this is a man
 - Generate ssh public/private key pair **(do not set a passphrase)**
     ```
     cd ~/.ssh
-    ssh-keygen -t rsa -b 4096
+    ssh-keygen -t ed25519
     ```
-
-- Make sure that the resulting key is an RSA key.  The **private** key should have a first line which looks like `-----BEGIN RSA PRIVATE KEY-----` (it should not be an OPENSSH key).  If you do get an OPENSSH key (we've seen this on macOS and Ubuntu Linux), try generating the key with the `-m PEM` option: `ssh-keygen -t rsa -b 4096 -m PEM`
 
 - Upload your **public** key file at your [Observer Login Page](https://www2.keck.hawaii.edu/inst/PILogin/login.php). Click on "Manage Your Remote Observing SSH Key" and follow the instructions.
 
@@ -112,7 +110,10 @@ Note: The examples below assume sudo/root installation for all users and were or
     - **For macOS**: Install a VNC viewer application if needed.
         - [Tiger VNC](https://tigervnc.org) has the advantage of supporting automatic window positioning, but does not support scaling, and can not enter and exit view only mode interactively.
         - Real VNC's [VNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) does not support automatic window positioning, but allows window scaling for use on small or high resolution monitors.  In addition, it supports changing modes both interactively and on the command line (e.g. scaling and the toggling of view only mode).  Note: this is the free software, you do not need VNC Viewer Plus.
-        - It is also possible to use the built in VNC viewer on macOS, but we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen.
+        - Both Tiger VNC and Real VNC have the viewers available for install via the macOS [Homebrew package manager](https://brew.sh). This provides the same software as is available from the download links above, but may be an easier install for users who already use homebrew.
+            - To install Real VNC Viewer: `brew install vnc-viewer`
+            - To install Tiger VNC Viewer: `brew install tigervnc-viewer`
+        - It is also possible to use the built in VNC viewer on macOS.  The example configuration file has an example setup for this in the "VNC Viewer Command" section for users who want to try it.  Be aware, however, that we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen, so if you see that problem, please try another VNC Viewer client.
 
 **--> Important! <--** If you are using TigerVNC on either OS, in the `~/.vnc` directory, create a file named `default.tigervnc` with these two lines:
 ```
@@ -285,6 +286,14 @@ A more extreme version would be to only keep one or two sessions open at a time 
 ## No Sounds
 
 VNC does not carry sounds, so we have a separate system for playing instrument sounds such as "exposure complete" indicators on the remote machine.  This system has several moving parts, so troubleshooting can be challenging.  The vast majority of sound problems however are local to the users machine.  To play a test sound, type the `p` command.  This will play a local sound file (it will need to be downloaded on the first instance of this).  If you can't hear this test sound (the quality is poor and scratchy, but it sounds like a doorbell), then check your local machine's volume settings and speaker configuration.  You may also not have configured your local `aplay` instance properly.
+
+## No Sounds on macOS
+
+The Remote Observing software triggers sounds using one of several `soundplay` executables packaged with the software (in the `soundplayer/` subdirectory).  This has not been compiled on macOS for ARM (for "Apple Silicon") and relies on Apple's Rosetta software to convert an `x86_64` executable to something which can execute on modern Apple hardware.
+
+Normally the need to run the executable through Rosetta is detected automatically, but since we are calling the executable within a python program, it appears this is not happening.  Thus, if you are not getting sounds and everything else appears to be working, what may be happening is that the executable is not getting routed through Rosetta to be translated for Apple Silicon.
+
+The workaround for this is to manually call the executable once from the command line.  This attaches the proper metadata to the executable and it will work properly from within python thereafter.  This means one should navigate to the `soundplayer/` directory and call `./soundplay.darwin.x86_64` once.  Ignore the errors, and `control-c` out immediately.  After that, future connections to sounds via the Remote Observing software should run normally.
 
 # Upgrading the Software
 

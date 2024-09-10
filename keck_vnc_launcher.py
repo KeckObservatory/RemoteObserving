@@ -25,7 +25,7 @@ import soundplay
 
 
 ## Module vars
-__version__ = '3.0.4'
+__version__ = '3.0.5'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi/'
 SESSION_NAMES = ('control0', 'control1', 'control2',
@@ -91,8 +91,8 @@ def create_parser():
     ## add options
     parser.add_argument("-c", "--config", dest="config", type=str,
         help="Path to local configuration file.")
-#     parser.add_argument("--vncserver", type=str,
-#         help="Name of VNC server to connect to.  Takes precedence over all.")
+    parser.add_argument("--vncserver", type=str,
+        help="Name of VNC server to connect to.  Takes precedence over all.")
     parser.add_argument( '--vncports', nargs='+', type=str,
         help="Numerical list of VNC ports to connect to.  Takes precedence over all.")
 
@@ -136,11 +136,12 @@ def create_logger(args):
         return
 
     #create log file and log dir if not exist
+    log_path = Path(__file__).parent / 'logs'
     try:
-        Path('logs/').mkdir(parents=True, exist_ok=True)
+        log_path.mkdir(parents=True, exist_ok=True)
     except PermissionError as error:
         print(str(error))
-        print(f"ERROR: Unable to create logger at logs/")
+        print(f"ERROR: Unable to create logger at {log_path}")
         print("Make sure you have write access to this directory.\n")
         log.info("EXITING APP\n")
         sys.exit(1)
@@ -168,7 +169,7 @@ def create_logger(args):
     except:
         # Works with older pyhon versions (>=3.9)
         ymd = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    logFile = Path(f'logs/keck-remote-log-utc-{ymd}.txt')
+    logFile = log_path / f'keck-remote-log-utc-{ymd}.txt'
     logFileHandler = logging.FileHandler(logFile)
     logFileHandler.setLevel(logging.DEBUG)
     logFileHandler.setFormatter(logFormat_with_time)
@@ -234,6 +235,7 @@ class SSHTunnel(object):
                  ssh_additional_kex=None,
                  ssh_additional_hostkeyalgo=None,
                  ssh_additional_keytypes=None,
+                 ssh_command='ssh',
                  proxy_jump=None):
         self.log = logging.getLogger('KRO')
         self.server = server
@@ -251,10 +253,6 @@ class SSHTunnel(object):
         self.log.info(f"Opening SSH tunnel for {address_and_port} "
                  f"on local port {local_port}.")
 
-        if re.match(r'svncserver\d.keck.hawaii.edu', server) is not None:
-            self.log.debug('Extending timeout for svncserver connections')
-            timeout = 60
-
         # We now know everything we need to know in order to establish the
         # tunnel. Build the command line options and start the child process.
         # The -N and -T options below are somewhat exotic: they request that
@@ -263,9 +261,9 @@ class SSHTunnel(object):
 
         forwarding = f"{local_port}:localhost:{remote_port}"
         if proxy_jump is None:
-            cmd = ['ssh', server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
+            cmd = [ssh_command, server, '-l', username, '-L', forwarding, '-N', '-T', '-x']
         else:
-            cmd = ['ssh', '-J', f"{username}@{proxy_jump}", f"{username}@{server}", '-L', forwarding, '-N', '-T', '-x']
+            cmd = [ssh_command, '-J', f"{username}@{proxy_jump}", f"{username}@{server}", '-L', forwarding, '-N', '-T', '-x']
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -335,6 +333,7 @@ class SSHProxy(object):
                  ssh_additional_kex=None,
                  ssh_additional_hostkeyalgo=None,
                  ssh_additional_keytypes=None,
+                 ssh_command='ssh',
                  ):
         self.log = logging.getLogger('KRO')
         self.server = server
@@ -353,7 +352,7 @@ class SSHProxy(object):
         # the login process not execute any commands and that the server does
         # not allocate a pseudo-terminal for the established connection.
 
-        cmd = ['ssh', server, '-l', username, '-N', '-T', '-x', '-D', f"{local_port}"]
+        cmd = [ssh_command, server, '-l', username, '-N', '-T', '-x', '-D', f"{local_port}"]
         cmd.append('-oStrictHostKeyChecking=no')
         cmd.append('-oCompression=yes')
 
@@ -421,6 +420,7 @@ class KeckVncLauncher(object):
         #init vars we need to shutdown app properly
         self.config = None
         self.log = None
+        self.ssh_command = 'ssh'
         self.sound = None
         self.ssh_tunnels = dict()
         self.vnc_threads = list()
@@ -429,9 +429,9 @@ class KeckVncLauncher(object):
         self.instrument = None
         self.vncserver = None
         self.ssh_key_valid = False
-        self.ssh_additional_kex = '+diffie-hellman-group1-sha1'
-        self.ssh_additional_hostkeyalgo = '+ssh-dss,ssh-rsa'
-        self.ssh_additional_keytypes = '+ssh-dss,ssh-rsa'
+        self.ssh_additional_kex = None
+        self.ssh_additional_hostkeyalgo = None
+        self.ssh_additional_keytypes = None
         self.exit = False
         self.geometry = list()
         self.tigervnc = None
@@ -467,19 +467,19 @@ class KeckVncLauncher(object):
         self.log.debug(f"Command: {' '.join(sys.argv)}")
 
         ##---------------------------------------------------------------------
+        ## Read configuration
+        self.get_config()
+        self.check_config()
+        if self.args.authonly is False:
+            self.get_vncviewer_properties()
+
+        ##---------------------------------------------------------------------
         ## Log basic system info
         self.log_system_info()
         self.test_yaml_version()
         self.check_version()
         if self.args.authonly is False:
             self.get_display_info()
-
-        ##---------------------------------------------------------------------
-        ## Read configuration
-        self.get_config()
-        self.check_config()
-        if self.args.authonly is False:
-            self.get_vncviewer_properties()
 
         ##---------------------------------------------------------------------
         # Verify Tiger VNC Config
@@ -594,9 +594,9 @@ class KeckVncLauncher(object):
             self.log.debug(trace)
 
         try:
-            whereisssh = subprocess.check_output(['which', 'ssh'])
+            whereisssh = subprocess.check_output(['which', self.ssh_command])
             self.log.debug(f'SSH command is {whereisssh.decode().strip()}')
-            sshversion = subprocess.check_output(['ssh', '-V'],
+            sshversion = subprocess.check_output([self.ssh_command, '-V'],
                                     stderr=subprocess.STDOUT)
             self.log.debug(f'SSH version is {sshversion.decode().strip()}')
         except:
@@ -744,7 +744,7 @@ class KeckVncLauncher(object):
         # open file a second time to properly read config
         config = yaml.load(open(file), Loader=yaml.FullLoader)
 
-        for key in ['ssh_pkey', 'vncviewer', 'soundplayer', 'aplay']:
+        for key in ['ssh_path', 'ssh_pkey', 'vncviewer', 'soundplayer', 'aplay']:
             if key in config.keys():
                 config[key] = os.path.expanduser(config[key])
                 config[key] = os.path.expandvars(config[key])
@@ -757,6 +757,7 @@ class KeckVncLauncher(object):
         self.config = config
 
         # Load some values
+        self.ssh_command = self.config.get('ssh_path', 'ssh')
         self.ssh_pkey = self.config.get('ssh_pkey', None)
         lps = self.config.get('local_port_start', None)
         self.local_port = self.LOCAL_PORT_START if lps is None else lps
@@ -993,7 +994,7 @@ class KeckVncLauncher(object):
             self.log.debug('Extending timeout for svncserver connections')
             timeout = 60
 
-        command = ['ssh', server, '-l', account, '-T', '-x']
+        command = [self.ssh_command, server, '-l', account, '-T', '-x']
         if self.args.verbose is True:
             command.append('-v')
             command.append('-v')
@@ -1080,9 +1081,9 @@ class KeckVncLauncher(object):
                 self.log.error(f'Could not determine VNC server from API')
 
         #cmd line option
-#         if self.args.vncserver is not None:
-#             self.log.info("Using VNC server defined on command line")
-#             vncserver = self.args.vncserver
+        if self.args.vncserver is not None:
+            self.log.info("Using VNC server defined on command line")
+            vncserver = self.args.vncserver
 
         if vncserver:
             self.log.info(f"Got VNC server: '{vncserver}'")
@@ -1234,6 +1235,7 @@ class KeckVncLauncher(object):
         if server in ['vm-k1obs.keck.hawaii.edu', 'vm-k2obs.keck.hawaii.edu']:
             self.log.debug('Using proxy jump to open SSH tunnel')
             t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
+                          ssh_command=self.ssh_command,
                           session_name=session_name,
                           timeout=self.config.get('ssh_timeout', 10),
                           ssh_additional_kex=self.ssh_additional_kex,
@@ -1242,6 +1244,7 @@ class KeckVncLauncher(object):
                           proxy_jump='mosfire.keck.hawaii.edu')
         else:
             t = SSHTunnel(server, username, ssh_pkey, remote_port, local_port,
+                          ssh_command=self.ssh_command,
                           session_name=session_name,
                           timeout=self.config.get('ssh_timeout', 10),
                           ssh_additional_kex=self.ssh_additional_kex,
@@ -1268,6 +1271,7 @@ class KeckVncLauncher(object):
         t = SSHProxy(proxy_server,
                      self.kvnc_account, self.ssh_pkey,
                      local_port,
+                     ssh_command=self.ssh_command,
                      session_name='proxy',
                      timeout=self.config.get('ssh_timeout', 10),
                      ssh_additional_kex=self.ssh_additional_kex,
@@ -1954,21 +1958,6 @@ class KeckVncLauncher(object):
         self.log.info('Checking SSH private key format')
         with open(self.ssh_pkey, 'r') as f:
             contents = f.read()
-
-        # Check if this is an RSA key
-#         foundrsa = re.search('BEGIN RSA PRIVATE KEY', contents)
-#         if not foundrsa:
-#             self.log.error(f"Your private key does not appear to be an RSA key")
-#             failcount += 1
-
-        # Check if this is an OPENSSH key
-        foundopenssh = re.search('BEGIN OPENSSH PRIVATE KEY', contents)
-        if foundopenssh:
-            self.log.warning(f"Your SSH key may or may not be formatted correctly.")
-            self.log.warning(f"If no other tests fail and you can connect to the Keck VNCs,")
-            self.log.warning(f"then you can ignore this message.  If you can not connect,")
-            self.log.warning(f"then try regenerating and uploading your SSH key and make")
-            self.log.warning(f"sure you use the `-m PEM` option when generating the key.")
 
         # Check that there is no passphrase
         foundencrypt = re.search(r'Proc-Type: \d,ENCRYPTED', contents)

@@ -1,26 +1,27 @@
-#!/bin/bash
+#!/bin/bash -i
 
 # If we're using conda python
-if [ "$CONDA_PREFIX" != "" ]; then
-    # activate conda environment
-    # NOTE: The KRO environment is created with:
-    #       conda env create -f environment.yaml
-    source $CONDA_PREFIX/etc/profile.d/conda.sh
-    conda deactivate
-    conda activate KRO
+CONDAEXE=$(which conda)
+echo "CONDAEXE:   $CONDAEXE"
 
-    #change to script dir (so we don't need full path to keck_vnc_launcher.py)
+if [ "$CONDAEXE" != "" ]; then
+    CONDA_BASE=$(conda info --base)
+    echo "CONDA_BASE: $CONDA_BASE"
+    source $CONDA_BASE/etc/profile.d/conda.sh
+
+    KROLINE=$(conda info --envs | grep KRO)
+    echo "KROLINE:    $KROLINE"
+
     DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-    cd $DIR
+    echo "DIR:        $DIR"
 
-    # Launch the script
-    if [ -e $CONDA_PREFIX/envs/KRO/bin/python3 ]; then
-        # Launch using conda KRO environment
-        $CONDA_PREFIX/envs/KRO/bin/python3 keck_vnc_launcher.py $@
+    if [ "$KROLINE" != "" ]; then
+        echo "Launching using conda KRO environment"
+        conda activate KRO
     else
-        # Try launching via conda base environment
-        $CONDA_PREFIX/bin/python3 keck_vnc_launcher.py $@
+        echo "Launching using conda current environment"
     fi
+    python3 $DIR/keck_vnc_launcher.py -c $DIR/local_config.yaml $@
 else
     echo "We are unable to determine the correct python version to run the"
     echo "Remote Observing software.  We will now try a generic python3 call,"
@@ -28,7 +29,7 @@ else
     echo "correct python version for your system and use the same arguments you"
     echo "would use with the start_keck_viewers script.  For example:"
     echo "  /path/to/python3 keck_vnc_launcher.py numbered_account"
-    echo "Of coure, you should use the proper path to your python executable"
+    echo "Of course, you should use the proper path to your python executable"
     echo "and the correct numbered account."
 
     # just try whatever is in the path and hope it works
