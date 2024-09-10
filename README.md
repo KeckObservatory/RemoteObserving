@@ -287,6 +287,14 @@ A more extreme version would be to only keep one or two sessions open at a time 
 
 VNC does not carry sounds, so we have a separate system for playing instrument sounds such as "exposure complete" indicators on the remote machine.  This system has several moving parts, so troubleshooting can be challenging.  The vast majority of sound problems however are local to the users machine.  To play a test sound, type the `p` command.  This will play a local sound file (it will need to be downloaded on the first instance of this).  If you can't hear this test sound (the quality is poor and scratchy, but it sounds like a doorbell), then check your local machine's volume settings and speaker configuration.  You may also not have configured your local `aplay` instance properly.
 
+## No Sounds on macOS
+
+The Remote Observing software triggers sounds using one of several `soundplay` executables packaged with the software (in the `soundplayer/` subdirectory).  This has not been compiled on macOS for ARM (for "Apple Silicon") and relies on Apple's Rosetta software to convert an `x86_64` executable to something which can execute on modern Apple hardware.
+
+Normally the need to run the executable through Rosetta is detected automatically, but since we are calling the executable within a python program, it appears this is not happening.  Thus, if you are not getting sounds and everything else appears to be working, what may be happening is that the executable is not getting routed through Rosetta to be translated for Apple Silicon.
+
+The workaround for this is to manually call the executable once from the command line.  This attaches the proper metadata to the executable and it will work properly from within python thereafter.  This means one should navigate to the `soundplayer/` directory and call `./soundplay.darwin.x86_64` once.  Ignore the errors, and `control-c` out immediately.  After that, future connections to sounds via the Remote Observing software should run normally.
+
 # Upgrading the Software
 
 The software does a simple check to see if it is the latest released version.  You can see a log line with this information on startup, or you can get the saem result using the `v` command.
