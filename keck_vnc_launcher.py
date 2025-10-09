@@ -934,6 +934,7 @@ class KeckVncLauncher(object):
                     'nirspec':  [f'nspec{i}'   for i in range(1,10)],
                     'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
                     'kpf':      [f'kpf{i}'     for i in range(1,10)],
+                    'scales':   [f'scales[i}'  for i in range(1,10)],
                     'k1ao':     ['k1obsao'],
                     'k2ao':     ['k2obsao'],
                     'k1inst':   ['k1insttech'],
@@ -952,6 +953,7 @@ class KeckVncLauncher(object):
         accounts['nirspec'].append('nspeceng')
         accounts['kcwi'].append('kcwieng')
         accounts['kpf'].append('kpfeng')
+        accounts['scales'].append('scaeng')
 
         telescope = {'mosfire': 1,
                      'hires':   1,
@@ -966,6 +968,7 @@ class KeckVncLauncher(object):
                      'esi':     2,
                      'nirc2':   2,
                      'nirspec': 2,
+                     'scales':  2,
                      'kcwi':    2,
                      'k2ao':    2,
                      'k2inst':  2,
