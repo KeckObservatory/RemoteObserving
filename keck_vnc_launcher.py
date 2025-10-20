@@ -934,7 +934,7 @@ class KeckVncLauncher(object):
                     'nirspec':  [f'nspec{i}'   for i in range(1,10)],
                     'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
                     'kpf':      [f'kpf{i}'     for i in range(1,10)],
-                    'scales':   [f'scales[i}'  for i in range(1,10)],
+                    'scales':   [f'scales{i}'  for i in range(1,10)],
                     'k1ao':     ['k1obsao'],
                     'k2ao':     ['k2obsao'],
                     'k1inst':   ['k1insttech'],
