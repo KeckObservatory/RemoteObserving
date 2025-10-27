@@ -28,7 +28,7 @@ import soundplay
 __version__ = '3.0.5'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi/'
-SESSION_NAMES = ('control0', 'control1', 'control2',
+SESSION_NAMES = ('control0', 'control1', 'control2', 'control3',
                  'analysis0', 'analysis1', 'analysis2',
                  'telanalys', 'telstatus')
 KROException = Exception
@@ -934,7 +934,7 @@ class KeckVncLauncher(object):
                     'nirspec':  [f'nspec{i}'   for i in range(1,10)],
                     'kcwi':     [f'kcwi{i}'    for i in range(1,10)],
                     'kpf':      [f'kpf{i}'     for i in range(1,10)],
-                    'scales':   [f'scales[i}'  for i in range(1,10)],
+                    'scales':   [f'scales{i}'  for i in range(1,10)],
                     'k1ao':     ['k1obsao'],
                     'k2ao':     ['k2obsao'],
                     'k1inst':   ['k1insttech'],
