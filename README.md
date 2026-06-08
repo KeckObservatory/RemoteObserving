@@ -293,7 +293,7 @@ The Remote Observing software triggers sounds using one of several `soundplay` e
 
 Normally the need to run the executable through Rosetta is detected automatically, but since we are calling the executable within a python program, it appears this is not happening.  Thus, if you are not getting sounds and everything else appears to be working, what may be happening is that the executable is not getting routed through Rosetta to be translated for Apple Silicon.
 
-The workaround for this is to manually call the executable once from the command line.  This attaches the proper metadata to the executable and it will work properly from within python thereafter.  This means one should navigate to the `soundplayer/` directory and call `./soundplay.darwin.x86_64` once.  Ignore the errors, and `control-c` out immediately.  After that, future connections to sounds via the Remote Observing software should run normally.
+The workaround for this is to manually call the executable once from the command line.  This attaches the proper metadata to the executable and it will work properly from within python thereafter.  This means one should navigate to the `soundplayer/` directory and call `arch -x86_64 soundplay.darwin.x86_64` once.  Ignore the errors, and `control-c` out immediately.  After that, future connections to sounds via the Remote Observing software should run normally.
 
 # Upgrading the Software
 
