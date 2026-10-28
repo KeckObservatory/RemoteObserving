@@ -6,6 +6,7 @@ import time
 import argparse
 import logging
 import platform
+from pathlib import Path
 
 log = logging.getLogger('KRO')
 log.setLevel(logging.DEBUG)
@@ -19,7 +20,7 @@ class soundplay(object):
         self.proc = None
 
 
-    def connect(self, instrument, server=None, port=9798, aplay='aplay', player=None):
+    def connect(self, instrument, server, port=9798, aplay='aplay', player=None):
         '''
         Connect to sound server
         '''
@@ -29,15 +30,13 @@ class soundplay(object):
             #massage inputs
             instrument = instrument.lower()
             port = str(port)
-            if server is None:
-                server = self.getVncServer(instrument)
             serverport = f'{server}:{port}'
 
             # TODO: It should be OK for aplay to be None here.
             if aplay is None:
                 aplay = 'aplay'
 
-            soundplayPath = full_path(player)
+#             soundplayPath = full_path(player)
 
             #check existing soundplay process
             procs = self.check_existing_process(server, port, instrument)
@@ -47,7 +46,7 @@ class soundplay(object):
                 return False
 
             #create command and open process and hold on to handle so we can terminate later
-            cmd = [soundplayPath, '-s', serverport, '-T', instrument]
+            cmd = [Path(sys.executable), Path(__file__).parent / 'soundplayer_v2.py', '-s', serverport, '-T', instrument]
 
             if aplay is not None:
                 cmd.append('-px')
@@ -77,13 +76,6 @@ class soundplay(object):
         return lines
 
 
-    def getVncServer(self, instrument):
-        '''
-        #todo: move this common function to shared module.  It can look for ssh key.  If not found, then it can prompt for password.
-        '''
-        raise Exception("Not implemented yet. Must provide server name explicitly.")
-
-
     def terminate(self):
         if self.proc:
             log.info('Terminating soundplay process...')
@@ -95,37 +87,37 @@ class soundplay(object):
 ## Get the full path to the soundplay executable
 ##-------------------------------------------------------------------------
 
-def full_path(player=None):
-
-    remobs_base = os.path.dirname(os.path.abspath(__file__))
-    soundplayers = os.path.join(remobs_base, 'soundplayer')
-
-    if player is None:
-        system = platform.system()
-        system = system.lower()
-        arch = platform.machine()
-        arch = arch.lower()
-
-        specific = '.'.join(('soundplay', system, arch))
-        sound_path = os.path.join(soundplayers, specific)
-
-        if os.path.exists(sound_path):
-            pass
-        else:
-            sound_path = os.path.join(soundplayers, 'soundplay')
-
-    else:
-        if os.path.exists(player):
-            sound_path = player
-        else:
-            sound_path = os.path.join(soundplayers, player)
-
-        if os.path.exists(sound_path):
-            pass
-        else:
-            raise ValueError('invalid soundplay binary name: ' + player)
-
-    return sound_path
+# def full_path(player=None):
+# 
+#     remobs_base = os.path.dirname(os.path.abspath(__file__))
+#     soundplayers = os.path.join(remobs_base, 'soundplayer')
+# 
+#     if player is None:
+#         system = platform.system()
+#         system = system.lower()
+#         arch = platform.machine()
+#         arch = arch.lower()
+# 
+#         specific = '.'.join(('soundplay', system, arch))
+#         sound_path = os.path.join(soundplayers, specific)
+# 
+#         if os.path.exists(sound_path):
+#             pass
+#         else:
+#             sound_path = os.path.join(soundplayers, 'soundplay')
+# 
+#     else:
+#         if os.path.exists(player):
+#             sound_path = player
+#         else:
+#             sound_path = os.path.join(soundplayers, player)
+# 
+#         if os.path.exists(sound_path):
+#             pass
+#         else:
+#             raise ValueError('invalid soundplay binary name: ' + player)
+# 
+#     return sound_path
 
 
 ##-------------------------------------------------------------------------
