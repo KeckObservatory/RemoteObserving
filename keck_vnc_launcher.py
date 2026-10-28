@@ -1440,7 +1440,6 @@ class KeckVncLauncher(object):
             self.log.info("Re-reading config file")
             self.get_config()
             aplay = self.config.get('aplay', None)
-            soundplayer = self.config.get('soundplayer', None)
             vncserver = self.vncserver
 
             if self.firewall_requested == True:
@@ -1462,7 +1461,7 @@ class KeckVncLauncher(object):
 
             self.sound = soundplay.soundplay()
             self.sound.connect(self.instrument, vncserver, sound_port,
-                               aplay=aplay, player=soundplayer)
+                               aplay=aplay)
         except:
             self.log.error('Unable to start soundplay.  See log for details.')
             trace = traceback.format_exc()

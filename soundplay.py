@@ -20,7 +20,7 @@ class soundplay(object):
         self.proc = None
 
 
-    def connect(self, instrument, server, port=9798, aplay='aplay', player=None):
+    def connect(self, instrument, server, port=9798, aplay='aplay'):
         '''
         Connect to sound server
         '''
@@ -32,11 +32,8 @@ class soundplay(object):
             port = str(port)
             serverport = f'{server}:{port}'
 
-            # TODO: It should be OK for aplay to be None here.
             if aplay is None:
                 aplay = 'aplay'
-
-#             soundplayPath = full_path(player)
 
             #check existing soundplay process
             procs = self.check_existing_process(server, port, instrument)
@@ -80,86 +77,3 @@ class soundplay(object):
         if self.proc:
             log.info('Terminating soundplay process...')
             self.proc.terminate()
-
-
-
-##-------------------------------------------------------------------------
-## Get the full path to the soundplay executable
-##-------------------------------------------------------------------------
-
-# def full_path(player=None):
-# 
-#     remobs_base = os.path.dirname(os.path.abspath(__file__))
-#     soundplayers = os.path.join(remobs_base, 'soundplayer')
-# 
-#     if player is None:
-#         system = platform.system()
-#         system = system.lower()
-#         arch = platform.machine()
-#         arch = arch.lower()
-# 
-#         specific = '.'.join(('soundplay', system, arch))
-#         sound_path = os.path.join(soundplayers, specific)
-# 
-#         if os.path.exists(sound_path):
-#             pass
-#         else:
-#             sound_path = os.path.join(soundplayers, 'soundplay')
-# 
-#     else:
-#         if os.path.exists(player):
-#             sound_path = player
-#         else:
-#             sound_path = os.path.join(soundplayers, player)
-# 
-#         if os.path.exists(sound_path):
-#             pass
-#         else:
-#             raise ValueError('invalid soundplay binary name: ' + player)
-# 
-#     return sound_path
-
-
-##-------------------------------------------------------------------------
-##  main
-##-------------------------------------------------------------------------
-if __name__ == "__main__":
-    '''
-    Run in command line mode
-    '''
-
-    #create logger
-    create_logger()
-    log = logging.getLogger('KRO')
-
-    # arg parser
-    parser = argparse.ArgumentParser(description="Start Keck event sounds player.")
-    parser.add_argument("instrument",   type=str,                                           help="Instrument to get event sounds for.")
-    parser.add_argument("--server",     type=str,   dest="server",  default=None,           help="IP name or address of sound server to connect to. Will query for value if not given.")
-    parser.add_argument("--port",       type=int,   dest="port",    default=9798,           help="Server port where soundplayer should connect. Default is standard.")
-    parser.add_argument("--player",     type=str,   dest="player",  default='soundplay',    help="Keck soundplay executable filename to use in soundplayer folder.")
-    parser.add_argument("--aplay",      type=str,   dest="aplay",   default='aplay',        help="Full path to local system command-line sound player.")
-    args = parser.parse_args()
-
-
-    #define exit handler in case program is killed by user
-    def exit_handler(soundplay=None):
-        if soundplay: soundplay.terminate()
-
-
-    #start soundplay
-    sp = soundplay()
-    ok = sp.connect(args.instrument, server=args.server, port=args.port, aplay=args.aplay, player=args.player)
-    if not ok:
-        sys.exit(1)
-
-    #wait for interrupt to exit cleanly
-    try:
-        atexit.register(exit_handler, sp)
-        print ('Hit control-C to terminate program and close soundplay connection.')
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        if sp: sp.terminate()
