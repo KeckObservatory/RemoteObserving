@@ -19,7 +19,8 @@ VERSION = "2.0"
 
 class SoundPlayClient:
 
-    def __init__(self):
+    def __init__(self, args):
+        self.args = args
         self.host = "localhost"
         self.port = 9798
         self.volume = 50
@@ -31,23 +32,8 @@ class SoundPlayClient:
         self.tags = []
         self.sock = None
         self.sockfile = None
-        self.setup_external_player()
-
-    ##################################################################
-    # Platform configuration
-    ##################################################################
-
-    def setup_external_player(self):
-        sysname = platform.system()
-        if sysname == "Linux":
-            self.play_template = ["/usr/bin/play", "-v", "%v", "%s"]
-            self.scale_volume_factor = 0.05
-        elif sysname == "Darwin":
-            self.play_template = ["afplay", "-v", "%v", "%s"]
-            self.scale_volume_factor = 0.1
-        else:
-            self.play_template = ["play", "%s"]
-            self.scale_volume_factor = 1.0
+        self.play_template = self.args.px.split()
+        self.scale_volume_factor = 1.0
 
     ##################################################################
     # Utility functions
@@ -360,7 +346,7 @@ def main():
         print(VERSION)
         return
 
-    client = SoundPlayClient()
+    client = SoundPlayClient(args)
 
     if args.l:
         rc = client.play_local_test()
