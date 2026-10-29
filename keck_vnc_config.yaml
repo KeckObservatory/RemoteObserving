@@ -46,16 +46,9 @@ vncargs: '-Shared -FullColor -PreferredEncoding=ZRLE -AutoSelect=0'
 
 
 ## Soundplay Configuration:
-##   The soundplayer application included in this software receives the signal
-##   to play a sound from the Keck systems.  This is a compiled package, so it
-##   needs to be paired to your system.  The default value is a symbolic link
-##   which you can point to another executable if you prefer that method of
-##   specifying it (see ./soundplayer/ folder).
-##
-##   aplay is he path to the command-line sound player. Defaults to 'aplay'.
+##   aplay is the path to the command-line sound player. Defaults to 'aplay'.
 ##
 ##   Example: linux
-soundplayer: 'soundplay'
 aplay: '/usr/bin/aplay'
 ##
 ##   Example: macOS
@@ -65,7 +58,6 @@ aplay: '/usr/bin/aplay'
 ##   put in a small value (e.g. 0.2).  Using the %v value means it will use the
 ##   volume slider on eventsounds which is scales to a range of 1 to 100, so it
 ##   does not scale properly on afplay used on macOS.
-#soundplayer: 'soundplay.darwin.x86_64'
 #aplay: '/usr/bin/afplay -v 0.4 %s'
 
 
