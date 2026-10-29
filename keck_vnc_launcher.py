@@ -37,12 +37,7 @@ KROException = Exception
 ##-------------------------------------------------------------------------
 def main():
     args = create_parser()
-    print(args)
     create_logger(args)
-    log = logging.getLogger('KRO')
-    log.info('**test**')
-    print(log.handlers)
-    log.info('**test2**')
     kvl = KeckVncLauncher(args)
     #catch all exceptions so we can exit gracefully
     try:
@@ -133,6 +128,7 @@ def create_logger(args):
 
     ## Create logger object
     log = logging.getLogger('KRO')
+    log.setLevel(logging.DEBUG)
 
     ## Only add handlers if none already exist (eliminates duplicate lines)
     if len(log.handlers) > 0:
@@ -2058,7 +2054,7 @@ class soundplay(object):
         self.server = server
         self.port = port
         self.aplay = aplay
-#         self.log = logging.getLogger('KRO')
+        self.log = logging.getLogger('KRO')
         self.cmd = [sys.executable,
                     str(Path(__file__).parent / 'soundplayer.py'),
                     '-s', f'{server}:{port}',
@@ -2071,23 +2067,23 @@ class soundplay(object):
         Connect to sound server
         '''
 
-#         self.log.info(f'Starting soundplayer: server={self.server}, instrument={self.instrument}')
+        self.log.info(f'Starting soundplayer: server={self.server}, instrument={self.instrument}')
         try:
             serverport = f'{self.server}:{self.port}'
 
             #check existing soundplay process
             procs = self.check_existing_process(self.server, self.port, self.instrument)
             if procs and len(procs) > 0:
-#                 self.log.info(f"SOUNDPLAY PROCESS ALREADY EXISTS FOR: {serverport} {self.instrument}")
-#                 self.log.debug(procs)
+                self.log.info(f"SOUNDPLAY PROCESS ALREADY EXISTS FOR: {serverport} {self.instrument}")
+                self.log.debug(procs)
                 return False
 
             #create command and open process and hold on to handle so we can terminate later
-#             self.log.debug('Soundplay cmd: ' + str(self.cmd))
+            self.log.debug('Soundplay cmd: ' + str(self.cmd))
             self.proc = subprocess.Popen(self.cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except Exception as error:
-#             self.log.error("Could not start soundplayer")
-#             self.log.error(error)
+            self.log.error("Could not start soundplayer")
+            self.log.error(error)
             return False
 
         return True
@@ -2099,7 +2095,7 @@ class soundplay(object):
         '''
         #todo: fix this to use proper cmd array and shell=False
         cmd = f'ps -elf | grep soundplay | grep "{server}:{port}" | grep {instrument} | grep -v grep'
-#         self.log.debug('Checking for existing soundplay process: ' + cmd)
+        self.log.debug('Checking for existing soundplay process: ' + cmd)
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         data = proc.communicate()[0]
         data = data.decode("utf-8").strip()
@@ -2109,7 +2105,7 @@ class soundplay(object):
 
     def terminate(self):
         if self.proc:
-#             self.log.info('Terminating soundplay process...')
+            self.log.info('Terminating soundplay process...')
             self.proc.terminate()
 
 
