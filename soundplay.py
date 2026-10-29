@@ -43,7 +43,7 @@ class soundplay(object):
                 return False
 
             #create command and open process and hold on to handle so we can terminate later
-            cmd = [Path(sys.executable), Path(__file__).parent / 'soundplayer_v2.py', '-s', serverport, '-T', instrument]
+            cmd = [Path(sys.executable), Path(__file__).parent / 'soundplayer.py', '-s', serverport, '-T', instrument]
 
             if aplay is not None:
                 cmd.append('-px')
