@@ -1456,13 +1456,15 @@ class KeckVncLauncher(object):
 
                 vncserver = 'localhost'
 
-            self.sound = soundplay.soundplay()
+            self.sound = soundplay(log=self.log)
             self.sound.connect(self.instrument, vncserver, sound_port,
                                aplay=aplay)
-        except:
+        except Exception as e:
             self.log.error('Unable to start soundplay.  See log for details.')
+            self.log.error(e)
             trace = traceback.format_exc()
             self.log.debug(trace)
+            raise e
 
 
     ##-------------------------------------------------------------------------
@@ -2046,14 +2048,15 @@ class KeckVncLauncher(object):
 
 
 ##-------------------------------------------------------------------------
-## Soundplay Wrapper
+## Soundplay Wrapper Object
 ##-------------------------------------------------------------------------
 class soundplay(object):
 
-    def __init__(self):
+    def __init__(self, log=None):
 
         #class vars
         self.proc = None
+        self.log = log
 
 
     def connect(self, instrument, server, port=9798, aplay='aplay'):
@@ -2061,7 +2064,7 @@ class soundplay(object):
         Connect to sound server
         '''
 
-        log.info(f'Starting soundplayer: server={server}, instrument={instrument}')
+        self.log.info(f'Starting soundplayer: server={server}, instrument={instrument}')
         try:
             #massage inputs
             instrument = instrument.lower()
@@ -2074,8 +2077,8 @@ class soundplay(object):
             #check existing soundplay process
             procs = self.check_existing_process(server, port, instrument)
             if procs and len(procs) > 0:
-                log.info(f"SOUNDPLAY PROCESS ALREADY EXISTS FOR: {serverport} {instrument}")
-                log.debug(procs)
+                self.log.info(f"SOUNDPLAY PROCESS ALREADY EXISTS FOR: {serverport} {instrument}")
+                self.log.debug(procs)
                 return False
 
             #create command and open process and hold on to handle so we can terminate later
@@ -2085,11 +2088,11 @@ class soundplay(object):
                 cmd.append('-px')
                 cmd.append(aplay)
 
-            log.debug('Soundplay cmd: ' + str(cmd))
+            self.log.debug('Soundplay cmd: ' + str(cmd))
             self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except Exception as error:
-            log.error("Could not start soundplayer")
-            log.error(error)
+            self.log.error("Could not start soundplayer")
+            self.log.error(error)
             return False
 
         return True
@@ -2101,7 +2104,7 @@ class soundplay(object):
         '''
         #todo: fix this to use proper cmd array and shell=False
         cmd = f'ps -elf | grep soundplay | grep "{server}:{port}" | grep {instrument} | grep -v grep'
-        log.debug('Checking for existing soundplay process: ' + cmd)
+        self.log.debug('Checking for existing soundplay process: ' + cmd)
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         data = proc.communicate()[0]
         data = data.decode("utf-8").strip()
@@ -2111,7 +2114,7 @@ class soundplay(object):
 
     def terminate(self):
         if self.proc:
-            log.info('Terminating soundplay process...')
+            self.log.info('Terminating soundplay process...')
             self.proc.terminate()
 
 
