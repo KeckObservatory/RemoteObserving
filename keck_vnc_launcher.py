@@ -19,13 +19,11 @@ import time
 import traceback
 import requests
 import yaml
-
-## Import local modules
-import soundplay
+import copy
 
 
 ## Module vars
-__version__ = '3.0.6'
+__version__ = '3.1.0'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi/'
 SESSION_NAMES = ('control0', 'control1', 'control2', 'control3',
@@ -130,6 +128,7 @@ def create_logger(args):
 
     ## Create logger object
     log = logging.getLogger('KRO')
+    log.setLevel(logging.DEBUG)
 
     ## Only add handlers if none already exist (eliminates duplicate lines)
     if len(log.handlers) > 0:
@@ -419,7 +418,7 @@ class KeckVncLauncher(object):
     def __init__(self, args):
         #init vars we need to shutdown app properly
         self.config = None
-        self.log = None
+        self.log = logging.getLogger('KRO')
         self.ssh_command = 'ssh'
         self.sound = None
         self.ssh_tunnels = dict()
@@ -439,7 +438,6 @@ class KeckVncLauncher(object):
         self.api_data = None
 
         self.args = args
-        self.log = logging.getLogger('KRO')
 
         #default start sessions
         self.default_sessions = []
@@ -1440,7 +1438,6 @@ class KeckVncLauncher(object):
             self.log.info("Re-reading config file")
             self.get_config()
             aplay = self.config.get('aplay', None)
-            soundplayer = self.config.get('soundplayer', None)
             vncserver = self.vncserver
 
             if self.firewall_requested == True:
@@ -1460,13 +1457,15 @@ class KeckVncLauncher(object):
 
                 vncserver = 'localhost'
 
-            self.sound = soundplay.soundplay()
-            self.sound.connect(self.instrument, vncserver, sound_port,
-                               aplay=aplay, player=soundplayer)
-        except:
+            self.sound = soundplay(self.instrument, vncserver, sound_port,
+                                   aplay=aplay)
+            self.sound.connect()
+        except Exception as e:
             self.log.error('Unable to start soundplay.  See log for details.')
+            self.log.error(e)
             trace = traceback.format_exc()
             self.log.debug(trace)
+            raise e
 
 
     ##-------------------------------------------------------------------------
@@ -1596,19 +1595,12 @@ class KeckVncLauncher(object):
         This sound will be a local file, so is a good test of the local system
         hardware and software setup.
         '''
-        if self.config.get('nosound', False) is True:
+        if self.sound is None:
             self.log.warning('Sounds are not enabled.  See config file.')
             return
 
-        # Build the soundplay test command.
-        soundplayer = self.config.get('soundplayer', None)
-        soundplayer = soundplay.full_path(soundplayer)
-
-        command = [soundplayer, '-l']
-
-        aplay = self.config.get('aplay', 'aplay')
-        command.append('-px')
-        command.append(aplay)
+        command = copy.deepcopy(self.sound.cmd)
+        command.append('-l')
 
         self.log.info('Playing test sound')
         self.log.debug('Calling: ' + ' '.join(command))
@@ -2047,6 +2039,74 @@ class KeckVncLauncher(object):
 
         if self.config.get('vncviewer', False) is not True:
             self.play_test_sound()
+
+
+##-------------------------------------------------------------------------
+## Soundplay Wrapper Object
+##-------------------------------------------------------------------------
+class soundplay(object):
+
+    def __init__(self, instrument, server, port=9798, aplay='aplay'):
+
+        #class vars
+        self.proc = None
+        self.instrument = instrument.lower()
+        self.server = server
+        self.port = port
+        self.aplay = aplay
+        self.log = logging.getLogger('KRO')
+        self.cmd = [sys.executable,
+                    str(Path(__file__).parent / 'soundplayer.py'),
+                    '-s', f'{server}:{port}',
+                    '-T', instrument,
+                    '-px', aplay]
+
+
+    def connect(self):
+        '''
+        Connect to sound server
+        '''
+
+        self.log.info(f'Starting soundplayer: server={self.server}, instrument={self.instrument}')
+        try:
+            serverport = f'{self.server}:{self.port}'
+
+            #check existing soundplay process
+            procs = self.check_existing_process(self.server, self.port, self.instrument)
+            if procs and len(procs) > 0:
+                self.log.info(f"SOUNDPLAY PROCESS ALREADY EXISTS FOR: {serverport} {self.instrument}")
+                self.log.debug(procs)
+                return False
+
+            #create command and open process and hold on to handle so we can terminate later
+            self.log.debug('Soundplay cmd: ' + str(self.cmd))
+            self.proc = subprocess.Popen(self.cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except Exception as error:
+            self.log.error("Could not start soundplayer")
+            self.log.error(error)
+            return False
+
+        return True
+
+
+    def check_existing_process(self, server, port, instrument):
+        '''
+        Use system ps command to look for processes connected to same server/port/instr combo
+        '''
+        #todo: fix this to use proper cmd array and shell=False
+        cmd = f'ps -elf | grep soundplay | grep "{server}:{port}" | grep {instrument} | grep -v grep'
+        self.log.debug('Checking for existing soundplay process: ' + cmd)
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        data = proc.communicate()[0]
+        data = data.decode("utf-8").strip()
+        lines = data.split('\n') if data else []
+        return lines
+
+
+    def terminate(self):
+        if self.proc:
+            self.log.info('Terminating soundplay process...')
+            self.proc.terminate()
 
 
 ##-------------------------------------------------------------------------

@@ -81,11 +81,7 @@ Note: The examples below assume sudo/root installation for all users and were or
 
 - Install python3
     - If you are using Anaconda, download and run the latest [anaconda installer](https://www.anaconda.com/download)
-    - If needed, add python3 to user path (example below for `~/.bashrc` with one possible python install path):
-    ```
-    export PATH=/usr/local/anaconda3-7/bin:$PATH
-    ```
-    - Other python distributions should work (using python 3.7+), but the user may have to manually install the python dependencies described in the `environment.yaml` file in addition to other python packages included with anaconda.
+    - Other python distributions should work (using python 3.8+), but the user may have to manually install the python dependencies described in the `environment.yaml` file.
 - Install VNC viewer client
     - **For Linux**
         - TigerVNC is recommended as the VNC client.  RealVNC has been tested as well.
@@ -163,11 +159,9 @@ Edit the `local_config.yaml` file you created above.  Read the comments in the c
     - Some VNC viewers (such as the built in macOS one) may need a prefix such as `vnc://` which can be set via the `vncprefix` value.
     - Options which should be passed to the vncviewer application are set in the `vncargs` value.
 - **Important:** Make sure you have configured your VNC viewer **not** to resize the sessions (see the note about TigerVNC above).
-- **Soundplay Configuration:** Uncomment the `soundplayer` line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) for help configuring this value if needed.  Also, if your local machine's path to the `aplay` executable is non-standard, specify that in the `aplay` value.
-    - At the moment, the default Linux executable seems to work for CentOS and Ubuntu Linux.
+- **Soundplay Configuration:**  If your local machine's path to the `aplay` executable is non-standard, specify that in the `aplay` value.
     - For macOS, use the settings as described in the `keck_vnc_config.yaml` section which specify a specific soundplay executable and a specific aplay calling format:
         ```
-        soundplayer: 'soundplay.darwin.x86_64'
         aplay: '/usr/bin/afplay -v %v %s'
         ```
         As described in the comments in that file, replace `%v` with a value from 0 to 100 if you want to override the volume control in eventsounds.  Many users find the macOS sounds too loud, so replacing `%v` with a value less than 1 can help.
