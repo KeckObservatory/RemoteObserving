@@ -19,6 +19,7 @@ import time
 import traceback
 import requests
 import yaml
+import copy
 
 
 ## Module vars
@@ -36,7 +37,12 @@ KROException = Exception
 ##-------------------------------------------------------------------------
 def main():
     args = create_parser()
+    print(args)
     create_logger(args)
+    log = logging.getLogger('KRO')
+    log.info('**test**')
+    print(log.handlers)
+    log.info('**test2**')
     kvl = KeckVncLauncher(args)
     #catch all exceptions so we can exit gracefully
     try:
@@ -416,7 +422,7 @@ class KeckVncLauncher(object):
     def __init__(self, args):
         #init vars we need to shutdown app properly
         self.config = None
-        self.log = None
+        self.log = logging.getLogger('KRO')
         self.ssh_command = 'ssh'
         self.sound = None
         self.ssh_tunnels = dict()
@@ -436,7 +442,6 @@ class KeckVncLauncher(object):
         self.api_data = None
 
         self.args = args
-        self.log = logging.getLogger('KRO')
 
         #default start sessions
         self.default_sessions = []
@@ -1456,9 +1461,9 @@ class KeckVncLauncher(object):
 
                 vncserver = 'localhost'
 
-            self.sound = soundplay(log=self.log)
-            self.sound.connect(self.instrument, vncserver, sound_port,
-                               aplay=aplay)
+            self.sound = soundplay(self.instrument, vncserver, sound_port,
+                                   aplay=aplay)
+            self.sound.connect()
         except Exception as e:
             self.log.error('Unable to start soundplay.  See log for details.')
             self.log.error(e)
@@ -1594,19 +1599,12 @@ class KeckVncLauncher(object):
         This sound will be a local file, so is a good test of the local system
         hardware and software setup.
         '''
-        if self.config.get('nosound', False) is True:
+        if self.sound is None:
             self.log.warning('Sounds are not enabled.  See config file.')
             return
 
-        # Build the soundplay test command.
-        soundplayer = self.config.get('soundplayer', None)
-        soundplayer = soundplay.full_path(soundplayer)
-
-        command = [soundplayer, '-l']
-
-        aplay = self.config.get('aplay', 'aplay')
-        command.append('-px')
-        command.append(aplay)
+        command = copy.deepcopy(self.sound.cmd)
+        command.append('-l')
 
         self.log.info('Playing test sound')
         self.log.debug('Calling: ' + ' '.join(command))
@@ -2052,47 +2050,44 @@ class KeckVncLauncher(object):
 ##-------------------------------------------------------------------------
 class soundplay(object):
 
-    def __init__(self, log=None):
+    def __init__(self, instrument, server, port=9798, aplay='aplay'):
 
         #class vars
         self.proc = None
-        self.log = log
+        self.instrument = instrument.lower()
+        self.server = server
+        self.port = port
+        self.aplay = aplay
+#         self.log = logging.getLogger('KRO')
+        self.cmd = [sys.executable,
+                    str(Path(__file__).parent / 'soundplayer.py'),
+                    '-s', f'{server}:{port}',
+                    '-T', instrument,
+                    '-px', aplay]
 
 
-    def connect(self, instrument, server, port=9798, aplay='aplay'):
+    def connect(self):
         '''
         Connect to sound server
         '''
 
-        self.log.info(f'Starting soundplayer: server={server}, instrument={instrument}')
+#         self.log.info(f'Starting soundplayer: server={self.server}, instrument={self.instrument}')
         try:
-            #massage inputs
-            instrument = instrument.lower()
-            port = str(port)
-            serverport = f'{server}:{port}'
-
-            if aplay is None:
-                aplay = 'aplay'
+            serverport = f'{self.server}:{self.port}'
 
             #check existing soundplay process
-            procs = self.check_existing_process(server, port, instrument)
+            procs = self.check_existing_process(self.server, self.port, self.instrument)
             if procs and len(procs) > 0:
-                self.log.info(f"SOUNDPLAY PROCESS ALREADY EXISTS FOR: {serverport} {instrument}")
-                self.log.debug(procs)
+#                 self.log.info(f"SOUNDPLAY PROCESS ALREADY EXISTS FOR: {serverport} {self.instrument}")
+#                 self.log.debug(procs)
                 return False
 
             #create command and open process and hold on to handle so we can terminate later
-            cmd = [Path(sys.executable), Path(__file__).parent / 'soundplayer.py', '-s', serverport, '-T', instrument]
-
-            if aplay is not None:
-                cmd.append('-px')
-                cmd.append(aplay)
-
-            self.log.debug('Soundplay cmd: ' + str(cmd))
-            self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#             self.log.debug('Soundplay cmd: ' + str(self.cmd))
+            self.proc = subprocess.Popen(self.cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except Exception as error:
-            self.log.error("Could not start soundplayer")
-            self.log.error(error)
+#             self.log.error("Could not start soundplayer")
+#             self.log.error(error)
             return False
 
         return True
@@ -2104,7 +2099,7 @@ class soundplay(object):
         '''
         #todo: fix this to use proper cmd array and shell=False
         cmd = f'ps -elf | grep soundplay | grep "{server}:{port}" | grep {instrument} | grep -v grep'
-        self.log.debug('Checking for existing soundplay process: ' + cmd)
+#         self.log.debug('Checking for existing soundplay process: ' + cmd)
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         data = proc.communicate()[0]
         data = data.decode("utf-8").strip()
@@ -2114,7 +2109,7 @@ class soundplay(object):
 
     def terminate(self):
         if self.proc:
-            self.log.info('Terminating soundplay process...')
+#             self.log.info('Terminating soundplay process...')
             self.proc.terminate()
 
 
