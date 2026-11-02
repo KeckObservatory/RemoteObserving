@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Josh Walawender" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Troubleshooting - Remote Observing</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Troubleshooting";
+        var mkdocs_page_input_path = "troubleshooting.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Remote Observing
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Remote Observing Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../news/">Remote Observing News</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../policy/">Remote Observing Policy</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../sites/">Remote Observing Sites</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Remote Observing Software</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../instructions/">Running start_keck_viewers</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Troubleshooting</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Remote Observing</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Remote Observing Software</li>
+      <li class="breadcrumb-item active">Troubleshooting</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="troubleshooting-common-problems">Troubleshooting Common Problems</h1>
+<p>Verbose debug information is logged to the <code>RemoteObserving/logs/</code> folder.  Log files are created based on the UTC date.</p>
+<p>If you need assistance, please email <a href="mailto:remote-observing@keck.hawaii.edu">remote-observing@keck.hawaii.edu</a> and attach the most recent log file from the logs folder.</p>
+<h2 id="can-not-see-entire-vnc-desktop-vnc-desktop-is-small">Can not see entire VNC desktop / VNC desktop is small</h2>
+<p>If the user can not see the entire VNC desktop of the remote computer or if the VNC desktop is rendered small and hard to read, then try to look for sizing options on the local VNC viewer.  For some users, scaling the VNC screen to the window may be a good option to reveal areas they can not see at the cost of smaller UI element size.  For others, rendering the window very small may be worse than having to scroll around the desktop.  The local VNC viewer client will have options for controlling this behavior.  The best solution is to have a lot of local screen real estate (pixel count) and a lot of screen area (inches).  There is more detail is the <a href="../policy/">Keck Remote Observing Policy</a>.</p>
+<h2 id="connection-quality-problems">Connection Quality Problems</h2>
+<p>If your connection quality is poor (bad color rendition, blurry (compressed) graphics, etc., play with the quality and color settings on the local VNC viewer client software.  There's a tradeoff between responsiveness and quality as you would imagine.  The default option set is <code>--FullColor</code>  (in your local config file), try with other settings.  There is also a quality adjustment option for most VNC viewers.</p>
+<p>Another option would simply be to use fewer VNC sessions.  If you can get all your GUIs on to 3 sessions instead of 4, that helps.</p>
+<p>A more extreme version would be to only keep one or two sessions open at a time and then open and close them as needded.  You can close a particular VNC session by closing that VNC viewer window and then reopen it from the app's command line.  </p>
+<h2 id="no-sounds">No Sounds</h2>
+<p>VNC does not carry sounds, so we have a separate system for playing instrument sounds such as "exposure complete" indicators on the remote machine.  This system has several moving parts, so troubleshooting can be challenging.  The vast majority of sound problems however are local to the users machine.  To play a test sound, type the <code>p</code> command.  This will play a local sound file (it will need to be downloaded on the first instance of this).  If you can't hear this test sound (the quality is poor and scratchy, but it sounds like a doorbell), then check your local machine's volume settings and speaker configuration.  You may also not have configured your local <code>aplay</code> instance properly.</p>
+<h2 id="no-sounds-on-macos">No Sounds on macOS</h2>
+<p>The Remote Observing software triggers sounds using one of several <code>soundplay</code> executables packaged with the software (in the <code>soundplayer/</code> subdirectory).  This has not been compiled on macOS for ARM (for "Apple Silicon") and relies on Apple's Rosetta software to convert an <code>x86_64</code> executable to something which can execute on modern Apple hardware.</p>
+<p>Normally the need to run the executable through Rosetta is detected automatically, but since we are calling the executable within a python program, it appears this is not happening.  Thus, if you are not getting sounds and everything else appears to be working, what may be happening is that the executable is not getting routed through Rosetta to be translated for Apple Silicon.</p>
+<p>The workaround for this is to manually call the executable once from the command line.  This attaches the proper metadata to the executable and it will work properly from within python thereafter.  This means one should navigate to the <code>soundplayer/</code> directory and call <code>arch -x86_64 soundplay.darwin.x86_64</code> once.  Ignore the errors, and <code>control-c</code> out immediately.  After that, future connections to sounds via the Remote Observing software should run normally.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../instructions/" class="btn btn-neutral float-left" title="Running start_keck_viewers"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/KeckObservatory/RemoteObserving/" class="fa fa-code-fork" style="color: #fcfcfc"> RemoteObserving</a>
+        </span>
+    
+    
+      <span><a href="../instructions/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
