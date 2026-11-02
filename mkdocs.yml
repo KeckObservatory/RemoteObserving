@@ -1,0 +1,26 @@
+site_name: Remote Observing
+site_description: Public documentation for Remote Observing at the W. M. Keck Observatory.
+site_author: Josh Walawender
+repo_url: https://github.com/KeckObservatory/RemoteObserving/
+repo_name: RemoteObserving
+edit_uri: ''
+
+remote_branch: gh-pages
+
+theme:
+  name: readthedocs
+  titles_only: true
+
+plugins:
+- search
+
+nav:
+  - "Remote Observing Home": index.md
+  - "Remote Observing News": news.md
+  - "Remote Observing Policy": policy.md
+  - "Remote Observing Sites": sites.md
+  - "Remote Observing Software":
+      - "Preparation": preparation.md
+      - "Installation": installation.md
+      - "Running start_keck_viewers": instructions.md
+      - "Troubleshooting": troubleshooting.md

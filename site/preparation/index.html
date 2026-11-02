@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Josh Walawender" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Preparation - Remote Observing</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Preparation";
+        var mkdocs_page_input_path = "preparation.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Remote Observing
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Remote Observing Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../news/">Remote Observing News</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../policy/">Remote Observing Policy</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../sites/">Remote Observing Sites</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Remote Observing Software</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Preparation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../instructions/">Running start_keck_viewers</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Remote Observing</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Remote Observing Software</li>
+      <li class="breadcrumb-item active">Preparation</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="preparing-for-remote-observing-at-keck">Preparing for Remote Observing at Keck</h1>
+<p><strong>IMPORTANT</strong>: Last minute additions of observers to an observing night will not be possible.  Observers <strong>must</strong> complete the items below at least two days ahead of time.</p>
+<h3 id="1-have-an-approved-remote-observing-request">1) Have an approved remote observing request</h3>
+<p>You must have an approved remote observing request before you can observe remotely.  Please submit your request from your <a href="https://www2.keck.hawaii.edu/inst/PILogin/login.php">Observer Login Page</a>.</p>
+<h3 id="2-be-listed-as-an-observer">2) Be listed as an observer</h3>
+<p>Each person wanting to connect <strong>must</strong> be listed in the <a href="https://www2.keck.hawaii.edu/observing/keckSchedule/keckSchedule.php">Keck Observing Schedule</a> as an observer.</p>
+<p>The schedule is filled based on your remote observing request, it must be done at least <strong>two days in advance of your run</strong>.</p>
+<h3 id="3-upload-your-ssh-key">3) Upload your SSH key</h3>
+<ul>
+<li>Generate ssh public/private key pair <strong>(do not set a passphrase)</strong></li>
+</ul>
+<pre><code>cd ~/.ssh
+ssh-keygen -t ed25519
+</code></pre>
+<ul>
+<li>
+<p>Upload your <strong>public</strong> key file at your <a href="https://www2.keck.hawaii.edu/inst/PILogin/login.php">Observer Login Page</a>. Click on "Manage Your Remote Observing SSH Key" and follow the instructions.</p>
+</li>
+<li>
+<p>After you have uploaded the key, note the "API key".  This will be a long string of letters and numbers.  You will need this key to connect (see the <a href="../installation/">installation instructions</a> section titled "Configure Keck Remote Observing Software").</p>
+</li>
+</ul>
+<h1 id="hardware-recommendations">Hardware Recommendations</h1>
+<h2 id="displays">Displays</h2>
+<p>The primary hardware requirement for running Keck VNCs is screen space.  Previous incarnations of the remote observing system have used four (4) 1920x1200 monitors (~24 inch diagonal) and placed one VNC session per monitor.  An alternative setup would be to use a single, very large 4k monitor and place the four VNC sessions on that one monitor.  In order for the VNC sessions to be of reasonable physical size, the monitor would have to be 43-48 inches (we've found that even 43 inches may be a bit on the small size, see below).  The pixel pitch which we used which works well is 0.272 mm/pixel (or about 93 pixels per inch) for our four 24 inch monitor setup.</p>
+<p>We have also tried a 43 inch 4k resolution TV screen (which works out to about 103 ppi), but it is less readable at that size.  The advantage of a single 4k monitor is that it is easy to have a second monitor beside it which is dedicated to the Zoom connection or to a web browser for documentation or displaying weather conditions.</p>
+<h2 id="computer-recommendations">Computer Recommendations</h2>
+<p>A number of computer hardware configurations have been tested.  Various Intel based computers running linux, numerous Mac laptops and desktops (both Intel based and Apple silicon based), and even a Raspberry Pi 4.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../sites/" class="btn btn-neutral float-left" title="Remote Observing Sites"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../installation/" class="btn btn-neutral float-right" title="Installation">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/KeckObservatory/RemoteObserving/" class="fa fa-code-fork" style="color: #fcfcfc"> RemoteObserving</a>
+        </span>
+    
+    
+      <span><a href="../sites/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../installation/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
