@@ -93,78 +93,54 @@
                 <h1 id="software-installation">Software Installation</h1>
 <p>This software depends on a few outside software packages including python (we recommend the <a href="https://www.anaconda.com/">Anaconda Python</a> installer), a VNC Viewer Client (which can be one of several options), and a few command line tools.  <strong>Our installation instructions below should only be taken as an example.</strong>  When dealing with outside packages, users should follow the installation instructions for those packages.</p>
 <p>In addition, users will need a basic understanding of command line interactions as individual customizations (e.g. shell choice), differences between operating system versions, and differences in available command line tools may make the details of these examples inaccurate in some cases.</p>
-<h2 id="install-software-dependencies">Install Software Dependencies</h2>
 <p>The software has been tested on CentOS/RedHat 7.6, Ubuntu, Raspbian, and macOS.  This software will <strong>not</strong> work under Microsoft Windows as distributed here.</p>
 <p>Note: The examples below assume sudo/root installation for all users and were originally written for Linux (CentOS).  Modify as appropriate for your local OS.</p>
+<h3 id="install-python3">Install python3</h3>
 <ul>
-<li>Install python3<ul>
 <li>If you are using Anaconda, download and run the latest <a href="https://www.anaconda.com/download">anaconda installer</a></li>
-<li>If needed, add python3 to user path (example below for <code>~/.bashrc</code> with one possible python install path):
-<code>export PATH=/usr/local/anaconda3-7/bin:$PATH</code></li>
+<li>If needed, add python3 to user path (example below for <code>~/.bashrc</code> with one possible python install path): <code>export PATH=/usr/local/anaconda3-7/bin:$PATH</code></li>
 <li>Other python distributions should work (using python 3.7+), but the user may have to manually install the python dependencies described in the <code>environment.yaml</code> file in addition to other python packages included with anaconda.</li>
 </ul>
-</li>
-<li>Install VNC viewer client<ul>
-<li>
-<p><strong>For Linux</strong></p>
+<h3 id="install-vnc-viewer-client-linux">Install VNC viewer client (Linux)</h3>
 <ul>
-<li>
-<p>TigerVNC is recommended as the VNC client.  RealVNC has been tested as well.
-    <code>sudo yum install tigervnc-x86_64</code>
-    or
-    <code>sudo apt-get install tigervnc-viewer</code></p>
-</li>
-<li>
-<p>In order for sounds to work, you will need a local sound player.  The
-  <code>aplay</code> tool is installed by default on many linux distributions, but
-  if yours does not have it, it is part of the
-  <a href="https://alsa.opensrc.org/Aplay">ALSA</a> package (often part of
-  <code>alsa-utils</code> or a similar package in your package manager).</p>
-</li>
-<li>(optional) Install wmctrl (Used for auto-positioning VNC windows)
-    <code>sudo yum install epel-release
-    sudo yum install wmctrl</code><ul>
-<li><strong>For macOS</strong>: Install a VNC viewer application if needed.</li>
+<li>TigerVNC is recommended as the VNC client.  RealVNC has been tested as well. Example installation commands (will depend on your local linux version and local package manager): <code>sudo yum install tigervnc-x86_64</code> or <code>sudo apt-get install tigervnc-viewer</code></li>
+<li>In order for sounds to work, you will need a local sound player.  The
+<code>aplay</code> tool is installed by default on many linux distributions, but
+if yours does not have it, it is part of the
+<a href="https://alsa.opensrc.org/Aplay">ALSA</a> package (often part of
+<code>alsa-utils</code> or a similar package in your package manager).</li>
+<li>(optional) Install wmctrl (Used for auto-positioning VNC windows): <code>sudo yum install epel-release wmctrl</code></li>
 </ul>
-</li>
+<h3 id="install-vnc-viewer-client-macos">Install VNC viewer client (macOS)</h3>
+<ul>
 <li><a href="https://tigervnc.org">Tiger VNC</a> has the advantage of supporting automatic window positioning, but does not support scaling, and can not enter and exit view only mode interactively.<ul>
 <li>Tiger VNC is available for install via the macOS <a href="https://brew.sh">Homebrew package manager</a>. This provides the same software as is available from the download links above, but may be an easier install for users who already use homebrew. To install Tiger VNC Viewer: <code>brew install tigervnc-viewer</code></li>
-<li><strong>--&gt; Important! &lt;--</strong> If you are using TigerVNC on either OS, in the <code>~/.vnc</code> directory, create a file named <code>default.tigervnc</code> with these two lines:
-<code>TigerVNC Configuration file Version 1.0
-RemoteResize=0</code></li>
 </ul>
 </li>
 <li>It is also possible to use the built in VNC viewer on macOS.  The example configuration file has an example setup for this in the "VNC Viewer Command" section for users who want to try it.  Be aware, however, that we have seen a few instances where the screen freezes and the client needs to be closed and reopened to get an up to date screen, so if you see that problem, please try another VNC Viewer client.</li>
 <li>Real VNC's <a href="https://www.realvnc.com/en/connect/download/viewer/">VNC Viewer</a> does not support automatic window positioning, but allows window scaling for use on small or high resolution monitors.  In addition, it supports changing modes both interactively and on the command line (e.g. scaling and the toggling of view only mode).  <strong>Note: the free version of RealVNC appears to have been retired and this route is no longer available for new installations.</strong></li>
 </ul>
-</li>
-</ul>
-</li>
-</ul>
+<h3 id="configure-vnc-viewer">Configure VNC Viewer</h3>
+<p><strong>--&gt; Important! &lt;--</strong> If you are using TigerVNC on either OS, in the <code>~/.vnc</code> directory, create a file named <code>default.tigervnc</code> with these two lines:</p>
+<pre><code>TigerVNC Configuration file Version 1.0
+RemoteResize=0
+</code></pre>
 <h2 id="install-the-keck-remote-observing-software">Install the Keck Remote Observing Software</h2>
 <p>(NOTE: Examples below assuming a user named 'observer' and installing to home directory)</p>
-<ul>
-<li>
-<p>Download or clone this project from github:
-    <code>cd
-    git clone https://github.com/KeckObservatory/RemoteObserving
-    cd ~/RemoteObserving</code></p>
-</li>
-<li>
-<p>Create configuration file: copy <code>keck_vnc_config.yaml</code> to <code>local_config.yaml</code>.
-    <code>cp keck_vnc_config.yaml local_config.yaml</code></p>
-</li>
-<li>
-<p>If you are using anaconda python, you can create a KRO <a href="https://docs.conda.io/projects/conda/en/latest/user-guide/concepts/environments.html">conda environment</a> using the provided environment.yaml file:
-    <code>cd ~/RemoteObserving
-    conda env create -f environment.yaml</code>
-    This will mean you have a python configuration named "KRO" specifically for  Keck Remote Observing. The <code>start_keck_viewers</code> script will automatically attempt to use this if it exists.</p>
-</li>
-<li>
-<p>(optional) Add VNC start script to path:
-    <code>export PATH=/home/observer/RemoteObserving:$PATH</code></p>
-</li>
-</ul>
+<p>Download or clone this project from github:</p>
+<pre><code>git clone https://github.com/KeckObservatory/RemoteObserving
+cd RemoteObserving
+</code></pre>
+<p>Create configuration file: copy <code>keck_vnc_config.yaml</code> to <code>local_config.yaml</code>.</p>
+<pre><code>cp keck_vnc_config.yaml local_config.yaml
+</code></pre>
+<p>If you are using anaconda python, you can create a KRO <a href="https://docs.conda.io/projects/conda/en/latest/user-guide/concepts/environments.html">conda environment</a> using the provided environment.yaml file:</p>
+<pre><code>conda env create -f environment.yaml
+</code></pre>
+<p>This will mean you have a python configuration named "KRO" specifically for  Keck Remote Observing. The <code>start_keck_viewers</code> script will automatically attempt to use this if it exists.</p>
+<p>(optional) Add VNC start script to path:</p>
+<pre><code>export PATH=~/RemoteObserving:$PATH
+</code></pre>
 <h2 id="configure-keck-remote-observing-software">Configure Keck Remote Observing Software</h2>
 <p>Edit the <code>local_config.yaml</code> file you created above.  Read the comments in the configuration file itself as they can guide you.  You may need to uncomment (remove the leading <code>#</code>) lines you want to customize.</p>
 <ul>
@@ -183,20 +159,18 @@ RemoteResize=0</code></li>
 </ul>
 </li>
 <li><strong>Important:</strong> Make sure you have configured your VNC viewer <strong>not</strong> to resize the sessions (see the note about TigerVNC above).</li>
-<li>
-<p><strong>Soundplay Configuration:</strong> Uncomment the <code>soundplayer</code> line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact <a href="mailto:remote-observing@keck.hawaii.edu">remote-observing@keck.hawaii.edu</a> for help configuring this value if needed.  Also, if your local machine's path to the <code>aplay</code> executable is non-standard, specify that in the <code>aplay</code> value.</p>
-<ul>
+<li><strong>Soundplay Configuration:</strong> Uncomment the <code>soundplayer</code> line to specify which compiled executable for soundplay to use.  Other operating systems sometimes need other soundplay versions, contact the <a href="https://keckobservatory.atlassian.net/servicedesk/customer/portals">remote observing help desk</a>  for help configuring this value if needed.  Also, if your local machine's path to the <code>aplay</code> executable is non-standard, specify that in the <code>aplay</code> value.<ul>
 <li>At the moment, the default Linux executable seems to work for CentOS and Ubuntu Linux.</li>
-<li>For macOS, use the settings as described in the <code>keck_vnc_config.yaml</code> section which specify a specific soundplay executable and a specific aplay calling format:
-    <code>soundplayer: 'soundplay.darwin.x86_64'
-    aplay: '/usr/bin/afplay -v %v %s'</code>
-    As described in the comments in that file, replace <code>%v</code> with a value from 0 to 100 if you want to override the volume control in eventsounds.  Many users find the macOS sounds too loud, so replacing <code>%v</code> with a value less than 1 can help.</li>
-<li>If your system is not compatible, or if you do not want it to have sounds, add a line to your <code>local_config.yaml</code> file which contains <code>nosound: True</code> to avoid starting sounds.  This is important for sites which are using multiple computers for each set of VNC sessions.  Choose one to handle sounds, and set the <code>nosound: True,</code> option for the other.</li>
+<li>For macOS, use the settings as described in the <code>keck_vnc_config.yaml</code> section which specify a specific soundplay executable and a specific aplay calling format as described in the comments in that file, replace <code>%v</code> with a value from 0 to 100 if you want to override the volume control in eventsounds.  Many users find the macOS sounds too loud, so replacing <code>%v</code> with a value less than 1 can help.</li>
 </ul>
 </li>
-<li>
-<p><strong>Configure Default Sessions:</strong> Keck instruments typically use 4 VNC sessions for instrument control named "control0", "control1", "control2", and "telstatus".  On a normal invocation of the software (via the <code>start_keck_viewers</code> command) it will open the four sessions specified here.  For stations which split the duties among 2 computers, one could set this line to control which computer opens which sessions.</p>
-</li>
+</ul>
+<pre><code>soundplayer: 'soundplay.darwin.x86_64'
+aplay: '/usr/bin/afplay -v %v %s'
+</code></pre>
+<ul>
+<li>If your system is not compatible, or if you do not want it to have sounds, add a line to your <code>local_config.yaml</code> file which contains <code>nosound: True</code> to avoid starting sounds.  This is important for sites which are using multiple computers for each set of VNC sessions.  Choose one to handle sounds, and set the <code>nosound: True,</code> option for the other.</li>
+<li><strong>Configure Default Sessions:</strong> Keck instruments typically use 4 VNC sessions for instrument control named "control0", "control1", "control2", and "telstatus".  On a normal invocation of the software (via the <code>start_keck_viewers</code> command) it will open the four sessions specified here.  For stations which split the duties among 2 computers, one could set this line to control which computer opens which sessions.</li>
 </ul>
 <h2 id="test-your-connection-to-keck">Test your Connection to Keck</h2>
 <p>Only after your SSH key is successfully installed at Keck, you can test your system.  You can see the status of your SSH Key approval and deployment by clicking "Manage Your Remote Observing SSH Key" on your <a href="https://www2.keck.hawaii.edu/inst/PILogin/login.php">Observer Login Page</a>.</p>
@@ -205,7 +179,7 @@ RemoteResize=0</code></li>
 <pre><code>./start_keck_viewers mosfire9 --test
 </code></pre>
 <p>This should print out a report which indicates that all tests passed. Make sure there are no test failures.</p>
-<p>If there are test failures, email your logfile to <a href="mailto:remote-observing@keck.hawaii.edu">remote-observing@keck.hawaii.edu</a>.  Verbose debug information is logged to the <code>RemoteObserving/logs/</code> folder.  Log files are created based on the UTC date.</p>
+<p>If there are test failures, submit your logfile when you create a ticket at the <a href="https://keckobservatory.atlassian.net/servicedesk/customer/portals">remote observing help desk</a>.  Verbose debug information is logged to the <code>RemoteObserving/logs/</code> folder.  Log files are created based on the UTC date.</p>
 <h1 id="upgrading-the-software">Upgrading the Software</h1>
 <p>The software does a simple check to see if it is the latest released version.  You can see a log line with this information on startup, or you can get the saem result using the <code>v</code> command.</p>
 <p>Upgrading the software is done via a <code>git pull</code> in the directory where the software is installed.  If your software version is earlier than v1.0, this may require rebuilding your <code>local_config.yaml</code> file.  If you need to do this, just copy values from your old local config file in to a new one generated from the template as per the instructions above.</p>
