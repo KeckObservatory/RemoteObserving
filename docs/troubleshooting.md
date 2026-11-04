@@ -2,7 +2,7 @@
 
 Verbose debug information is logged to the `RemoteObserving/logs/` folder.  Log files are created based on the UTC date.
 
-If you need assistance, please email [remote-observing@keck.hawaii.edu](mailto:remote-observing@keck.hawaii.edu) and attach the most recent log file from the logs folder.
+If you need assistance, please submit a ticket to our [remote observing help desk](https://keckobservatory.atlassian.net/servicedesk/customer/portals) and attach the most recent log file from the logs folder.
 
 ## Can not see entire VNC desktop / VNC desktop is small
 
