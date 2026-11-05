@@ -6,13 +6,17 @@ There are three options for observing at Keck:
 
 Observers are welcome to observe from the large remote observing rooms at Keck's HQ in Waimea.  This is still considered "remote observing" because the control room is remote from the telescope at the summit.
 
+As per the [remote observing policy](policy.md) we require that at least one member of an observing team observe from Waimea if the team is unfamiliar with Keck observing or are unfamiliar with the instrument. This makes it much easier for Keck staff (especially the Staff Astronomer supporting their night) to communicate with and train observers.
+
+Teams with at least one experienced observer who will be present for the night are welcome to opt for remote observing from an established [site](sites.md) at one of our partner institutions or to take advantage of at home observing (see below).
+
 ### 2) Observing from an Established Site
 
 The formal remote observing [sites](sites.md) are typically located on campus at our university partners or at a NASA location.  These sites are equipped with a dedicated room with teleconferencing hardware and computers with sufficient screen real estate for running Keck instruments which typically require 4 VNC screens.
 
 ### 3) Observing from Home
 
-WMKO also now offers at home observing, but we recommend you consider observing from Waimea or one of the established sites unless you are highly familiar with Keck observing.
+WMKO also now offers at home observing, but we recommend you consider observing from Waimea or one of the established [sites](sites.md) unless you are highly familiar with Keck observing.
 
 # Requesting Remote Observing
 
