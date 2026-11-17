@@ -19,6 +19,7 @@ import time
 import traceback
 import requests
 import yaml
+import certifi
 
 ## Import local modules
 import soundplay
@@ -32,6 +33,7 @@ SESSION_NAMES = ('control0', 'control1', 'control2', 'control3',
                  'analysis0', 'analysis1', 'analysis2',
                  'telanalys', 'telstatus')
 KROException = Exception
+certifiAgeThresholdYears = 2.0
 
 
 ##-------------------------------------------------------------------------
@@ -478,6 +480,7 @@ class KeckVncLauncher(object):
         self.log_system_info()
         self.test_yaml_version()
         self.check_version()
+        self.check_certifi()
         if self.args.authonly is False:
             self.get_display_info()
 
@@ -603,6 +606,27 @@ class KeckVncLauncher(object):
             self.log.error("Unable to log SSH info.")
             trace = traceback.format_exc()
             self.log.debug(trace)
+
+
+    def check_certifi(self):
+        try:
+            self.log.info(f'certifi version: {certifi.__version__}')
+            now = datetime.datetime.now()
+            cfdate = datetime.datetime.strptime(certifi.__version__, '%Y.%m.%d')
+            age = now - cfdate
+            years = age.days/365
+            if years > certifiAgeThresholdYears:
+                pip = Path(sys.exec_prefix) /'bin'/'pip'
+                msg = [f'Your SSL certificates are {years:.1f} years out of date.',
+                       f'This may cause connection failures.',
+                       f'If you see a connection failure with an SSLCertVerificationError,',
+                       f'then update certifi with this command:',
+                       f'  {pip} install --upgrade certifi']
+                for line in msg:
+                    self.log.warning(line)
+        except Exception as e:
+            self.log.warning('Unable to verify certifi version')
+            self.log.debug(e)
 
 
     def check_version(self):
