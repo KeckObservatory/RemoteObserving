@@ -19,19 +19,24 @@ import time
 import traceback
 import requests
 import yaml
+import certifi
 
 ## Import local modules
 import soundplay
 
 
 ## Module vars
-__version__ = '3.0.6'
+__version__ = '3.0.7'
 supportEmail = 'remote-observing@keck.hawaii.edu'
 KRO_API = 'https://www3.keck.hawaii.edu/api/kroApi/'
 SESSION_NAMES = ('control0', 'control1', 'control2', 'control3',
                  'analysis0', 'analysis1', 'analysis2',
                  'telanalys', 'telstatus')
 KROException = Exception
+certifiAgeThresholdYears = 2.0
+pip = Path(sys.exec_prefix) /'bin'/'pip'
+SSLcert_error_msg = [f'You can update certifi with this command:',
+                     f'  {pip} install --upgrade certifi']
 
 
 ##-------------------------------------------------------------------------
@@ -478,6 +483,7 @@ class KeckVncLauncher(object):
         self.log_system_info()
         self.test_yaml_version()
         self.check_version()
+        self.check_certifi()
         if self.args.authonly is False:
             self.get_display_info()
 
@@ -603,6 +609,25 @@ class KeckVncLauncher(object):
             self.log.error("Unable to log SSH info.")
             trace = traceback.format_exc()
             self.log.debug(trace)
+
+
+    def check_certifi(self):
+        try:
+            self.log.info(f'certifi version: {certifi.__version__}')
+            now = datetime.datetime.now()
+            cfdate = datetime.datetime.strptime(certifi.__version__, '%Y.%m.%d')
+            age = now - cfdate
+            years = age.days/365
+            if years > certifiAgeThresholdYears:
+                msg = [f'Your SSL certificates are {years:.1f} years out of date.',
+                       f'This may cause connection failures.']
+                for line in msg:
+                    self.log.warning(line)
+                for line in SSLcert_error_msg:
+                    self.log.warning(line)
+        except Exception as e:
+            self.log.warning('Unable to verify certifi version')
+            self.log.debug(e)
 
 
     def check_version(self):
@@ -831,6 +856,13 @@ class KeckVncLauncher(object):
 
         try:
             data = requests.post(KRO_API, data=params, timeout=90)
+        except requests.exceptions.SSLError as sslerror:
+            self.log.error(sslerror.__doc__)
+            self.log.error(sslerror.__str__())
+            self.log.error('If your certificates are out of date, updating certifi may help:')
+            for line in SSLcert_error_msg:
+                self.log.error(line)
+            self.exit_app()
         except Exception as e:
             self.log.error(f'Could not get data from API.')
             self.log.error(str(e))
